@@ -1,12 +1,29 @@
 # app/main.py
 import os, re, html, time
 from typing import Optional, Tuple, Dict, Any
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 import httpx
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from functools import lru_cache
+
+# AI 모듈 import
+try:
+    from app.ai_module import ai_summarizer
+except ImportError:
+    # 개발 환경에서의 fallback
+    ai_summarizer = None
+    print("[WARNING] AI 모듈을 로드할 수 없습니다.")
+
+# 데이터베이스 import
+from app.database import get_db
+from app.models import NewsArticle, Keyword, news_keywords_table
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, desc, func
+from typing import List
 
 # -----------------------------
 # 환경 변수 로드 (.env)
@@ -47,7 +64,7 @@ def map_page(page: int, page_size: int) -> Tuple[int, int]:
     네이버 제약: display ≤ 100, start ≤ 1000
     start = (page-1)*display + 1
     """
-    page_size = max(10, min(page_size, 100))
+    page_size = max(1, min(page_size, 100))
     start = (max(1, page) - 1) * page_size + 1
     return start, page_size
 
@@ -62,71 +79,191 @@ def root():
 def health():
     return {"status": "healthy"}
 
+# Pydantic 모델 정의
+class SummaryRequest(BaseModel):
+    title: Optional[str] = None
+    content: str
+    max_length: Optional[int] = 100
+
 @app.get("/debug/env")
 def debug_env():
     # 키가 로딩되었는지 빠르게 확인
     return {"NAVER_ID": bool(NAVER_ID), "NAVER_SECRET": bool(NAVER_SECRET)}
 
 # -----------------------------
+# AI 요약 API
+# -----------------------------
+@app.post("/api/ai/summarize")
+async def summarize_text(request: SummaryRequest):
+    """텍스트 요약 API"""
+    if ai_summarizer is None:
+        raise HTTPException(status_code=503, detail="AI 모듈을 사용할 수 없습니다")
+
+    try:
+        result = ai_summarizer.summarize_news(
+            title=request.title,
+            content=request.content,
+            max_length=request.max_length
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"요약 생성 실패: {str(e)}")
+
+@app.get("/api/ai/health")
+async def ai_health():
+    """AI 모델 상태 확인"""
+    if ai_summarizer is None:
+        return {"model_loaded": False, "error": "AI module not available"}
+
+    return {
+        "model_loaded": ai_summarizer.summarizer is not None,
+        "model_name": "eenzeenee/t5-base-korean-summarization" if ai_summarizer and ai_summarizer.summarizer else None
+    }
+
+# -----------------------------
 # 뉴스 검색 프록시 (페이지네이션)
 # -----------------------------
 @app.get("/api/search")
 async def search_news(
-    q: str = Query(..., min_length=1),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=10, le=100),
-    sort: str = Query("date", pattern="^(date|sim)$"),  # 최신/정확도
+    q: str = Query("", min_length=0),  # 빈 문자열 허용 (최신 뉴스용)
+    page: int = Query(1, ge=1, le=100),  # 페이지 제한 추가
+    page_size: int = Query(20, ge=1, le=100),
+    sort: str = Query("date", pattern="^(date|sim|relevance)$"),  # 최신/정확도/관련도
+    category: str = Query(None),  # 카테고리 필터
+    db: Session = Depends(get_db)
 ):
-    if not (NAVER_ID and NAVER_SECRET):
-        raise HTTPException(500, detail="NAVER_CLIENT_ID/SECRET 누락됨 (.env 설정 필요)")
+    """데이터베이스 기반 뉴스 검색"""
 
-    start, display = map_page(page, page_size)
-    if start > 1000:
-        return {"items": [], "page": page, "page_size": display, "total": 0, "has_next": False}
+    try:
+        offset = (page - 1) * page_size
 
-    headers = {
-        "X-Naver-Client-Id": NAVER_ID,
-        "X-Naver-Client-Secret": NAVER_SECRET,
-    }
-    params = {"query": q, "display": display, "start": start, "sort": sort}
+        # 기본 쿼리
+        query = db.query(NewsArticle)
 
-    if DEBUG:
-        print(f"[SEARCH] params={params}")
+        # 키워드 검색 (빈 문자열이면 전체 뉴스)
+        if q and q.strip():
+            search_term = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    NewsArticle.title.ilike(search_term),
+                    NewsArticle.summary.ilike(search_term),
+                    NewsArticle.ai_summary.ilike(search_term),
+                    NewsArticle.content.ilike(search_term)
+                )
+            )
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(NAVER_NEWS_URL, headers=headers, params=params)
+        # 카테고리 필터
+        if category:
+            query = query.filter(NewsArticle.category == category)
 
-    if DEBUG:
-        print(f"[SEARCH] naver status={r.status_code}")
+        # 총 개수 구하기
+        total = query.count()
 
-    if r.status_code != 200:
-        # 네이버 에러 그대로 전달(권한/쿼터/파라미터 등)
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        # 정렬
+        if sort == "date":
+            query = query.order_by(desc(NewsArticle.pub_date))
+        elif sort == "sim":  # 정확도 (제목 매칭 우선)
+            if q and q.strip():
+                query = query.order_by(
+                    NewsArticle.title.ilike(f"%{q.strip()}%").desc(),
+                    desc(NewsArticle.pub_date)
+                )
+            else:
+                query = query.order_by(desc(NewsArticle.pub_date))
+        elif sort == "relevance":
+            # AI 요약이 있는 것 우선, 최신순
+            query = query.order_by(
+                NewsArticle.ai_summary.is_(None),
+                desc(NewsArticle.pub_date)
+            )
 
-    data = r.json()
-    raw = data.get("items", [])
-    total = int(data.get("total", 0))
+        # 페이지네이션
+        articles = query.offset(offset).limit(page_size).all()
 
-    items = [{
-        "id": it.get("link") or it.get("originallink") or it.get("title"),
-        "title": clean(it.get("title")),
-        "url": it.get("link"),
-        "origin_url": it.get("originallink"),
-        "summary": clean(it.get("description")),
-        "pub_date": it.get("pubDate"),
-        "source": None,  # 필요시 /api/media에서 og:site_name을 추가 추출해 붙일 수 있음
-    } for it in raw]
+        # 결과 변환 (키워드 배치로 가져와서 성능 최적화)
+        article_ids = [article.id for article in articles]
 
-    next_start = start + display
-    has_next = next_start <= 1000 and (start - 1 + len(items)) < total
+        # 모든 기사의 키워드를 한 번에 가져오기
+        keywords_query = db.query(
+            news_keywords_table.c.news_id,
+            Keyword.keyword
+        ).join(
+            Keyword,
+            Keyword.id == news_keywords_table.c.keyword_id
+        ).filter(
+            news_keywords_table.c.news_id.in_(article_ids)
+        ).all()
 
-    return {
-        "items": items,
-        "page": page,
-        "page_size": display,
-        "total": total,
-        "has_next": has_next,
-    }
+        # 기사별 키워드 그룹핑
+        keywords_by_article = {}
+        for news_id, keyword in keywords_query:
+            if news_id not in keywords_by_article:
+                keywords_by_article[news_id] = []
+            if len(keywords_by_article[news_id]) < 5:  # 최대 5개
+                keywords_by_article[news_id].append(keyword)
+
+        items = []
+        for article in articles:
+            keyword_list = keywords_by_article.get(article.id, [])
+
+            # 미디어 URL 처리
+            media_urls = article.media_urls if article.media_urls else {"images": [], "videos": []}
+
+            item = {
+                "id": str(article.id),
+                "title": article.title,
+                "url": article.url,
+                "origin_url": article.origin_url,
+                "summary": article.summary,
+                "ai_summary": article.ai_summary,
+                "short_ai_summary": article.short_ai_summary,
+                "pub_date": article.pub_date.isoformat() if article.pub_date else None,
+                "source": article.source,
+                "category": article.category,
+                "keywords": keyword_list,
+                "media_urls": media_urls,
+                "created_at": article.created_at.isoformat() if article.created_at else None
+            }
+            items.append(item)
+
+        # 다음 페이지 여부
+        has_next = offset + len(items) < total
+
+        if DEBUG:
+            print(f"[DB SEARCH] 키워드='{q}', 카테고리={category}, 정렬={sort}")
+            print(f"[DB SEARCH] 총 {total}개 중 {len(items)}개 반환 (페이지 {page})")
+
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "has_next": has_next,
+            "source": "database",  # DB에서 가져온 것임을 표시
+            "search_query": q if q.strip() else None
+        }
+
+    except Exception as e:
+        print(f"[DB ERROR] {e}")
+        raise HTTPException(status_code=500, detail="데이터베이스 조회 실패")
+
+# 최신 뉴스 전용 엔드포인트
+@app.get("/api/latest")
+async def get_latest_news(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    category: str = Query(None),  # 카테고리 필터
+    db: Session = Depends(get_db)
+):
+    """최신 뉴스 조회 (검색어 없이)"""
+    return await search_news(
+        q="",  # 빈 검색어로 전체 뉴스
+        page=page,
+        page_size=page_size,
+        sort="date",  # 최신순 고정
+        category=category,
+        db=db
+    )
 
 # -----------------------------
 # 원문 페이지에서 미디어(og:image / og:video) 추출
@@ -214,7 +351,7 @@ def board():
 </head>
 <body>
 <header>
-  <input id="q" placeholder="검색어 (예: 주식, 경제, 정치)" style="min-width:220px"/>
+  <input id="q" placeholder="검색어 입력 (비워두면 최신 뉴스)" style="min-width:220px"/>
   <select id="sort">
     <option value="date" selected>최신순</option>
     <option value="sim">정확도순</option>
@@ -295,7 +432,7 @@ async function renderItems(items){
       <div>
         <h3 class="title"><a href="${it.url||it.origin_url}" target="_blank" rel="noopener">${(it.title||'(제목없음)')}</a></h3>
         <div class="meta">${it.pub_date ? new Date(it.pub_date).toLocaleString() : ''}</div>
-        <div class="summary">${(it.summary||'')}</div>
+        <div class="summary">${(it.short_ai_summary||it.ai_summary||it.summary||'').substring(0,40)}${(it.short_ai_summary||it.ai_summary||it.summary||'').length > 40 ? '...' : ''}</div>
       </div>
     `;
     const mediaBox = li.querySelector('.media');
@@ -331,7 +468,7 @@ async function renderItems(items){
 }
 
 $btn.onclick = ()=>{
-  state.q = $q.value.trim(); if (!state.q) return;
+  state.q = $q.value.trim(); // 빈 문자열도 허용 (최신 뉴스)
   state.page = 1;
   state.sort = $sort.value;
   state.pageSize = parseInt($pageSize.value,10);
@@ -348,12 +485,14 @@ $more.onclick = ()=>{
 
 document.addEventListener('DOMContentLoaded', ()=>{
   // 초기값(주소창 파라미터)
-  $q.value = qs('q','주식');
+  $q.value = qs('q','');  // 기본값을 빈 문자열로 (최신 뉴스)
   $sort.value = qs('sort','date');
   $pageSize.value = qs('pageSize','20');
   state.q = $q.value; state.sort=$sort.value; state.pageSize=parseInt($pageSize.value,10);
   const initPage = parseInt(qs('page','1'),10);
   state.page = isNaN(initPage) ? 1 : initPage;
+
+  // 초기 로딩 시 최신 뉴스 표시
   fetchPage(true);
 });
 </script>
