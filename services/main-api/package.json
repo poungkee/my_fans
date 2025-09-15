@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "test": "jest"
@@ -21,7 +21,8 @@
     "morgan": "^1.10.0",
     "dotenv": "^16.3.1",
     "class-validator": "^0.14.0",
-    "class-transformer": "^0.5.1"
+    "class-transformer": "^0.5.1",
+    "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
     "@types/node": "^20.5.0",

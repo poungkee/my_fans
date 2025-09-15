@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FANS AI 요약 테스트</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .summary-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .keywords {
+            margin-top: 10px;
+        }
+        .keyword {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            margin: 2px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 FANS AI 뉴스 요약 테스트</h1>
+
+        <div>
+            <label for="newsText"><strong>뉴스 텍스트를 입력하세요:</strong></label>
+            <textarea id="newsText" placeholder="예시: 오늘 대통령이 새로운 경제 정책을 발표했습니다. 이 정책은 중소기업 지원과 일자리 창출에 중점을 두고 있으며, 전문가들은 긍정적인 효과를 기대하고 있습니다.">오늘 삼성전자가 새로운 갤럭시 S24 Ultra를 공식 발표했습니다. 이번 신제품은 AI 카메라 기능이 대폭 강화되었으며, 야간 촬영 성능이 50% 향상되었습니다. 또한 배터리 용량도 5000mAh로 증가하여 하루 종일 사용이 가능합니다. 전문가들은 이 제품이 애플 아이폰 15 Pro와의 경쟁에서 우위를 점할 것으로 분석하고 있습니다.</textarea>
+        </div>
+
+        <button onclick="summarizeText()" id="summarizeBtn">🚀 AI 요약하기</button>
+
+        <div id="result" class="result">
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        async function summarizeText() {
+            const text = document.getElementById('newsText').value;
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            const button = document.getElementById('summarizeBtn');
+
+            if (!text.trim()) {
+                alert('텍스트를 입력해주세요!');
+                return;
+            }
+
+            // 로딩 상태
+            button.disabled = true;
+            button.textContent = '⏳ AI가 요약 중...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultContent.innerHTML = '<p>AI가 열심히 요약하고 있습니다... (약 10-15초 소요)</p>';
+
+            try {
+                const response = await fetch('/api/ai/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+
+                    let keywordsHtml = '';
+                    if (data.keywords && data.keywords.length > 0) {
+                        keywordsHtml = '<div class="keywords"><strong>📌 추출된 키워드:</strong><br>' +
+                            data.keywords.map(keyword => `<span class="keyword">${keyword}</span>`).join('') +
+                            '</div>';
+                    }
+
+                    resultContent.innerHTML = `
+                        <h3>✅ AI 요약 완료!</h3>
+                        <div class="summary-box">
+                            <strong>📝 요약 결과:</strong><br>
+                            ${data.summary}
+                        </div>
+                        ${keywordsHtml}
+                        <p><small>
+                            원본 길이: ${data.original_length}자 → 요약 길이: ${data.summary_length}자
+                            (${Math.round((1 - data.summary_length / data.original_length) * 100)}% 압축)
+                        </small></p>
+                    `;
+                } else {
+                    throw new Error(data.error || '요약 실패');
+                }
+
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultContent.innerHTML = `
+                    <h3>❌ 오류 발생</h3>
+                    <p>요약 중 오류가 발생했습니다: ${error.message}</p>
+                    <p><small>서버가 실행 중인지 확인해주세요.</small></p>
+                `;
+            }
+
+            // 버튼 복구
+            button.disabled = false;
+            button.textContent = '🚀 AI 요약하기';
+        }
+
+        // 엔터키로도 실행 가능
+        document.getElementById('newsText').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                summarizeText();
+            }
+        });
+    </script>
+</body>
+</html>
