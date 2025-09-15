@@ -8,16 +8,16 @@ import AgencySection from './components/AgencySection';
 import Footer from './components/Footer';
 
 function App() {
-  // 정렬/필터/검색
-  const [selectedSort, setSelectedSort] = useState('최신순');
-  const [selectedAgency, setSelectedAgency] = useState('전체'); // 초기엔 전체로
+  /* 상태 */
+  const [feedNews, setFeedNews] = useState([]);       // 홈 피드(전체 키워드)
+  const [searchResults, setSearchResults] = useState([]); // 검색 결과
+  const [isSearching, setIsSearching] = useState(false);
+
+  const [selectedSort, setSelectedSort] = useState('최신순'); // 검색 정렬 전용
+  const [selectedAgency, setSelectedAgency] = useState('전체');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 원본과 화면용 분리
-  const [allNews, setAllNews] = useState([]);
-  const [newsData, setNewsData] = useState([]);
-
-  // 주식 섹션(시뮬레이션 유지)
+  /* 주식 섹션 시뮬레이션 유지 */
   const [stockData, setStockData] = useState([
     { label: '코스피', value: '2,456.78', change: '+12.34 (+0.50%)', type: 'positive' },
     { label: '나스닥', value: '14,567.89', change: '-23.45 (-0.16%)', type: 'negative' },
@@ -25,50 +25,75 @@ function App() {
     { label: '비트코인', value: '$43,567.89', change: '+1,234.56 (+2.92%)', type: 'positive' }
   ]);
 
-  // CRA 프록시 사용 시 빈 문자열, 아니면 REACT_APP_API_BASE 사용
+  /* API 베이스 (proxy가 있으면 '') */
   const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
-  // 네이버 정렬 매핑: 최신순→date, 그 외→sim
-  const naverSort = useMemo(() => (selectedSort === '최신순' ? 'date' : 'sim'), [selectedSort]);
 
-  // 뉴스 패치 (프록시 경로 / 직접 경로 폴백)
+  /* 검색 정렬 매핑: 최신, 관련, 인기, 조회 */
+  const searchSortKey = useMemo(() => {
+    const map = {
+      '최신순': 'latest',
+      '관련순': 'related',
+      '인기순': 'popular',
+      '조회순': 'views',
+      // 기존 헤더가 latest/relevant/trending/popular 같은 키면 여기서 매핑 추가
+      'relevant': 'related',
+      'trending': 'popular',
+      'latest': 'latest',
+      'popular': 'popular',
+      'views': 'views',
+    };
+    return map[selectedSort] || 'latest';
+  }, [selectedSort]);
+
+  /* 홈 피드 불러오기 (검색 전 화면) */
   useEffect(() => {
     const controller = new AbortController();
-    const q = (searchQuery || '정치').trim();
-
-    const urls = [
-      `${API_BASE}/api/news?query=${encodeURIComponent(q)}&display=12&sort=${naverSort}`,
-      `http://localhost:8000/api/news?query=${encodeURIComponent(q)}&display=12&sort=${naverSort}`,
-    ];
-
+    const url = `${API_BASE}/api/feed?topics=${encodeURIComponent('정치,경제,사회,세계,IT/과학,생활/문화')}&limit=60&sort=latest`;
     (async () => {
-      let lastErr;
-      for (const url of urls) {
-        try {
-          const res = await fetch(url, { signal: controller.signal }); // credentials 불필요
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          const items = Array.isArray(data.items) ? data.items : [];
-          setAllNews(items);
-          setNewsData(items);
-          return;
-        } catch (e) {
-          lastErr = e;
-          // 다음 URL로 폴백 시도
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setFeedNews(Array.isArray(data.items) ? data.items : []);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('피드 로드 실패:', e);
+          setFeedNews([]);
         }
       }
-      console.error('뉴스 로드 실패:', lastErr);
-      setAllNews([]);
-      setNewsData([]);
     })();
-
     return () => controller.abort();
-  }, [API_BASE, searchQuery, naverSort]);
+  }, [API_BASE]);
 
-  // 주식 데이터 업데이트 시뮬레이션
+  /* 검색 전용 API 호출 (검색어/정렬이 바뀔 때만) */
+  useEffect(() => {
+    if (!isSearching) return;
+    const q = (searchQuery || '').trim();
+    if (!q) { setIsSearching(false); setSearchResults([]); return; }
+
+    const controller = new AbortController();
+    const url = `${API_BASE}/api/search?q=${encodeURIComponent(q)}&sort=${searchSortKey}&limit=60`;
+    (async () => {
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setSearchResults(Array.isArray(data.items) ? data.items : []);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('검색 실패:', e);
+          setSearchResults([]);
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [API_BASE, isSearching, searchQuery, searchSortKey]);
+
+  /* 주식 데이터 변동 시뮬레이션 */
   useEffect(() => {
     const interval = setInterval(() => {
-      setStockData(prevData =>
-        prevData.map(item => {
+      setStockData(prev =>
+        prev.map(item => {
           const currentValue = parseFloat(item.value.replace(/[^0-9.-]/g, ''));
           const change = (Math.random() - 0.5) * 10;
           const newValue = (currentValue + change).toFixed(2);
@@ -79,50 +104,49 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // 정렬
-  const handleSortChange = (sortType, displayText) => {
+  /* 헤더: 정렬(검색에만 영향) */
+  const handleSortChange = (_sortType, displayText) => {
+    // 헤더에서 넘어오는 텍스트를 그대로 사용(최신순/관련순/인기순/조회순 등)
     setSelectedSort(displayText);
-    const sorted = [...newsData].sort((a, b) => {
-      switch (sortType) {
-        case 'latest':
-          return (a.timeValue ?? 9999) - (b.timeValue ?? 9999);
-        case 'popular':
-        case 'relevant':
-        case 'trending':
-          return Math.random() - 0.5;
-        default:
-          return 0;
-      }
-    });
-    setNewsData(sorted);
+    // 검색중이 아닐 때는 화면 피드 정렬은 유지(최신)
   };
 
-  // 검색
-  const handleSearch = (query) => setSearchQuery(query);
-
-  // 필터는 항상 원본 기준
-  const handleAgencyFilter = (agency) => {
-    const base = allNews;
-    const filtered = agency && agency !== '전체' ? base.filter(n => n.agency === agency) : base;
-    setNewsData(filtered);
+  /* 헤더: 검색 실행 */
+  const handleSearch = (query) => {
+    const q = (query || '').trim();
+    setSearchQuery(q);
+    setIsSearching(!!q); // 빈 검색어면 검색모드 해제 → 홈 피드로 복귀
   };
 
-  const handleCategoryFilter = (category) => {
-    const base = allNews;
-    const filtered = category ? base.filter(n => n.category === category) : base;
-    setNewsData(filtered);
-  };
+  /* 에이전시/카테고리 필터 (피드/검색 각각 현재 리스트에만 적용) */
+  const [agencyFilteredNews, setAgencyFilteredNews] = useState(null);
+  const [categoryFilteredNews, setCategoryFilteredNews] = useState(null);
+
+  const currentList = isSearching
+    ? (categoryFilteredNews ?? agencyFilteredNews ?? searchResults)
+    : (categoryFilteredNews ?? agencyFilteredNews ?? feedNews);
 
   const handleAgencySelect = (agency) => {
     setSelectedAgency(agency);
-    handleAgencyFilter(agency);
+    if (!agency || agency === '전체') {
+      setAgencyFilteredNews(null);
+      return;
+    }
+    const base = isSearching ? searchResults : feedNews;
+    setAgencyFilteredNews(base.filter(n => n.agency === agency));
+  };
+
+  const handleCategoryFilter = (category) => {
+    if (!category) { setCategoryFilteredNews(null); return; }
+    const base = isSearching ? searchResults : feedNews;
+    setCategoryFilteredNews(base.filter(n => n.category === category));
   };
 
   return (
     <div className="App">
       <Header
-        onSortChange={handleSortChange}
-        onSearch={handleSearch}
+        onSortChange={handleSortChange}   // 검색 정렬
+        onSearch={handleSearch}           // 검색 실행/해제
         selectedSort={selectedSort}
       />
 
@@ -132,11 +156,10 @@ function App() {
         <div className="main-content">
           <div className="content-area">
             <NewsGrid
-              newsData={newsData}
-              searchQuery={searchQuery}
+              newsData={currentList}
+              searchQuery={isSearching ? searchQuery : ''} // 검색모드시에만 카드 내부 검색필터 동작
             />
           </div>
-
           <Sidebar />
         </div>
 
