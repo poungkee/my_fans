@@ -1,1 +1,0 @@
-Since this is a team project, a critical rule is to only modify the sections that I have personally worked on. Please do not alter any code or content created by other team members. If a change is required in a section built by someone else, you must get my final confirmation before making any changes, even if I've previously given permission.

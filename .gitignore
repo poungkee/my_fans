@@ -82,3 +82,9 @@ claude_memory/
 # 작업 로그 (개인용)
 WORK_LOG.md
 **/WORK_LOG.md
+work_log.md
+**/work_log.md
+
+# Claude 설정 (개인용)
+CLAUDE.md
+**/CLAUDE.md
