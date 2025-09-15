@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: fans_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: fans_db
+      POSTGRES_USER: fans_user
+      POSTGRES_PASSWORD: fans_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/main-api/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fans_user -d fans_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Python AI Service
+  ai-service:
+    build: ./services/ai-service
+    container_name: fans_ai_service
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node.js Main API
+  main-api:
+    build: ./services/main-api
+    container_name: fans_main_api
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=fans_user
+      - DB_PASSWORD=fans_password
+      - DB_DATABASE=fans_db
+      - AI_SERVICE_URL=http://ai-service:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    networks:
+      - fans_network
+    volumes:
+      - ./services/main-api:/app
+      - /app/node_modules
+
+  # React Frontend (Development)
+  frontend:
+    build: ./frontend
+    container_name: fans_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - fans_network
+    depends_on:
+      - main-api
+
+volumes:
+  postgres_data:
+
+networks:
+  fans_network:
+    driver: bridge
