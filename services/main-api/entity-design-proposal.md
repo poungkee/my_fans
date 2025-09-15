@@ -30,7 +30,11 @@ export class User {
   gender?: string;
   location?: string;
   occupation?: string;
-  political_inclination?: string; // 정치성향
+  // 종합적인 성향 분석 (AI 기반)
+  political_inclination?: string;  // 정치 성향 ('progressive', 'conservative', 'moderate')
+  social_inclination?: string;     // 사회 성향 ('liberal', 'traditional', 'moderate')
+  economic_inclination?: string;   // 경제 성향 ('capitalist', 'socialist', 'mixed')
+  cultural_inclination?: string;   // 문화 성향 ('open', 'conservative', 'balanced')
 
   // 뉴스 선호도
   preferred_categories: string[];     // 선호 카테고리
@@ -77,6 +81,7 @@ export class NewsArticle {
   like_count: number;
   dislike_count: number;
   scrap_count: number;
+  comment_count: number;  // 댓글 수 (캐시용)
 }
 ```
 
@@ -203,7 +208,46 @@ export class Keyword {
 }
 ```
 
-### 9. NewsKeyword (뉴스-키워드 관계)
+### 9. Comment (댓글)
+```typescript
+@Entity('comments')
+export class Comment {
+  id: number;
+  news_id: number;           // 뉴스 ID (FK)
+  user_id: number;           // 사용자 ID (FK)
+  parent_id?: number;        // 상위 댓글 ID (대댓글용, 자기 참조)
+
+  // 댓글 내용
+  content: string;           // 댓글 내용
+  is_deleted: boolean;       // 삭제 여부 (소프트 삭제)
+
+  // 통계
+  like_count: number;
+  dislike_count: number;
+  reply_count: number;       // 대댓글 수
+
+  // 날짜
+  created_at: Date;
+  updated_at: Date;
+}
+```
+
+### 10. CommentInteraction (댓글 상호작용)
+```typescript
+@Entity('comment_interactions')
+export class CommentInteraction {
+  id: number;
+  user_id: number;           // 사용자 ID (FK)
+  comment_id: number;        // 댓글 ID (FK)
+
+  interaction_type: string;   // 'like', 'dislike'
+  created_at: Date;
+
+  UNIQUE(user_id, comment_id) // 중복 방지
+}
+```
+
+### 11. NewsKeyword (뉴스-키워드 관계)
 ```typescript
 @Entity('news_keywords')
 export class NewsKeyword {
@@ -215,26 +259,116 @@ export class NewsKeyword {
 }
 ```
 
-## 🔄 관계 설정
+## 🔄 관계 설정 및 외래키
 
-### 주요 관계
+### 주요 관계 (TypeORM 설정)
+
+#### User 관련
 - **User ↔ UserNewsInteraction**: 1:N (사용자 - 뉴스 상호작용)
+  ```typescript
+  @OneToMany(() => UserNewsInteraction, interaction => interaction.user)
+  news_interactions: UserNewsInteraction[];
+  ```
+
 - **User ↔ UserPreference**: 1:N (사용자 - 선호도)
+  ```typescript
+  @OneToMany(() => UserPreference, preference => preference.user)
+  preferences: UserPreference[];
+  ```
+
+- **User ↔ Comment**: 1:N (사용자 - 댓글)
+  ```typescript
+  @OneToMany(() => Comment, comment => comment.user)
+  comments: Comment[];
+  ```
+
+#### NewsArticle 관련
 - **NewsArticle ↔ MediaSource**: N:1 (뉴스 - 언론사)
+  ```typescript
+  @ManyToOne(() => MediaSource, media => media.articles)
+  @JoinColumn({ name: 'media_source_id' })
+  media_source: MediaSource;
+  ```
+
 - **NewsArticle ↔ Journalist**: N:1 (뉴스 - 기자)
+  ```typescript
+  @ManyToOne(() => Journalist, journalist => journalist.articles)
+  @JoinColumn({ name: 'journalist_id' })
+  journalist: Journalist;
+  ```
+
 - **NewsArticle ↔ Category**: N:1 (뉴스 - 카테고리)
+  ```typescript
+  @ManyToOne(() => Category, category => category.articles)
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
+  ```
+
 - **NewsArticle ↔ Keyword**: N:M (뉴스 - 키워드)
+  ```typescript
+  @ManyToMany(() => Keyword, keyword => keyword.articles)
+  @JoinTable({
+    name: 'news_keywords',
+    joinColumn: { name: 'news_id' },
+    inverseJoinColumn: { name: 'keyword_id' }
+  })
+  keywords: Keyword[];
+  ```
+
+- **NewsArticle ↔ Comment**: 1:N (뉴스 - 댓글)
+  ```typescript
+  @OneToMany(() => Comment, comment => comment.news_article)
+  comments: Comment[];
+  ```
+
+#### Comment 관련
+- **Comment ↔ Comment**: 1:N (댓글 - 대댓글, 자기 참조)
+  ```typescript
+  @ManyToOne(() => Comment, comment => comment.replies, { nullable: true })
+  @JoinColumn({ name: 'parent_id' })
+  parent: Comment;
+
+  @OneToMany(() => Comment, comment => comment.parent)
+  replies: Comment[];
+  ```
+
+- **Comment ↔ CommentInteraction**: 1:N (댓글 - 상호작용)
+  ```typescript
+  @OneToMany(() => CommentInteraction, interaction => interaction.comment)
+  interactions: CommentInteraction[];
+  ```
+
+### 외래키 제약조건
+
+#### 필수 외래키 (NOT NULL)
+- `user_news_interactions.user_id` → `users.id`
+- `user_news_interactions.news_id` → `news_articles.id`
+- `comments.user_id` → `users.id`
+- `comments.news_id` → `news_articles.id`
+- `comment_interactions.user_id` → `users.id`
+- `comment_interactions.comment_id` → `comments.id`
+
+#### 선택적 외래키 (NULLABLE)
+- `news_articles.media_source_id` → `media_sources.id`
+- `news_articles.journalist_id` → `journalists.id`
+- `comments.parent_id` → `comments.id` (자기 참조)
 
 ## 🎯 추천 알고리즘 고려사항
 
 ### 사용자 프로필 기반
 - 연령, 성별, 지역, 직업별 뉴스 선호도
-- 정치 성향에 따른 언론사/기자 필터링
+- **종합적 성향 분석**에 따른 콘텐츠 필터링:
+  - 정치 성향: 진보/보수/중도에 따른 언론사/기자 추천
+  - 사회 성향: 자유주의/전통주의 관점의 기사 우선 노출
+  - 경제 성향: 자본주의/사회주의 시각의 경제 기사 추천
+  - 문화 성향: 개방적/보수적 문화 콘텐츠 맞춤형 제공
 
 ### 행동 기반
 - 좋아요/싫어요 패턴 분석
 - 읽기 시간, 완독률 분석
 - 스크랩한 뉴스의 공통점 분석
+- **댓글 활동 분석**: 자주 댓글을 다는 뉴스 유형, 댓글 내용의 감정 분석
+- **댓글 상호작용**: 좋아요 받는 댓글 스타일 학습
 
 ### 콘텐츠 기반
 - 선호 카테고리, 키워드 매칭
@@ -244,10 +378,12 @@ export class NewsKeyword {
 ## ❓ 팀 논의 필요사항
 
 1. **개인정보 수집 범위**: 어디까지 수집할 것인가?
-2. **정치 성향 분석**: AI로 자동 분석 vs 사용자 직접 입력
+2. **종합 성향 분석**: AI로 자동 분석 vs 사용자 직접 설정 vs 하이브리드
 3. **기자 평판 시스템**: 공개 여부, 산정 기준
-4. **추천 알고리즘**: 협업 필터링 vs 콘텐츠 기반 vs 하이브리드
-5. **데이터 보존 기간**: 사용자 행동 데이터 보관 기간
+4. **댓글 시스템 정책**: 익명 댓글 허용 여부, 신고/차단 기능
+5. **추천 알고리즘**: 협업 필터링 vs 콘텐츠 기반 vs 하이브리드
+6. **데이터 보존 기간**: 사용자 행동 데이터 및 댓글 보관 기간
+7. **마이페이지 기능 범위**: 내가 쓴 댓글, 좋아요한 댓글, 대댓글 알림 등
 
 ## 🚀 구현 우선순위
 
@@ -258,7 +394,13 @@ export class NewsKeyword {
 ### Phase 2 (상호작용)
 - UserNewsInteraction, UserPreference
 - 좋아요/싫어요/스크랩 기능
+- **Comment, CommentInteraction 추가** (댓글 시스템)
 
 ### Phase 3 (고도화)
 - Journalist, Keyword, NewsKeyword
 - AI 기반 추천 시스템
+- **마이페이지 고도화** (내 댓글 관리, 대댓글 알림)
+
+### Phase 4 (개인화)
+- **종합 성향 분석** 시스템 구축
+- **댓글 기반 추천** 알고리즘 고도화
