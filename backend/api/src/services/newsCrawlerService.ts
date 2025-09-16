@@ -186,16 +186,29 @@ class NewsCrawlerService {
       const imageSelectors = [
         '.news_end_body_container img',
         '.article_body img',
-        '#articleBodyContents img'
+        '#articleBodyContents img',
+        '.article img',
+        '.content img',
+        '.news-content img',
+        'article img',
+        '.post-content img',
+        'img'
       ];
 
       let imageUrl = '';
+      console.log(`[DEBUG] 이미지 추출 시도 중...`);
       for (const selector of imageSelectors) {
-        const src = $(selector).first().attr('src');
-        if (src && src.startsWith('http')) {
-          imageUrl = src;
-          break;
+        const images = $(selector);
+        for (let i = 0; i < images.length; i++) {
+          const src = $(images[i]).attr('src');
+          console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src}`);
+          if (src && (src.startsWith('http') || src.startsWith('//'))) {
+            imageUrl = src.startsWith('//') ? 'https:' + src : src;
+            console.log(`[DEBUG] 이미지 URL 발견: ${imageUrl}`);
+            break;
+          }
         }
+        if (imageUrl) break;
       }
 
       // 발행 시간 추출
