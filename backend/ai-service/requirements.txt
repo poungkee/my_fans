@@ -1,0 +1,16 @@
+# FastAPI and Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# HTTP Client (for external API calls)
+httpx==0.25.2
+
+# AI/ML (CPU-only versions for compatibility)
+transformers==4.35.2
+torch>=2.2.0+cpu --find-links https://download.pytorch.org/whl/torch_stable.html
+tokenizers==0.15.0
+
+# Text Processing
+beautifulsoup4==4.12.2

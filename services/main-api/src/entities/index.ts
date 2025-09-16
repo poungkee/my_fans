@@ -6,5 +6,4 @@ export { Journalist } from './Journalist';
 export { NewsArticle } from './NewsArticle';
 export { Keyword } from './Keyword';
 export { UserNewsInteraction } from './UserNewsInteraction';
-export { UserPreference } from './UserPreference';
 export { Comment } from './Comment';
