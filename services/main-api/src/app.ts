@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { AppDataSource } from './config/database';
 import aiRoutes from './routes/ai';
+import newsRoutes from './routes/news';
+import crawlerRoutes from './routes/crawler';
 
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
@@ -34,6 +36,8 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', aiRoutes);
+app.use('/api', crawlerRoutes);
+app.use('/', newsRoutes);
 
 async function startServer() {
   try {
