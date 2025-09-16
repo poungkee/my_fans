@@ -72,6 +72,8 @@ class NewsCrawlerService {
 
   async parseNewsContent(url: string): Promise<ParsedNews | null> {
     try {
+      console.log(`[DEBUG] 뉴스 파싱 시작: ${url}`);
+
       const response = await axios.get(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -79,10 +81,13 @@ class NewsCrawlerService {
         timeout: 10000
       });
 
+      console.log(`[DEBUG] HTTP 응답 상태: ${response.status}`);
+
       const $ = cheerio.load(response.data);
 
       // 네이버 뉴스 구조에 맞게 파싱
       const title = $('h2.media_end_head_headline, h3.tit_view, .article_header h3').text().trim();
+      console.log(`[DEBUG] 추출된 제목: ${title}`);
 
       // 본문 추출
       let content = '';
@@ -94,10 +99,13 @@ class NewsCrawlerService {
         '.article_view .article_body'
       ];
 
+      console.log(`[DEBUG] 본문 추출 시도 중...`);
       for (const selector of contentSelectors) {
         const found = $(selector).text();
+        console.log(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
         if (found && found.length > 100) {
           content = found.trim();
+          console.log(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
           break;
         }
       }
