@@ -1,21 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const navigate = useNavigate();
+  const searchInputRef = useRef(null); // ✅ 검색창 참조
 
   const toggleDropdown = (type) => {
     setActiveDropdown(activeDropdown === type ? null : type);
   };
 
-  const handleMouseEnter = (type) => {
-    setActiveDropdown(type);
-  };
-
-  const handleMouseLeave = () => {
-    setActiveDropdown(null);
-  };
+  const handleMouseEnter = (type) => setActiveDropdown(type);
+  const handleMouseLeave = () => setActiveDropdown(null);
 
   const handleSortClick = (sortType, displayText) => {
     onSortChange(sortType, displayText);
@@ -23,16 +19,23 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
   };
 
   const handleSearch = (e) => {
-    if (e.key === 'Enter' || e.type === 'click') {
-      const query = e.target.value || e.target.previousElementSibling?.value;
+    if (e.key === 'Enter') {
+      onSearch(e.target.value);
+    } else if (e.type === 'click') {
+      const query = searchInputRef.current?.value ?? '';
       onSearch(query);
     }
   };
 
   const handleLogoClick = () => {
-    // 로고 클릭 시 빈 문자열로 검색하여 전체 뉴스 표시
-    onSearch('');
-    navigate('/');
+    // ✅ 검색창 입력값 비우고 포커스 해제 + 상태 초기화
+    if (searchInputRef.current) {
+      searchInputRef.current.value = '';
+      searchInputRef.current.blur();
+    }
+    setActiveDropdown(null);
+    onSearch('');     // 전체 뉴스로
+    navigate('/');    // 홈으로
   };
 
   return (
@@ -102,9 +105,10 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           </div>
         </div>
         
-        <input 
-          type="text" 
-          className="search-input" 
+        <input
+          ref={searchInputRef}        // ✅ ref 연결
+          type="text"
+          className="search-input"
           placeholder="검색어를 입력하세요"
           onKeyUp={handleSearch}
         />
