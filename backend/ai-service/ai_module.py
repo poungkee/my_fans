@@ -125,5 +125,15 @@ class NewsAISummarizer:
             print(f"[AI] 키워드 추출 실패: {e}")
             return []
 
+# AIModule 클래스 (main.py 호환성)
+class AIModule:
+    def __init__(self):
+        self.summarizer = NewsAISummarizer()
+    
+    def summarize(self, text: str, max_length: int = 100) -> str:
+        """간단한 요약 인터페이스"""
+        result = self.summarizer.summarize_news("", text, max_length)
+        return result["summary"]
+
 # 전역 인스턴스
 ai_summarizer = NewsAISummarizer()
