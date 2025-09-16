@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
 import { MediaSource } from '../entities/MediaSource';
@@ -89,19 +90,39 @@ class NewsCrawlerService {
 
       // 인코딩 처리 - 한글 깨짐 방지
       let html = '';
-      if (response.data instanceof Buffer) {
+      if (response.data instanceof Buffer || Buffer.isBuffer(response.data)) {
         const buffer = Buffer.from(response.data);
-        // UTF-8로 먼저 시도
-        html = buffer.toString('utf8');
 
-        // 한글이 깨진 것 같으면 EUC-KR로 다시 시도
-        if (html.includes('�') || html.includes('????')) {
-          try {
-            // EUC-KR 디코딩 시도 (Node.js 기본 지원)
-            html = buffer.toString('binary');
-          } catch {
-            html = buffer.toString('utf8');
+        console.log(`[DEBUG] 버퍼 크기: ${buffer.length} bytes`);
+
+        // Content-Type 헤더에서 charset 확인
+        const contentType = response.headers['content-type'] || '';
+        console.log(`[DEBUG] Content-Type: ${contentType}`);
+
+        let encoding = 'utf8';
+        if (contentType.includes('charset=euc-kr') || contentType.includes('charset=ks_c_5601-1987')) {
+          encoding = 'euc-kr';
+        } else if (contentType.includes('charset=utf-8')) {
+          encoding = 'utf8';
+        }
+
+        console.log(`[DEBUG] 감지된 인코딩: ${encoding}`);
+
+        // iconv-lite로 디코딩
+        try {
+          if (encoding === 'euc-kr') {
+            html = iconv.decode(buffer, 'euc-kr');
+          } else {
+            html = iconv.decode(buffer, 'utf8');
+            // UTF-8이 깨졌다면 EUC-KR로 재시도
+            if (html.includes('�') || html.includes('????')) {
+              html = iconv.decode(buffer, 'euc-kr');
+              console.log(`[DEBUG] EUC-KR로 재시도`);
+            }
           }
+        } catch (error) {
+          console.log(`[DEBUG] 인코딩 실패, UTF-8 기본값 사용:`, error);
+          html = buffer.toString('utf8');
         }
       } else {
         html = response.data;
