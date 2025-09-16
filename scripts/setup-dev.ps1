@@ -137,6 +137,7 @@ if ($LASTEXITCODE -eq 0) {
 Write-Host "Installing Python packages..." -ForegroundColor Yellow
 & "venv\Scripts\Activate.ps1"
 pip install --upgrade pip
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 if ($LASTEXITCODE -eq 0) {
     Write-Host "SUCCESS: AI Service packages installed" -ForegroundColor Green

@@ -9,7 +9,7 @@ httpx==0.25.2
 
 # AI/ML (CPU-only versions for compatibility)
 transformers==4.35.2
-torch>=2.2.0+cpu --find-links https://download.pytorch.org/whl/torch_stable.html
+torch>=2.2.0
 tokenizers==0.15.0
 
 # Text Processing

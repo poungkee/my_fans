@@ -8,7 +8,38 @@ node --version
 npm --version
 ```
 
-### 2. Python 설치 확인
+### 2. Python 설치 (3.11 이상 필요)
+#### Windows
+```powershell
+# 공식 사이트에서 다운로드 설치 (가장 확실한 방법)
+# https://python.org 에서 Python 3.11+ 다운로드
+# 설치시 "Add Python to PATH" 체크 필수
+
+# 설치 확인
+python --version
+py --version
+```
+
+#### macOS
+```bash
+# Homebrew 사용
+brew install python3
+
+# 설치 확인
+python3 --version
+```
+
+#### Linux/Ubuntu
+```bash
+# apt 사용
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+
+# 설치 확인
+python3 --version
+```
+
+#### 설치 확인
 ```bash
 python --version
 # 또는
@@ -47,7 +78,7 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install --upgrade pip
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install fastapi uvicorn httpx beautifulsoup4 python-dotenv python-multipart transformers tokenizers
+pip install -r requirements.txt
 deactivate
 cd ..\..
 ```
@@ -98,7 +129,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install fastapi uvicorn httpx beautifulsoup4 python-dotenv python-multipart transformers tokenizers
+pip install -r requirements.txt
 deactivate
 cd ../..
 ```
@@ -143,9 +174,6 @@ DB_NAME=fans_db
 # Python AI Service
 AI_SERVICE_URL=http://localhost:8000
 
-# Gemini API Key
-GEMINI_API_KEY=AIzaSyCiMuQ4ZLxE_ioeUBnnz6WxMorli_ht348
-
 # Naver API Keys
 NAVER_CLIENT_ID=XqQjKhBGlQbHUwQzaXjX
 NAVER_CLIENT_SECRET=82CP_wfP9w
@@ -157,8 +185,9 @@ NAVER_CLIENT_ID=XqQjKhBGlQbHUwQzaXjX
 NAVER_CLIENT_SECRET=82CP_wfP9w
 ALLOW_ORIGIN=http://localhost:3000
 
-# Gemini API Key
-GEMINI_API_KEY=AIzaSyCiMuQ4ZLxE_ioeUBnnz6WxMorli_ht348
+# AI Model Configuration (로컬 모델 사용)
+MODEL_NAME=eenzeenee/t5-base-korean-summarization
+MAX_SUMMARY_LENGTH=100
 ```
 
 ---
