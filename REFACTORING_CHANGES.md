@@ -3,6 +3,41 @@
 **리팩토링 완료일:** 2025-09-16  
 **작업자:** Claude Code Assistant
 
+## 🚀 플랫폼별 개발환경 설정
+
+### Windows (PowerShell)
+```powershell
+.\scripts\setup-dev.ps1
+```
+
+### macOS (zsh/bash)
+```bash
+chmod +x scripts/setup-dev-macos.sh
+./scripts/setup-dev-macos.sh
+```
+
+### Linux/Ubuntu (bash)
+```bash
+chmod +x scripts/setup-dev.sh
+./scripts/setup-dev.sh
+```
+
+### 공통 다음 단계
+설정 완료 후 다음 순서로 실행:
+```bash
+# 1. PostgreSQL 시작
+docker run -d --name fans-postgres -e POSTGRES_DB=fans_db -e POSTGRES_USER=fans_user -e POSTGRES_PASSWORD=fans_password -p 5432:5432 postgres:15
+
+# 2. Backend API 실행
+cd backend/api && npm run dev
+
+# 3. AI Service 실행 (새 터미널)
+cd backend/ai-service && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
+
+# 4. Frontend 실행 (새 터미널)
+cd frontend && npm start
+```
+
 ## 📋 주요 변경사항 요약
 
 ### 1. 프로젝트 구조 재편
