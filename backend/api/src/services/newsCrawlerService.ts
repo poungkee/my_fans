@@ -85,9 +85,29 @@ class NewsCrawlerService {
 
       const $ = cheerio.load(response.data);
 
-      // 네이버 뉴스 구조에 맞게 파싱
-      const title = $('h2.media_end_head_headline, h3.tit_view, .article_header h3').text().trim();
-      console.log(`[DEBUG] 추출된 제목: ${title}`);
+      // 다양한 뉴스 사이트 구조에 맞게 파싱
+      const titleSelectors = [
+        'h2.media_end_head_headline',
+        'h3.tit_view',
+        '.article_header h3',
+        'h1',
+        '.article-title',
+        '.news-title',
+        '.title',
+        'h2',
+        'h3'
+      ];
+
+      let title = '';
+      for (const selector of titleSelectors) {
+        const found = $(selector).first().text().trim();
+        console.log(`[DEBUG] 제목 셀렉터 ${selector}: "${found}"`);
+        if (found && found.length > 5) {
+          title = found;
+          break;
+        }
+      }
+      console.log(`[DEBUG] 최종 추출된 제목: ${title}`);
 
       // 본문 추출
       let content = '';
@@ -96,17 +116,33 @@ class NewsCrawlerService {
         '.news_end_body_container',
         '.article_body',
         '#articleBodyContents',
-        '.article_view .article_body'
+        '.article_view .article_body',
+        '.article-content',
+        '.content',
+        '.news-content',
+        'article',
+        '.post-content',
+        'p'
       ];
 
       console.log(`[DEBUG] 본문 추출 시도 중...`);
       for (const selector of contentSelectors) {
         const found = $(selector).text();
         console.log(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
-        if (found && found.length > 100) {
+        if (found && found.length > 50) {  // 조건 완화: 100자 → 50자
           content = found.trim();
           console.log(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
           break;
+        }
+      }
+
+      // 만약 위 방법으로 본문을 찾지 못했다면, 모든 p 태그 텍스트 결합
+      if (!content) {
+        console.log(`[DEBUG] 대체 방법으로 본문 추출 시도...`);
+        const allParagraphs = $('p').map((i, el) => $(el).text().trim()).get().join(' ');
+        if (allParagraphs && allParagraphs.length > 50) {
+          content = allParagraphs;
+          console.log(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);
         }
       }
 
