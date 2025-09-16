@@ -232,11 +232,21 @@ class NewsCrawlerService {
         '#articleBodyContents img',
         '.article_body img',
         '.news_end_body_container img',
-        '.article .content img',
+        'div.article img',
+        'div.content img',
         '.post-content img',
         'article p img',
-        '.content img',
-        '.news-content img'
+        'article div img',
+        '.news-article img',
+        '.story-body img',
+        '.entry-content img',
+        'main img',
+        'section img',
+        'img[src*=".jpg"]',
+        'img[src*=".jpeg"]',
+        'img[src*=".png"]',
+        'img[src*=".gif"]',
+        'img[src*=".webp"]'
       ];
 
       let imageUrl = '';
@@ -250,17 +260,31 @@ class NewsCrawlerService {
 
           console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
 
-          // 로고나 아이콘 이미지 제외
+          // 로고나 아이콘 이미지 제외 (더 강화)
           const isLogo = alt.toLowerCase().includes('logo') ||
                         className.toLowerCase().includes('logo') ||
                         src.toLowerCase().includes('logo') ||
+                        src.toLowerCase().includes('banner') ||
+                        src.toLowerCase().includes('ad') ||
+                        src.toLowerCase().includes('icon') ||
                         alt.toLowerCase().includes('아이콘') ||
-                        alt.toLowerCase().includes('icon');
+                        alt.toLowerCase().includes('로고') ||
+                        alt.toLowerCase().includes('배너') ||
+                        src.includes('/logo/') ||
+                        src.includes('/icon/') ||
+                        src.includes('/banner/');
 
-          if (src && (src.startsWith('http') || src.startsWith('//')) && !isLogo) {
+          // 이미지 크기도 확인 (너무 작은 이미지 제외)
+          const width = parseInt($(images[i]).attr('width') || '0');
+          const height = parseInt($(images[i]).attr('height') || '0');
+          const isTooSmall = (width > 0 && width < 100) || (height > 0 && height < 100);
+
+          if (src && (src.startsWith('http') || src.startsWith('//')) && !isLogo && !isTooSmall) {
             imageUrl = src.startsWith('//') ? 'https:' + src : src;
-            console.log(`[DEBUG] 이미지 URL 발견: ${imageUrl}`);
+            console.log(`[DEBUG] 이미지 URL 발견: ${imageUrl} (크기: ${width}x${height})`);
             break;
+          } else if (src) {
+            console.log(`[DEBUG] 이미지 제외됨 - 로고: ${isLogo}, 작음: ${isTooSmall}, URL: ${src}`);
           }
         }
         if (imageUrl) break;
