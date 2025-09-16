@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: fans_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./services/main-api/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - fans_network
     healthcheck:
@@ -24,7 +24,7 @@ services:
 
   # Python AI Service
   ai-service:
-    build: ./services/ai-service
+    build: ./backend/ai-service
     container_name: fans_ai_service
     ports:
       - "8001:8001"
@@ -40,7 +40,7 @@ services:
 
   # Node.js Main API
   main-api:
-    build: ./services/main-api
+    build: ./backend/api
     container_name: fans_main_api
     ports:
       - "8000:8000"
@@ -60,7 +60,7 @@ services:
     networks:
       - fans_network
     volumes:
-      - ./services/main-api:/app
+      - ./backend/api:/app
       - /app/node_modules
 
   # React Frontend (Development)
