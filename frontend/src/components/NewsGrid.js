@@ -10,6 +10,9 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   const [likedNews, setLikedNews] = useState(new Set());
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE); // ← 여기!
 
+  // 디버그 로그 추가
+  console.log('NewsGrid - newsData:', newsData?.length || 0, 'items');
+
   // newsData나 검색어 변경 시 페이지 리셋
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
