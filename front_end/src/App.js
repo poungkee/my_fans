@@ -1,13 +1,17 @@
 // front_end/src/App.js
 import React, { useState, useEffect, useMemo } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import StockSection from './components/StockSection';
 import NewsGrid from './components/NewsGrid';
 import Sidebar from './components/Sidebar';
 import AgencySection from './components/AgencySection';
 import Footer from './components/Footer';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
-function App() {
+// 메인 홈페이지 컴포넌트
+function HomePage() {
   /* 상태 */
   const [feedNews, setFeedNews] = useState([]);       // 홈 피드(전체 키워드)
   const [searchResults, setSearchResults] = useState([]); // 검색 결과
@@ -171,6 +175,19 @@ function App() {
 
       <Footer />
     </div>
+  );
+}
+
+// 메인 App 컴포넌트
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Routes>
+    </Router>
   );
 }
 

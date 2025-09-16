@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const navigate = useNavigate();
 
   const toggleDropdown = (type) => {
     setActiveDropdown(activeDropdown === type ? null : type);
@@ -105,9 +107,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             id="user-dropdown" 
             className={`user-dropdown-content ${activeDropdown === 'user' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); alert('로그인 페이지로 이동합니다. (데모용)'); }}>로그인</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); alert('회원가입 페이지로 이동합니다. (데모용)'); }}>회원가입</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); alert('마이페이지로 이동합니다. (데모용)'); }}>마이페이지</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); alert('마이페이지로 이동합니다. (데모용)'); setActiveDropdown(null); }}>마이페이지</a>
           </div>
         </div>
       </div>
