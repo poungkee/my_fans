@@ -30,16 +30,33 @@ export const commonAPI = {
 
 // 뉴스 API 호출 함수들
 export const newsAPI = {
-  // 뉴스 검색
+  // 뉴스 검색 (검색어 입력시)
   search: (params) => {
     const queryString = new URLSearchParams(params).toString();
-    return fetchApi(`/api/search?${queryString}`);
+    return fetchApi(`/news?${queryString}`);
   },
-  
-  // 최신 뉴스
+
+  // 최신 뉴스 (비로그인 사용자 - 시간순 정렬)
   getLatest: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
-    return fetchApi(`/api/latest?${queryString}`);
+    const defaultParams = {
+      page: 1,
+      limit: 20,
+      ...params
+    };
+    const queryString = new URLSearchParams(defaultParams).toString();
+    return fetchApi(`/news?${queryString}`);
+  },
+
+  // 맞춤 뉴스 (로그인 사용자 - 성향 기반)
+  getPersonalized: (userId, params = {}) => {
+    const defaultParams = {
+      page: 1,
+      limit: 20,
+      userId: userId,
+      ...params
+    };
+    const queryString = new URLSearchParams(defaultParams).toString();
+    return fetchApi(`/api/news/personalized?${queryString}`);
   }
 };
 
