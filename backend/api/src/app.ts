@@ -21,12 +21,28 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://192.168.0.3:3000'],
+  credentials: true
+}));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, '../public')));
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'FANS API Server',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      news: '/news',
+      api: '/api'
+    }
+  });
+});
 
 app.get('/health', (req, res) => {
   res.json({
@@ -46,9 +62,10 @@ async function startServer() {
     await AppDataSource.initialize();
     console.log('✅ Database connected successfully');
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🌐 External access: http://192.168.0.3:${PORT}/health`);
     });
   } catch (error) {
     console.error('❌ Database connection failed:', error);
