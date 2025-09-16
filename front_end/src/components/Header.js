@@ -9,6 +9,14 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     setActiveDropdown(activeDropdown === type ? null : type);
   };
 
+  const handleMouseEnter = (type) => {
+    setActiveDropdown(type);
+  };
+
+  const handleMouseLeave = () => {
+    setActiveDropdown(null);
+  };
+
   const handleSortClick = (sortType, displayText) => {
     onSortChange(sortType, displayText);
     setActiveDropdown(null);
@@ -21,32 +29,43 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     }
   };
 
+  const handleLogoClick = () => {
+    // 로고 클릭 시 빈 문자열로 검색하여 전체 뉴스 표시
+    onSearch('');
+    navigate('/');
+  };
+
   return (
     <header className="header">
       <div className="header-left">
-        <div className="logo">📰 뉴스포털</div>
+        <div className="logo" onClick={handleLogoClick}>FANS</div>
         
-        <div className="dropdown">
-          <div 
-            className="news-agency" 
-            onClick={() => toggleDropdown('agency')}
-          >
+        <div 
+          className="dropdown"
+          onMouseEnter={() => handleMouseEnter('agency')}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="news-agency">
             언론사 ▼
           </div>
           <div 
             id="agency-dropdown" 
             className={`dropdown-content ${activeDropdown === 'agency' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>00일보</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>일보</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>조선일보</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>중앙일보</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>동아일보</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>한국경제</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>문화일보</a>
           </div>
         </div>
         
-        <div className="dropdown">
-          <div 
-            className="category-nav" 
-            onClick={() => toggleDropdown('category')}
-          >
+        <div 
+          className="dropdown"
+          onMouseEnter={() => handleMouseEnter('category')}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="category-nav">
             카테고리 ▼
           </div>
           <div 
@@ -54,8 +73,11 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             className={`dropdown-content ${activeDropdown === 'category' ? 'show' : ''}`}
           >
             <a href="#" onClick={(e) => { e.preventDefault(); }}>정치</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>과학</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>IT</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>경제</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>사회</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>세계</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>IT/과학</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); }}>생활/문화</a>
           </div>
         </div>
       </div>
@@ -109,7 +131,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           >
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); alert('마이페이지로 이동합니다. (데모용)'); setActiveDropdown(null); }}>마이페이지</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
           </div>
         </div>
       </div>
