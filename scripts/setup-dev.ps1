@@ -1,28 +1,28 @@
 # FANS Project Development Environment Setup Script (Windows PowerShell)
-Write-Host "🚀 Starting FANS project development environment setup... (Windows)" -ForegroundColor Green
+Write-Host "Starting FANS project development environment setup... (Windows)" -ForegroundColor Green
 
 # Check if running in FANS project root
 if (-not (Test-Path ".nvmrc")) {
-    Write-Host "❌ Please run this script from FANS project root directory" -ForegroundColor Red
+    Write-Host "ERROR: Please run this script from FANS project root directory" -ForegroundColor Red
     exit 1
 }
 
 # Check Node.js version
-Write-Host "📦 Checking Node.js version..." -ForegroundColor Yellow
+Write-Host "Checking Node.js version..." -ForegroundColor Yellow
 
 $nvmPath = "$env:NVM_HOME\nvm.exe"
 if (Test-Path $nvmPath) {
-    Write-Host "✅ nvm-windows found" -ForegroundColor Green
+    Write-Host "SUCCESS: nvm-windows found" -ForegroundColor Green
     $requiredVersion = Get-Content ".nvmrc"
     
     & $nvmPath use $requiredVersion 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "📥 Installing Node.js $requiredVersion..." -ForegroundColor Yellow
+        Write-Host "Installing Node.js $requiredVersion..." -ForegroundColor Yellow
         & $nvmPath install $requiredVersion
         & $nvmPath use $requiredVersion
     }
 } else {
-    Write-Host "⚠️  nvm-windows not installed" -ForegroundColor Yellow
+    Write-Host "WARNING: nvm-windows not installed" -ForegroundColor Yellow
     
     $nodeVersion = $null
     try {
@@ -32,16 +32,16 @@ if (Test-Path $nvmPath) {
     }
     
     if ($nodeVersion) {
-        Write-Host "✅ Node.js $nodeVersion found" -ForegroundColor Green
+        Write-Host "SUCCESS: Node.js $nodeVersion found" -ForegroundColor Green
     } else {
-        Write-Host "❌ Node.js not installed" -ForegroundColor Red
+        Write-Host "ERROR: Node.js not installed" -ForegroundColor Red
         Write-Host "Please install from: https://nodejs.org" -ForegroundColor Yellow
         exit 1
     }
 }
 
 # Check Python version
-Write-Host "🐍 Checking Python version..." -ForegroundColor Yellow
+Write-Host "Checking Python version..." -ForegroundColor Yellow
 
 $pythonCmd = $null
 $pythonCommands = @("python", "python3", "py")
@@ -51,7 +51,7 @@ foreach ($cmd in $pythonCommands) {
         $version = & $cmd --version 2>$null
         if ($version) {
             $pythonCmd = $cmd
-            Write-Host "✅ Python $version found (command: $cmd)" -ForegroundColor Green
+            Write-Host "SUCCESS: Python $version found (command: $cmd)" -ForegroundColor Green
             break
         }
     } catch {
@@ -60,115 +60,117 @@ foreach ($cmd in $pythonCommands) {
 }
 
 if (-not $pythonCmd) {
-    Write-Host "❌ Python not installed" -ForegroundColor Red
+    Write-Host "ERROR: Python not installed" -ForegroundColor Red
     Write-Host "Please install from: https://python.org" -ForegroundColor Yellow
+    Write-Host "Make sure to check 'Add Python to PATH' during installation" -ForegroundColor Yellow
     exit 1
 }
 
 # Check Docker
-Write-Host "🐳 Checking Docker..." -ForegroundColor Yellow
+Write-Host "Checking Docker..." -ForegroundColor Yellow
 try {
     $dockerVersion = & docker --version 2>$null
     if ($dockerVersion) {
-        Write-Host "✅ Docker found: $dockerVersion" -ForegroundColor Green
+        Write-Host "SUCCESS: Docker found: $dockerVersion" -ForegroundColor Green
     }
 } catch {
-    Write-Host "⚠️  Docker not installed" -ForegroundColor Yellow
+    Write-Host "WARNING: Docker not installed" -ForegroundColor Yellow
+    Write-Host "Docker is needed for PostgreSQL database" -ForegroundColor Yellow
 }
 
 # Setup Backend API
-Write-Host "🔧 Setting up Backend API..." -ForegroundColor Yellow
+Write-Host "Setting up Backend API..." -ForegroundColor Yellow
 Set-Location "backend\api"
 
 if (-not (Test-Path "package.json")) {
-    Write-Host "❌ backend\api\package.json not found" -ForegroundColor Red
+    Write-Host "ERROR: backend\api\package.json not found" -ForegroundColor Red
     Set-Location "..\.."; exit 1
 }
 
-Write-Host "📦 Installing NPM packages..." -ForegroundColor Yellow
+Write-Host "Installing NPM packages..." -ForegroundColor Yellow
 npm install
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Backend API packages installed successfully" -ForegroundColor Green
+    Write-Host "SUCCESS: Backend API packages installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Backend API package installation failed" -ForegroundColor Red
+    Write-Host "ERROR: Backend API package installation failed" -ForegroundColor Red
     Set-Location "..\.."; exit 1
 }
 Set-Location "..\..\"
 
 # Setup Frontend
-Write-Host "🎨 Setting up Frontend..." -ForegroundColor Yellow
+Write-Host "Setting up Frontend..." -ForegroundColor Yellow
 Set-Location "frontend"
 
 if (-not (Test-Path "package.json")) {
-    Write-Host "❌ frontend\package.json not found" -ForegroundColor Red
+    Write-Host "ERROR: frontend\package.json not found" -ForegroundColor Red
     Set-Location ".."; exit 1
 }
 
-Write-Host "📦 Installing NPM packages..." -ForegroundColor Yellow
+Write-Host "Installing NPM packages..." -ForegroundColor Yellow
 npm install
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Frontend packages installed successfully" -ForegroundColor Green
+    Write-Host "SUCCESS: Frontend packages installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Frontend package installation failed" -ForegroundColor Red
+    Write-Host "ERROR: Frontend package installation failed" -ForegroundColor Red
     Set-Location ".."; exit 1
 }
 Set-Location ".."
 
 # Setup Python AI Service
-Write-Host "🤖 Setting up AI Service..." -ForegroundColor Yellow
+Write-Host "Setting up AI Service..." -ForegroundColor Yellow
 Set-Location "backend\ai-service"
 
 if (-not (Test-Path "requirements.txt")) {
-    Write-Host "❌ backend\ai-service\requirements.txt not found" -ForegroundColor Red
+    Write-Host "ERROR: backend\ai-service\requirements.txt not found" -ForegroundColor Red
     Set-Location "..\.."; exit 1
 }
 
-Write-Host "🐍 Creating Python virtual environment..." -ForegroundColor Yellow
+Write-Host "Creating Python virtual environment..." -ForegroundColor Yellow
 & $pythonCmd -m venv venv
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Virtual environment created successfully" -ForegroundColor Green
+    Write-Host "SUCCESS: Virtual environment created" -ForegroundColor Green
 } else {
-    Write-Host "❌ Virtual environment creation failed" -ForegroundColor Red
+    Write-Host "ERROR: Virtual environment creation failed" -ForegroundColor Red
     Set-Location "..\.."; exit 1
 }
 
-Write-Host "📦 Installing Python packages..." -ForegroundColor Yellow
+Write-Host "Installing Python packages..." -ForegroundColor Yellow
 & "venv\Scripts\Activate.ps1"
 pip install --upgrade pip
 pip install -r requirements.txt
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ AI Service packages installed successfully" -ForegroundColor Green
+    Write-Host "SUCCESS: AI Service packages installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ AI Service package installation failed" -ForegroundColor Red
+    Write-Host "ERROR: AI Service package installation failed" -ForegroundColor Red
 }
 deactivate
 Set-Location "..\..\"
 
 # Check environment files
-Write-Host "🔐 Checking environment files..." -ForegroundColor Yellow
+Write-Host "Checking environment files..." -ForegroundColor Yellow
 $envFiles = @("backend\api\.env", "backend\ai-service\.env")
 $missingEnv = $false
 
 foreach ($envFile in $envFiles) {
     if (-not (Test-Path $envFile)) {
-        Write-Host "⚠️  $envFile file missing" -ForegroundColor Yellow
+        Write-Host "WARNING: $envFile file missing" -ForegroundColor Yellow
         $missingEnv = $true
     } else {
-        Write-Host "✅ $envFile found" -ForegroundColor Green
+        Write-Host "SUCCESS: $envFile found" -ForegroundColor Green
     }
 }
 
 if ($missingEnv) {
-    Write-Host "📝 Please create environment variable files" -ForegroundColor Yellow
+    Write-Host "NOTE: Please create environment variable files" -ForegroundColor Yellow
 }
 
 # Next steps
 Write-Host ""
-Write-Host "🎯 Next steps:" -ForegroundColor Cyan
+Write-Host "NEXT STEPS:" -ForegroundColor Cyan
 Write-Host "1. Start PostgreSQL: docker run -d --name fans-postgres -e POSTGRES_DB=fans_db -e POSTGRES_USER=fans_user -e POSTGRES_PASSWORD=fans_password -p 5432:5432 postgres:15" -ForegroundColor Gray
 Write-Host "2. Start Backend API: cd backend\api; npm run dev" -ForegroundColor Gray
 Write-Host "3. Start AI Service: cd backend\ai-service; .\venv\Scripts\Activate; uvicorn app.main:app --reload --port 8000" -ForegroundColor Gray
 Write-Host "4. Start Frontend: cd frontend; npm start" -ForegroundColor Gray
 
 Write-Host ""
-Write-Host "🎉 Development environment setup completed!" -ForegroundColor Green
+Write-Host "COMPLETED: Development environment setup finished!" -ForegroundColor Green
