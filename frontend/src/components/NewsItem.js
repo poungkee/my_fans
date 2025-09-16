@@ -41,9 +41,20 @@ const NewsItem = ({
         <h2 className="news-title" onClick={onDetail}>{news.title}</h2>
         <p className="news-summary">{news.summary}</p>
         <div className="news-meta">
-          <span className="news-source">{news.source}</span>
-          <span className="news-time">{news.time}</span>
-          <span className="news-views">{news.views}</span>
+          <span className="news-source">
+            {news.media_source?.name || '출처 미상'}
+          </span>
+          <span className="news-category">
+            {news.category?.name}
+          </span>
+          <span className="news-time">
+            {new Date(news.pub_date).toLocaleDateString('ko-KR', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </span>
         </div>
         <div className="news-actions">
           <button className={`news-action ${isBookmarked ? 'bookmarked' : ''}`} onClick={onBookmark}>

@@ -206,17 +206,16 @@ class NewsCrawlerService {
         if (mediaSource) break;
       }
 
-      // 이미지 URL 추출
+      // 이미지 URL 추출 - 본문 이미지 우선 (로고 제외)
       const imageSelectors = [
-        '.news_end_body_container img',
-        '.article_body img',
         '#articleBodyContents img',
-        '.article img',
-        '.content img',
-        '.news-content img',
-        'article img',
+        '.article_body img',
+        '.news_end_body_container img',
+        '.article .content img',
         '.post-content img',
-        'img'
+        'article p img',
+        '.content img',
+        '.news-content img'
       ];
 
       let imageUrl = '';
@@ -225,8 +224,19 @@ class NewsCrawlerService {
         const images = $(selector);
         for (let i = 0; i < images.length; i++) {
           const src = $(images[i]).attr('src');
-          console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src}`);
-          if (src && (src.startsWith('http') || src.startsWith('//'))) {
+          const alt = $(images[i]).attr('alt') || '';
+          const className = $(images[i]).attr('class') || '';
+
+          console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
+
+          // 로고나 아이콘 이미지 제외
+          const isLogo = alt.toLowerCase().includes('logo') ||
+                        className.toLowerCase().includes('logo') ||
+                        src.toLowerCase().includes('logo') ||
+                        alt.toLowerCase().includes('아이콘') ||
+                        alt.toLowerCase().includes('icon');
+
+          if (src && (src.startsWith('http') || src.startsWith('//')) && !isLogo) {
             imageUrl = src.startsWith('//') ? 'https:' + src : src;
             console.log(`[DEBUG] 이미지 URL 발견: ${imageUrl}`);
             break;
