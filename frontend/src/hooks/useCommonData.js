@@ -19,15 +19,16 @@ export const useCommonData = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // 모든 공통 데이터 한번에 가져오기
-        const response = await commonAPI.getAll();
-        
-        if (response.success) {
-          setData(response.data);
-        } else {
-          throw new Error('Failed to fetch common data');
-        }
+
+        // 임시로 기본 데이터 사용 - API 엔드포인트가 아직 구현되지 않음
+        setData({
+          categories: ['전체', '정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예'],
+          mediaSources: [],
+          searchOptions: {
+            sort: ['최신순', '관련도순'],
+            pageSize: [10, 20, 50]
+          }
+        });
       } catch (err) {
         console.error('Error fetching common data:', err);
         setError(err.message);
