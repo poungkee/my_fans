@@ -76,14 +76,38 @@ class NewsCrawlerService {
 
       const response = await axios.get(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate'
         },
-        timeout: 10000
+        timeout: 10000,
+        responseType: 'arraybuffer'
       });
 
       console.log(`[DEBUG] HTTP 응답 상태: ${response.status}`);
 
-      const $ = cheerio.load(response.data);
+      // 인코딩 처리 - 한글 깨짐 방지
+      let html = '';
+      if (response.data instanceof Buffer) {
+        const buffer = Buffer.from(response.data);
+        // UTF-8로 먼저 시도
+        html = buffer.toString('utf8');
+
+        // 한글이 깨진 것 같으면 EUC-KR로 다시 시도
+        if (html.includes('�') || html.includes('????')) {
+          try {
+            // EUC-KR 디코딩 시도 (Node.js 기본 지원)
+            html = buffer.toString('binary');
+          } catch {
+            html = buffer.toString('utf8');
+          }
+        }
+      } else {
+        html = response.data;
+      }
+
+      const $ = cheerio.load(html, { decodeEntities: false });
 
       // 다양한 뉴스 사이트 구조에 맞게 파싱
       const titleSelectors = [
