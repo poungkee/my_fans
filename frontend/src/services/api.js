@@ -1,7 +1,7 @@
 // API 기본 설정
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-api-domain.com' 
-  : 'http://localhost:3000';
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://your-api-domain.com'
+  : 'http://192.168.0.3:3000';
 
 // 공통 fetch 함수
 const fetchApi = async (endpoint) => {

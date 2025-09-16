@@ -31,7 +31,7 @@ function HomePage() {
   ]);
 
   /* API 베이스 (proxy가 있으면 '') */
-  const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
+  const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || 'http://192.168.0.3:3000', []);
 
   /* 검색 정렬 매핑: 최신, 관련, 인기, 조회 */
   const searchSortKey = useMemo(() => {
@@ -53,13 +53,13 @@ function HomePage() {
   /* 홈 피드 불러오기 (검색 전 화면) */
   useEffect(() => {
     const controller = new AbortController();
-    const url = `${API_BASE}/api/feed?topics=${encodeURIComponent('정치,경제,사회,세계,IT/과학,생활/문화')}&limit=60&sort=latest`;
+    const url = `${API_BASE}/news?limit=60`;
     (async () => {
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setFeedNews(Array.isArray(data.items) ? data.items : []);
+        setFeedNews(Array.isArray(data.articles) ? data.articles : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
           console.error('피드 로드 실패:', e);
@@ -77,13 +77,13 @@ function HomePage() {
     if (!q) { setIsSearching(false); setSearchResults([]); return; }
 
     const controller = new AbortController();
-    const url = `${API_BASE}/api/search?q=${encodeURIComponent(q)}&sort=${searchSortKey}&limit=60`;
+    const url = `${API_BASE}/news?search=${encodeURIComponent(q)}&limit=60`;
     (async () => {
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setSearchResults(Array.isArray(data.items) ? data.items : []);
+        setSearchResults(Array.isArray(data.articles) ? data.articles : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
           console.error('검색 실패:', e);
