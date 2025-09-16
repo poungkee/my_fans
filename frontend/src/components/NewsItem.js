@@ -12,23 +12,9 @@ const NewsItem = ({
   const [thumb, setThumb] = useState(null);
 
   useEffect(() => {
-    const target = news.origin_url || news.url;
-    if (!target) return;
-
-    let alive = true;
-    (async () => {
-      try {
-        const r = await fetch(`/api/media?url=${encodeURIComponent(target)}`);
-        if (!r.ok) throw new Error(`MEDIA ${r.status}`);
-        const m = await r.json();
-        if (alive) setThumb(m.image_url || null);
-      } catch {
-        if (alive) setThumb(null);
-      }
-    })();
-
-    return () => { alive = false; };
-  }, [news.origin_url, news.url]);
+    // 임시로 이미지 API 비활성화 - 뉴스 데이터에서 직접 사용
+    setThumb(news.image_url || null);
+  }, [news.image_url]);
 
   return (
     <article
