@@ -65,6 +65,9 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   // 현재 화면에 보여줄 아이템
   const visibleItems = filteredNews.slice(0, visibleCount);
 
+  // 디버그 로그 추가
+  console.log('NewsGrid - visibleCount:', visibleCount, 'filteredNews:', filteredNews.length, 'visibleItems:', visibleItems.length);
+
   // 더보기 클릭
   const handleLoadMore = () => {
     setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredNews.length));
