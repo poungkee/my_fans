@@ -32,18 +32,18 @@ else {
     Write-Host "⚠️  nvm-windows가 설치되지 않았습니다. Node.js $((Get-Content '.nvmrc')) 이상이 필요합니다." -ForegroundColor Yellow
     
     # Node.js 직접 확인
+    $nodeVersion = $null
     try {
-        $nodeVersion = node --version 2>$null
-        if ($nodeVersion) {
-            Write-Host "✅ Node.js $nodeVersion 발견됨" -ForegroundColor Green
-        }
-        else {
-            Write-Host "❌ Node.js가 설치되지 않았습니다." -ForegroundColor Red
-            Write-Host "다음 링크에서 설치해주세요: https://nodejs.org" -ForegroundColor Yellow
-            exit 1
-        }
+        $nodeVersion = & node --version 2>$null
     }
     catch {
+        # 명령어 실행 실패
+    }
+    
+    if ($nodeVersion) {
+        Write-Host "✅ Node.js $nodeVersion 발견됨" -ForegroundColor Green
+    }
+    else {
         Write-Host "❌ Node.js가 설치되지 않았습니다." -ForegroundColor Red
         Write-Host "다음 링크에서 설치해주세요: https://nodejs.org" -ForegroundColor Yellow
         exit 1
@@ -184,9 +184,9 @@ if ($missingEnv) {
 Write-Host ""
 Write-Host "🎯 다음 단계:" -ForegroundColor Cyan
 Write-Host "1. PostgreSQL 시작: docker run -d --name fans-postgres -e POSTGRES_DB=fans_db -e POSTGRES_USER=fans_user -e POSTGRES_PASSWORD=fans_password -p 5432:5432 postgres:15" -ForegroundColor Gray
-Write-Host "2. Backend API 실행: cd backend\api && npm run dev" -ForegroundColor Gray
-Write-Host "3. AI Service 실행: cd backend\ai-service && .\venv\Scripts\Activate && python -m uvicorn app.main:app --reload --port 8000" -ForegroundColor Gray
-Write-Host "4. Frontend 실행: cd frontend && npm start" -ForegroundColor Gray
+Write-Host "2. Backend API 실행: cd backend\api; npm run dev" -ForegroundColor Gray
+Write-Host "3. AI Service 실행: cd backend\ai-service; .\venv\Scripts\Activate; python -m uvicorn app.main:app --reload --port 8000" -ForegroundColor Gray
+Write-Host "4. Frontend 실행: cd frontend; npm start" -ForegroundColor Gray
 
 Write-Host ""
 Write-Host "🎉 개발 환경 설정이 완료되었습니다!" -ForegroundColor Green
