@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
+import { useMediaSources } from '../hooks/useCommonData';
 
 const AgencySection = ({ selectedAgency, onAgencySelect }) => {
-  const [activeAgency, setActiveAgency] = useState('연합뉴스');
-
-  const agencies = [
+  const { mediaSources, loading, error } = useMediaSources();
+  const [activeAgency, setActiveAgency] = useState(mediaSources[0]?.name || '연합뉴스');
+  
+  // 기존 하드코딩된 데이터는 백업용으로 유지
+  const fallbackAgencies = [
     '연합뉴스', '조선일보', '중앙일보', '동아일보', 
     '한겨레', '경향신문', '한국경제', '전자신문'
   ];
+  
+  const agencies = mediaSources.length > 0 ? mediaSources.map(source => source.name) : fallbackAgencies;
 
   const agencyDescriptions = {
     '연합뉴스': '연합뉴스는 1980년 설립된 대한민국의 대표적인 통신사입니다.\n\n정치, 경제, 사회, 문화 등 전 분야의 뉴스를 빠르고 정확하게 전달하며, 국내외 주요 언론사에 뉴스를 공급하고 있습니다.',

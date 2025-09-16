@@ -1,10 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCommonData } from '../hooks/useCommonData';
 
 const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const navigate = useNavigate();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
+  
+  // 공통 데이터 가져오기
+  const { categories, mediaSources, searchOptions, loading, error } = useCommonData();
 
   const toggleDropdown = (type) => {
     setActiveDropdown(activeDropdown === type ? null : type);
@@ -55,11 +59,19 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             id="agency-dropdown" 
             className={`dropdown-content ${activeDropdown === 'agency' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>조선일보</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>중앙일보</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>동아일보</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>한국경제</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>문화일보</a>
+            {loading ? (
+              <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
+            ) : (
+              mediaSources.map((source, index) => (
+                <a 
+                  key={index} 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); }}
+                >
+                  {source.name}
+                </a>
+              ))
+            )}
           </div>
         </div>
         
@@ -75,12 +87,19 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             id="category-dropdown" 
             className={`dropdown-content ${activeDropdown === 'category' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>정치</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>경제</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>사회</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>세계</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>IT/과학</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); }}>생활/문화</a>
+            {loading ? (
+              <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
+            ) : (
+              categories.map((category, index) => (
+                <a 
+                  key={index} 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); }}
+                >
+                  {category}
+                </a>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -98,10 +117,22 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             id="sort-dropdown" 
             className={`dropdown-content ${activeDropdown === 'sort' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); handleSortClick('latest', '최신순'); }}>최신순</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); handleSortClick('relevant', '관련순'); }}>관련순</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); handleSortClick('popular', '조회순'); }}>조회순</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); handleSortClick('trending', '인기순'); }}>인기순</a>
+            {loading ? (
+              <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
+            ) : (
+              searchOptions.sort?.map((option, index) => (
+                <a 
+                  key={index} 
+                  href="#" 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    handleSortClick(option.value, option.label); 
+                  }}
+                >
+                  {option.label}
+                </a>
+              ))
+            )}
           </div>
         </div>
         
