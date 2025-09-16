@@ -39,14 +39,12 @@ class NewsCrawlerService {
   private readonly categories = [
     { name: '정치', query: '정치' },
     { name: '경제', query: '경제' },
-    { name: '기술', query: '기술 IT' },
     { name: '사회', query: '사회' },
+    { name: '생활/문화', query: '생활 문화' },
+    { name: 'IT/과학', query: 'IT 과학 기술' },
+    { name: '세계', query: '세계 국제' },
     { name: '스포츠', query: '스포츠' },
-    { name: '연예', query: '연예' },
-    { name: '생활', query: '생활' },
-    { name: '건강', query: '건강' },
-    { name: '문화', query: '문화' },
-    { name: '교육', query: '교육' }
+    { name: '연예', query: '연예' }
   ];
 
   async fetchNewsFromNaver(query: string, display: number = 20): Promise<NaverNewsItem[]> {
