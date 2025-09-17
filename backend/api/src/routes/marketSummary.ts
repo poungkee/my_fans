@@ -5,7 +5,7 @@ const router = Router();
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-/* ───────────── 공통 유틸 ───────────── */
+/* ───────────── 공통 유틸 @@@@@@@@@@───────────── */
 
 function toNumber(numText: string | null | undefined): number | null {
   if (!numText) return null;
