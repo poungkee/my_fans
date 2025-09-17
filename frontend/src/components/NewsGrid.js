@@ -11,7 +11,7 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE); // ← 여기!
 
   // 디버그 로그 추가
-  console.log('NewsGrid - newsData:', newsData?.length || 0, 'items');
+  //console.log('NewsGrid - newsData:', newsData?.length || 0, 'items');
 
   // newsData나 검색어 변경 시 페이지 리셋
   useEffect(() => {
@@ -66,7 +66,7 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   const visibleItems = filteredNews.slice(0, visibleCount);
 
   // 디버그 로그 추가
-  console.log('NewsGrid - visibleCount:', visibleCount, 'filteredNews:', filteredNews.length, 'visibleItems:', visibleItems.length);
+  //console.log('NewsGrid - visibleCount:', visibleCount, 'filteredNews:', filteredNews.length, 'visibleItems:', visibleItems.length);
 
   // 더보기 클릭
   const handleLoadMore = () => {
