@@ -13,6 +13,7 @@ import crawlerRoutes from './routes/crawler';
 import commonRoutes from './routes/common';
 import marketSummaryRoutes from "./routes/marketSummary";
 import authRoutes from './routes/auth';
+import userInteractionsRoutes from './routes/userInteractions';
 
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
@@ -23,7 +24,21 @@ console.log('[DEBUG] GEMINI_API_KEY from process.env:', process.env.GEMINI_API_K
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "http:", "https:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+}));
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.0.3:3000', 'http://192.168.0.3:3001'],
   credentials: true
@@ -45,6 +60,7 @@ app.use(session({
 }));
 
 app.use(express.static(path.join(__dirname, '../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => {
   res.json({
@@ -68,6 +84,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userInteractionsRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', crawlerRoutes);
 app.use('/api', commonRoutes);

@@ -205,6 +205,7 @@ const RegisterPage = () => {
                 disabled={loading}
               />
             </div>
+
             
             <div className="form-group">
               <label htmlFor="password">비밀번호</label>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCommonData } from '../hooks/useCommonData';
+import './Header.css';
 
 const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -224,21 +225,40 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           onKeyUp={handleSearch}
         />
         
-        <div 
-          className="search-icon" 
-          onClick={handleSearch}
-        >
-          🔍
-        </div>
+            <div 
+              className="search-icon" 
+              onClick={handleSearch}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
       </div>
       
       <div className="user-menu">
         <div className="user-dropdown">
-          <div 
-            className="user-icon" 
-            onClick={() => toggleDropdown('user')}
-          >
-            {isLoggedIn ? (user?.name ? user.name.charAt(0) : '👤') : '👤'}
+          <div className="user-section">
+            {isLoggedIn && user?.name && (
+              <div className="welcome-message">
+                환영합니다 <span className="user-name-highlight">{user.name}</span>님
+              </div>
+            )}
+            <div 
+              className="user-icon" 
+              onClick={() => toggleDropdown('user')}
+            >
+              {isLoggedIn ? (
+                user?.profile_image ? (
+                  <img 
+                    src={user.profile_image} 
+                    alt="프로필 이미지" 
+                    className="user-profile-image"
+                  />
+                ) : (
+                  user?.name ? user.name.charAt(0).toUpperCase() : '👤'
+                )
+              ) : '👤'}
+            </div>
           </div>
           <div 
             id="user-dropdown" 

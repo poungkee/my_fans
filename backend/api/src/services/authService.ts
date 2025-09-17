@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { User } from '../entities/User';
-import { RegisterDto, LoginDto, PasswordResetDto } from '../dto/auth.dto';
+import { RegisterDto, LoginDto, PasswordResetDto, DeleteAccountDto } from '../dto/auth.dto';
 import { EmailService } from './emailService';
 import { KakaoOAuthProvider, NaverOAuthProvider } from './oauthProviders';
 
@@ -18,7 +18,7 @@ export class AuthService {
 
   // 회원가입
   async register(registerData: RegisterDto): Promise<{ user: User; message: string }> {
-    const { name, username, email, password, confirmPassword, phone } = registerData;
+    const { name, username, email, password, confirmPassword, phone, age, gender, location } = registerData;
 
     // 비밀번호 확인
     if (password !== confirmPassword) {
@@ -53,6 +53,9 @@ export class AuthService {
       email,
       password_hash: passwordHash,
       phone,
+      age,
+      gender,
+      location,
       provider: 'local',
       email_verified: true, // 이메일 인증 없이 바로 활성화
       email_verification_code: null,
@@ -499,5 +502,103 @@ export class AuthService {
       token: jwtToken,
       message: '네이버 로그인 성공'
     };
+  }
+
+  // 사용자 프로필 조회
+  async getUserProfile(userId: number): Promise<User | null> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId, is_active: true }
+      });
+      return user;
+    } catch (error) {
+      console.error('사용자 프로필 조회 에러:', error);
+      throw new Error('사용자 프로필을 조회할 수 없습니다.');
+    }
+  }
+
+  // 사용자 프로필 업데이트
+  async updateUserProfile(userId: number, updateData: Partial<User>): Promise<User> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId, is_active: true }
+      });
+
+      if (!user) {
+        throw new Error('사용자를 찾을 수 없습니다.');
+      }
+
+      console.log(`[프로필 업데이트] 사용자 ${userId} 업데이트 데이터:`, updateData);
+
+      // 업데이트할 필드들만 적용
+      Object.assign(user, updateData);
+      
+      const updatedUser = await this.userRepository.save(user);
+      console.log(`[프로필 업데이트] 사용자 ${userId} 업데이트 완료:`, {
+        age: updatedUser.age,
+        gender: updatedUser.gender,
+        location: updatedUser.location,
+        preferred_categories: updatedUser.preferred_categories,
+        preferred_media_sources: updatedUser.preferred_media_sources
+      });
+      
+      return updatedUser;
+    } catch (error) {
+      console.error('사용자 프로필 업데이트 에러:', error);
+      throw new Error('프로필 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 회원탈퇴
+  async deleteAccount(userId: number, deleteData: DeleteAccountDto): Promise<{ message: string }> {
+    try {
+      const { password } = deleteData;
+
+      // 사용자 찾기
+      const user = await this.userRepository.findOne({
+        where: { id: userId, is_active: true }
+      });
+
+      if (!user) {
+        throw new Error('사용자를 찾을 수 없습니다.');
+      }
+
+      // 현재는 소셜 로그인이 제대로 연동되지 않았으므로 모든 사용자는 비밀번호 확인
+      if (!password || !password.trim()) {
+        throw new Error('비밀번호를 입력해주세요.');
+      }
+
+      if (!user.password_hash) {
+        throw new Error('비밀번호 확인이 필요합니다.');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+      if (!isPasswordValid) {
+        throw new Error('비밀번호가 올바르지 않습니다.');
+      }
+
+      // 사용자 정보 완전 삭제
+      await this.deleteUserData(user);
+      
+      return {
+        message: '회원탈퇴가 완료되었습니다.'
+      };
+    } catch (error) {
+      console.error('회원탈퇴 에러:', error);
+      throw new Error(error.message || '회원탈퇴 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 사용자 데이터 완전 삭제 처리
+  private async deleteUserData(user: User): Promise<void> {
+    try {
+      // 간단하게 사용자 테이블에서만 삭제 (CASCADE로 관련 데이터 자동 삭제)
+      await this.userRepository.delete(user.id);
+      
+      console.log(`[회원탈퇴] 사용자 ${user.id} 완전 삭제 완료`);
+    } catch (error) {
+      console.error('사용자 데이터 삭제 에러:', error);
+      throw error;
+    }
   }
 }

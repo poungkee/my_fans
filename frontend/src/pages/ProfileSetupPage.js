@@ -67,7 +67,7 @@ const ProfileSetupPage = () => {
       }
 
       // 사용자 프로필 업데이트 API 호출
-      const response = await fetch('/api/auth/update-profile', {
+      const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -84,9 +84,18 @@ const ProfileSetupPage = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('프로필 설정이 완료되었습니다! 로그인 페이지로 이동합니다.');
+        setSuccess('프로필 설정이 완료되었습니다! 마이페이지로 이동합니다.');
+        
+        // localStorage와 sessionStorage의 사용자 정보 업데이트
+        const updatedUser = data.data.user;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // 헤더 컴포넌트에 변경 알림
+        window.dispatchEvent(new CustomEvent('loginStatusChange'));
+        
         setTimeout(() => {
-          navigate('/login');
+          navigate('/mypage');
         }, 2000);
       } else {
         setError(data.error || '프로필 설정에 실패했습니다.');

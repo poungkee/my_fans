@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, IsNumber, IsIn } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -23,6 +23,19 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsNumber({}, { message: '나이는 숫자여야 합니다.' })
+  age?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['남성', '여성', '기타'], { message: '성별은 남성, 여성, 기타 중 하나여야 합니다.' })
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 }
 
 export class LoginDto {
@@ -100,5 +113,11 @@ export class UpdateProfileDto {
 
   @IsOptional()
   preferred_media_sources?: string[];
+}
+
+export class DeleteAccountDto {
+  @IsOptional()
+  @IsString()
+  password?: string;
 }
 

@@ -15,6 +15,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import ProfileSetupPage from './pages/ProfileSetupPage';
 import MyPage from './pages/MyPage';
+import DeleteAccount from './pages/DeleteAccount';
 import LoginSuccessPage from './pages/LoginSuccessPage';
 import LoginErrorPage from './pages/LoginErrorPage';
 
@@ -250,6 +251,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/email-verification" element={<EmailVerificationPage />} />
         <Route path="/mypage" element={<MyPage />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/login-success" element={<LoginSuccessPage />} />
         <Route path="/login-error" element={<LoginErrorPage />} />
       </Routes>
