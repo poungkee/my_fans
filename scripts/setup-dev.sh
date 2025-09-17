@@ -20,11 +20,27 @@ if command -v nvm &> /dev/null; then
         nvm use
     fi
 else
-    echo "⚠️  nvm이 설치되지 않았습니다. Node.js $(cat .nvmrc) 이상이 필요합니다."
-    node_version=$(node --version 2>/dev/null | sed 's/v//')
-    required_version=$(cat .nvmrc)
-    if [ -z "$node_version" ]; then
-        echo "❌ Node.js가 설치되지 않았습니다."
+    echo "⚠️  nvm이 설치되지 않았습니다. 자동 설치를 시작합니다..."
+
+    # nvm 설치
+    echo "📥 nvm 설치 중..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+    # nvm 환경변수 로드
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+    # 설치 확인
+    if command -v nvm &> /dev/null; then
+        echo "✅ nvm 설치 완료"
+        echo "📥 Node.js $(cat .nvmrc) 설치 중..."
+        nvm install $(cat .nvmrc)
+        nvm use $(cat .nvmrc)
+        echo "✅ Node.js 설치 완료"
+    else
+        echo "❌ nvm 설치 실패. 수동으로 Node.js를 설치해주세요."
+        echo "Ubuntu: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
         exit 1
     fi
 fi
