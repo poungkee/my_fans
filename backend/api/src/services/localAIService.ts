@@ -62,7 +62,7 @@ export class LocalAIService {
 
   constructor() {
     // 네트워크 상의 다른 컴퓨터에서 실행 중인 AI 서비스
-    this.aiServiceURL = process.env.AI_SERVICE_URL || 'http://192.168.0.3:8000';
+    this.aiServiceURL = process.env.AI_SERVICE_URL || 'http://15.164.251.85:8000';
     this.rateLimiter = new RateLimiter();
 
     console.log('[DEBUG] Local AI Service URL:', this.aiServiceURL);
