@@ -35,16 +35,23 @@ interface ParsedNews {
 }
 
 class NewsCrawlerService {
-  private NAVER_CLIENT_ID: string;
-  private NAVER_CLIENT_SECRET: string;
+  private _naverClientId: string | null = null;
+  private _naverClientSecret: string | null = null;
 
-  constructor() {
-    // 생성자에서 환경변수 읽기 (app.ts에서 dotenv.config() 후에 실행됨)
-    this.NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || '';
-    this.NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || '';
+  private get NAVER_CLIENT_ID(): string {
+    if (this._naverClientId === null) {
+      this._naverClientId = process.env.NAVER_CLIENT_ID || '';
+      console.log('[CRAWLER DEBUG] NAVER_CLIENT_ID:', this._naverClientId ? '***PRESENT***' : 'MISSING');
+    }
+    return this._naverClientId;
+  }
 
-    console.log('[CRAWLER DEBUG] NAVER_CLIENT_ID:', this.NAVER_CLIENT_ID ? '***PRESENT***' : 'MISSING');
-    console.log('[CRAWLER DEBUG] NAVER_CLIENT_SECRET:', this.NAVER_CLIENT_SECRET ? '***PRESENT***' : 'MISSING');
+  private get NAVER_CLIENT_SECRET(): string {
+    if (this._naverClientSecret === null) {
+      this._naverClientSecret = process.env.NAVER_CLIENT_SECRET || '';
+      console.log('[CRAWLER DEBUG] NAVER_CLIENT_SECRET:', this._naverClientSecret ? '***PRESENT***' : 'MISSING');
+    }
+    return this._naverClientSecret;
   }
   private readonly categories = [
     { name: '정치', query: '정치' },
