@@ -25,7 +25,7 @@ const DeleteAccount = () => {
           return;
         }
 
-        const response = await fetch('/api/auth/profile', {
+        const response = await fetch('http://localhost:3000/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           },
@@ -54,9 +54,10 @@ const DeleteAccount = () => {
     e.preventDefault();
     setError('');
 
-    // 현재는 소셜 로그인이 제대로 연동되지 않았으므로 모든 사용자는 비밀번호 확인
-    // 소셜 로그인 사용자도 비밀번호가 있으면 비밀번호 확인
-    if (!password.trim()) {
+    // 카카오나 네이버 로그인 사용자는 비밀번호 확인 불필요
+    const isSocialLogin = user.provider === 'kakao' || user.provider === 'naver';
+    
+    if (!isSocialLogin && !password.trim()) {
       setError('비밀번호를 입력해주세요.');
       return;
     }
@@ -73,14 +74,16 @@ const DeleteAccount = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/delete-account', {
+      const response = await fetch('http://localhost:3000/api/auth/delete-account', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ 
+          password: isSocialLogin ? null : password 
+        })
       });
 
       if (response.ok) {
@@ -158,18 +161,28 @@ const DeleteAccount = () => {
         </div>
 
         <form onSubmit={handleDeleteAccount} className="delete-form">
-          <div className="form-group">
-            <label htmlFor="password">현재 비밀번호</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="현재 비밀번호를 입력하세요"
-              disabled={deleting}
-              required
-            />
-          </div>
+          {/* 카카오나 네이버 로그인 사용자가 아닌 경우에만 비밀번호 입력 필드 표시 */}
+          {user.provider === 'local' && (
+            <div className="form-group">
+              <label htmlFor="password">현재 비밀번호</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="현재 비밀번호를 입력하세요"
+                disabled={deleting}
+                required
+              />
+            </div>
+          )}
+
+          {/* 소셜 로그인 사용자에게는 안내 메시지 표시 */}
+          {(user.provider === 'kakao' || user.provider === 'naver') && (
+            <div className="social-login-notice">
+              <p>💡 {user.provider === 'kakao' ? '카카오' : '네이버'} 로그인 사용자는 비밀번호 확인 없이 바로 탈퇴할 수 있습니다.</p>
+            </div>
+          )}
 
           {error && (
             <div className="error-message">
@@ -189,7 +202,7 @@ const DeleteAccount = () => {
             <button
               type="submit"
               className="delete-btn"
-              disabled={deleting || !password.trim()}
+              disabled={deleting || (user.provider === 'local' && !password.trim())}
             >
               {deleting ? '탈퇴 처리 중...' : '회원탈퇴'}
             </button>
