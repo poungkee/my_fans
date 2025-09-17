@@ -50,16 +50,14 @@ class NewsCrawlerService {
 
   async fetchNewsFromNaver(query: string, display: number = 20): Promise<NaverNewsItem[]> {
     try {
-      const response = await axios.get('https://openapi.naver.com/v1/search/news.json', {
+      // 한글 쿼리를 URL 인코딩
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://openapi.naver.com/v1/search/news.json?query=${encodedQuery}&display=${display}&start=1&sort=date`;
+
+      const response = await axios.get(url, {
         headers: {
           'X-Naver-Client-Id': this.NAVER_CLIENT_ID,
           'X-Naver-Client-Secret': this.NAVER_CLIENT_SECRET,
-        },
-        params: {
-          query,
-          display,
-          start: 1,
-          sort: 'date'
         }
       });
 
