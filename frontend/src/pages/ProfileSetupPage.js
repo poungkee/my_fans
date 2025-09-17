@@ -1,0 +1,331 @@
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import './AuthPages.css';
+
+const ProfileSetupPage = () => {
+  const [formData, setFormData] = useState({
+    age: '',
+    gender: '',
+    location: '',
+    preferred_categories: [],
+    preferred_media_sources: []
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [currentStep, setCurrentStep] = useState(1);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // URL에서 사용자 정보 가져오기
+  const userInfo = location.state?.user;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (error) setError('');
+  };
+
+  const handleCategoryChange = (category) => {
+    setFormData(prev => ({
+      ...prev,
+      preferred_categories: prev.preferred_categories.includes(category)
+        ? prev.preferred_categories.filter(c => c !== category)
+        : [...prev.preferred_categories, category]
+    }));
+  };
+
+  const handleMediaSourceChange = (source) => {
+    setFormData(prev => ({
+      ...prev,
+      preferred_media_sources: prev.preferred_media_sources.includes(source)
+        ? prev.preferred_media_sources.filter(s => s !== source)
+        : [...prev.preferred_media_sources, source]
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // localStorage 또는 sessionStorage에서 토큰 가져오기
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+      
+      if (!token) {
+        setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        navigate('/login');
+        return;
+      }
+
+      // 사용자 프로필 업데이트 API 호출
+      const response = await fetch('/api/auth/update-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...formData,
+          age: formData.age ? parseInt(formData.age) : null,
+          token: token // 백업용
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('프로필 설정이 완료되었습니다! 로그인 페이지로 이동합니다.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(data.error || '프로필 설정에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('프로필 설정 에러:', err);
+      setError('서버 연결에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const skipSetup = () => {
+    navigate('/login');
+  };
+
+  const nextStep = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const categories = [
+    '정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예'
+  ];
+
+  const mediaSources = [
+    '조선일보', 'KBS', 'SBS', 'MBC', '한겨레', '중앙일보', '동아일보', '경향신문', '연합뉴스', 'YTN'
+  ];
+
+  if (!userInfo) {
+    navigate('/register');
+    return null;
+  }
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="step-content">
+            <div className="step-header">
+              <h3>기본 정보</h3>
+              <p>나이, 성별, 지역 정보를 입력해주세요.</p>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="age">나이 (선택)</label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                value={formData.age}
+                onChange={handleChange}
+                placeholder="나이를 입력하세요"
+                min="1"
+                max="120"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gender">성별 (선택)</label>
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="">선택하세요</option>
+                <option value="남성">남성</option>
+                <option value="여성">여성</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="location">지역 (선택)</label>
+              <input
+                type="text"
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="거주 지역을 입력하세요 (예: 서울, 경기, 부산)"
+                disabled={loading}
+              />
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="step-content">
+            <div className="step-header">
+              <h3>관심 카테고리</h3>
+              <p>관심 있는 뉴스 카테고리를 선택해주세요. (복수 선택 가능)</p>
+            </div>
+            
+            <div className="form-group">
+              <div className="checkbox-grid">
+                {categories.map(category => (
+                  <label key={category} className="checkbox-item">
+                    <input
+                      type="checkbox"
+                      checked={formData.preferred_categories.includes(category)}
+                      onChange={() => handleCategoryChange(category)}
+                      disabled={loading}
+                    />
+                    <span>{category}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="step-content">
+            <div className="step-header">
+              <h3>선호 언론사</h3>
+              <p>선호하는 언론사를 선택해주세요. (복수 선택 가능)</p>
+            </div>
+            
+            <div className="form-group">
+              <div className="checkbox-grid">
+                {mediaSources.map(source => (
+                  <label key={source} className="checkbox-item">
+                    <input
+                      type="checkbox"
+                      checked={formData.preferred_media_sources.includes(source)}
+                      onChange={() => handleMediaSourceChange(source)}
+                      disabled={loading}
+                    />
+                    <span>{source}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-form">
+          <form onSubmit={handleSubmit} className="auth-form-content">
+            <div className="auth-header">
+              <h2>프로필 설정</h2>
+              <p>안녕하세요, {userInfo.name}님! 맞춤 뉴스를 위해 추가 정보를 입력해주세요.</p>
+            </div>
+
+            {/* 진행 단계 표시 */}
+            <div className="step-indicator">
+              <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>
+                <span className="step-number">1</span>
+                <span className="step-label">기본 정보</span>
+              </div>
+              <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
+                <span className="step-number">2</span>
+                <span className="step-label">관심 카테고리</span>
+              </div>
+              <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
+                <span className="step-number">3</span>
+                <span className="step-label">선호 언론사</span>
+              </div>
+            </div>
+
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="success-message">
+                {success}
+              </div>
+            )}
+
+            {renderStepContent()}
+
+            <div className="form-actions">
+              {currentStep > 1 && (
+                <button 
+                  type="button" 
+                  className="auth-button secondary"
+                  onClick={prevStep}
+                  disabled={loading}
+                >
+                  이전
+                </button>
+              )}
+              
+              {currentStep < 3 ? (
+                <button 
+                  type="button" 
+                  className="auth-button primary"
+                  onClick={nextStep}
+                  disabled={loading}
+                >
+                  다음
+                </button>
+              ) : (
+                <button 
+                  type="submit" 
+                  className="auth-button primary"
+                  disabled={loading}
+                >
+                  {loading ? '설정 중...' : '프로필 설정 완료'}
+                </button>
+              )}
+
+              <button 
+                type="button" 
+                className="auth-button tertiary"
+                onClick={skipSetup}
+                disabled={loading}
+              >
+                나중에 설정하기
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProfileSetupPage;

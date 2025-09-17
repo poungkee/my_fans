@@ -1,89 +1,110 @@
-// front_end/src/App.js
-import React, { useState, useEffect, useMemo } from 'react';
+// src/App.js
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 import Header from './components/Header';
 import StockSection from './components/StockSection';
 import NewsGrid from './components/NewsGrid';
 import Sidebar from './components/Sidebar';
 import AgencySection from './components/AgencySection';
 import Footer from './components/Footer';
+
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
+import ProfileSetupPage from './pages/ProfileSetupPage';
 import MyPage from './pages/MyPage';
+import LoginSuccessPage from './pages/LoginSuccessPage';
+import LoginErrorPage from './pages/LoginErrorPage';
 
-// 메인 홈페이지 컴포넌트
 function HomePage() {
-  /* 상태 */
-  const [feedNews, setFeedNews] = useState([]);       // 홈 피드(전체 키워드)
-  const [searchResults, setSearchResults] = useState([]); // 검색 결과
+  /* -------------------- 상태 -------------------- */
+  const [feedNews, setFeedNews] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const [selectedSort, setSelectedSort] = useState('최신순'); // 검색 정렬 전용
+  const [selectedSort, setSelectedSort] = useState('최신순');
   const [selectedAgency, setSelectedAgency] = useState('전체');
   const [searchQuery, setSearchQuery] = useState('');
 
-  /* 주식 섹션 시뮬레이션 유지 */
-  const [stockData, setStockData] = useState([
-    { label: '코스피', value: '2,456.78', change: '+12.34 (+0.50%)', type: 'positive' },
-    { label: '나스닥', value: '14,567.89', change: '-23.45 (-0.16%)', type: 'negative' },
-    { label: '환율 (USD/KRW)', value: '1,234.56', change: '+5.67 (+0.46%)', type: 'positive' },
-    { label: '비트코인', value: '$43,567.89', change: '+1,234.56 (+2.92%)', type: 'positive' }
-  ]);
+  // 주식 데이터
+  const [stockData, setStockData] = useState([]);
+  const [stockError, setStockError] = useState(null);
+  const [stockLoading, setStockLoading] = useState(true);
 
-  /* API 베이스 (proxy가 있으면 '') */
-  const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || 'http://192.168.0.3:3000', []);
+  // API 베이스 (프록시 사용 시 빈 문자열)
+  const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
 
-  /* 검색 정렬 매핑: 최신, 관련, 인기, 조회 */
+  // 검색 정렬 키 매핑
   const searchSortKey = useMemo(() => {
     const map = {
       '최신순': 'latest',
       '관련순': 'related',
       '인기순': 'popular',
       '조회순': 'views',
-      // 기존 헤더가 latest/relevant/trending/popular 같은 키면 여기서 매핑 추가
-      'relevant': 'related',
-      'trending': 'popular',
-      'latest': 'latest',
-      'popular': 'popular',
-      'views': 'views',
+      relevant: 'related',
+      trending: 'popular',
+      latest: 'latest',
+      popular: 'popular',
+      views: 'views',
     };
     return map[selectedSort] || 'latest';
   }, [selectedSort]);
 
-  /* 홈 피드 불러오기 (검색 전 화면) */
+  /* -------------------- 데이터 로드: 홈 피드 -------------------- */
   useEffect(() => {
     const controller = new AbortController();
-    const url = `${API_BASE}/news?limit=60`;
+    // topics는 없어도 동작하도록 파라미터 분리
+    const params = new URLSearchParams({
+      limit: '60',
+      sort: 'latest',
+      topics: '정치,경제,사회,세계,IT/과학,생활/문화',
+    });
+    const url = `${API_BASE}/api/feed?${params.toString()}`;
+
     (async () => {
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setFeedNews(Array.isArray(data.articles) ? data.articles : []);
+        setFeedNews(Array.isArray(data.items) ? data.items : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
           console.error('피드 로드 실패:', e);
-          setFeedNews([]);
+          setFeedNews([]); // 빈 배열 유지해도 다른 섹션은 렌더링
         }
       }
     })();
+
     return () => controller.abort();
   }, [API_BASE]);
 
-  /* 검색 전용 API 호출 (검색어/정렬이 바뀔 때만) */
+  /* -------------------- 데이터 로드: 검색 -------------------- */
   useEffect(() => {
     if (!isSearching) return;
+
     const q = (searchQuery || '').trim();
-    if (!q) { setIsSearching(false); setSearchResults([]); return; }
+    if (!q) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
 
     const controller = new AbortController();
-    const url = `${API_BASE}/news?search=${encodeURIComponent(q)}&limit=60`;
+    const params = new URLSearchParams({
+      q,
+      sort: searchSortKey,
+      limit: '60',
+    });
+    const url = `${API_BASE}/api/search?${params.toString()}`;
+
     (async () => {
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setSearchResults(Array.isArray(data.articles) ? data.articles : []);
+        setSearchResults(Array.isArray(data.items) ? data.items : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
           console.error('검색 실패:', e);
@@ -91,39 +112,65 @@ function HomePage() {
         }
       }
     })();
+
     return () => controller.abort();
   }, [API_BASE, isSearching, searchQuery, searchSortKey]);
 
-  /* 주식 데이터 변동 시뮬레이션 */
+  /* -------------------- 데이터 로드: 주식 요약(30초 갱신) -------------------- */
+  const stockControllerRef = useRef(null);
+  const firstLoadDoneRef = useRef(false);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStockData(prev =>
-        prev.map(item => {
-          const currentValue = parseFloat(item.value.replace(/[^0-9.-]/g, ''));
-          const change = (Math.random() - 0.5) * 10;
-          const newValue = (currentValue + change).toFixed(2);
-          return { ...item, value: item.value.replace(/[0-9.-]+/, newValue) };
-        })
-      );
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    let timerId;
 
-  /* 헤더: 정렬(검색에만 영향) */
-  const handleSortChange = (_sortType, displayText) => {
-    // 헤더에서 넘어오는 텍스트를 그대로 사용(최신순/관련순/인기순/조회순 등)
-    setSelectedSort(displayText);
-    // 검색중이 아닐 때는 화면 피드 정렬은 유지(최신)
-  };
+    const load = async () => {
+      // 이전 요청 취소
+      if (stockControllerRef.current) stockControllerRef.current.abort();
+      const controller = new AbortController();
+      stockControllerRef.current = controller;
 
-  /* 헤더: 검색 실행 */
+      try {
+        if (!firstLoadDoneRef.current) setStockLoading(true);
+        setStockError(null);
+
+        const res = await fetch(`${API_BASE}/api/market/summary`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        const items = Array.isArray(json.items) ? json.items : [];
+        setStockData(items);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('주식 데이터 로드 실패:', e);
+          setStockError(e.message || '불러오기 실패');
+          setStockData([]);
+        }
+      } finally {
+        setStockLoading(false);
+        firstLoadDoneRef.current = true;
+      }
+    };
+
+    load(); // 즉시 1회
+    timerId = setInterval(load, 30000);
+
+    return () => {
+      if (stockControllerRef.current) stockControllerRef.current.abort();
+      clearInterval(timerId);
+    };
+  }, [API_BASE]);
+
+  /* -------------------- 헤더 핸들러 -------------------- */
+  const handleSortChange = (_sortType, displayText) => setSelectedSort(displayText);
   const handleSearch = (query) => {
     const q = (query || '').trim();
     setSearchQuery(q);
-    setIsSearching(!!q); // 빈 검색어면 검색모드 해제 → 홈 피드로 복귀
+    setIsSearching(!!q);
   };
 
-  /* 에이전시/카테고리 필터 (피드/검색 각각 현재 리스트에만 적용) */
+  /* -------------------- 필터 상태 -------------------- */
   const [agencyFilteredNews, setAgencyFilteredNews] = useState(null);
   const [categoryFilteredNews, setCategoryFilteredNews] = useState(null);
 
@@ -138,31 +185,44 @@ function HomePage() {
       return;
     }
     const base = isSearching ? searchResults : feedNews;
-    setAgencyFilteredNews(base.filter(n => n.agency === agency));
+    setAgencyFilteredNews(base.filter((n) => n.agency === agency));
   };
 
   const handleCategoryFilter = (category) => {
-    if (!category) { setCategoryFilteredNews(null); return; }
+    if (!category) {
+      setCategoryFilteredNews(null);
+      return;
+    }
     const base = isSearching ? searchResults : feedNews;
-    setCategoryFilteredNews(base.filter(n => n.category === category));
+    setCategoryFilteredNews(base.filter((n) => n.category === category));
   };
 
+  /* -------------------- 렌더 -------------------- */
   return (
     <div className="App">
       <Header
-        onSortChange={handleSortChange}   // 검색 정렬
-        onSearch={handleSearch}           // 검색 실행/해제
+        onSortChange={handleSortChange}
+        onSearch={handleSearch}
         selectedSort={selectedSort}
       />
 
-      <StockSection stockData={stockData} />
+      {/* 주식 위젯 – 로딩/에러가 있어도 아래 콘텐츠 렌더링은 계속 진행 */}
+      {stockLoading && (
+        <div style={{ padding: 10 }}>📊 주식 데이터 불러오는 중…</div>
+      )}
+      {stockError && (
+        <div style={{ padding: 10, color: 'red' }}>⚠ {stockError}</div>
+      )}
+      {!stockLoading && !stockError && (
+        <StockSection stockData={stockData} />
+      )}
 
       <main className="main">
         <div className="main-content">
           <div className="content-area">
             <NewsGrid
               newsData={currentList}
-              searchQuery={isSearching ? searchQuery : ''} // 검색모드시에만 카드 내부 검색필터 동작
+              searchQuery={isSearching ? searchQuery : ''}
             />
           </div>
           <Sidebar />
@@ -179,7 +239,6 @@ function HomePage() {
   );
 }
 
-// 메인 App 컴포넌트
 function App() {
   return (
     <Router>
@@ -187,7 +246,12 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile-setup" element={<ProfileSetupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/email-verification" element={<EmailVerificationPage />} />
         <Route path="/mypage" element={<MyPage />} />
+        <Route path="/login-success" element={<LoginSuccessPage />} />
+        <Route path="/login-error" element={<LoginErrorPage />} />
       </Routes>
     </Router>
   );

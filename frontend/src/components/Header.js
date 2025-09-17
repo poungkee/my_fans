@@ -1,14 +1,92 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCommonData } from '../hooks/useCommonData';
 
 const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
   
   // 공통 데이터 가져오기
   const { categories, mediaSources, searchOptions, loading, error } = useCommonData();
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      // localStorage와 sessionStorage 모두 확인
+      let token = localStorage.getItem('token');
+      let userData = localStorage.getItem('user');
+      
+      // localStorage에 없으면 sessionStorage 확인
+      if (!token || !userData) {
+        token = sessionStorage.getItem('token');
+        userData = sessionStorage.getItem('user');
+      }
+      
+      if (token && userData) {
+        setIsLoggedIn(true);
+        setUser(JSON.parse(userData));
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    };
+
+    // 초기 로그인 상태 확인
+    checkLoginStatus();
+
+    // localStorage 변화 감지를 위한 이벤트 리스너
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' || e.key === 'user') {
+        checkLoginStatus();
+      }
+    };
+
+    // storage 이벤트 리스너 등록 (다른 탭에서의 변화 감지)
+    window.addEventListener('storage', handleStorageChange);
+
+    // 커스텀 이벤트 리스너 등록 (같은 탭에서의 변화 감지)
+    window.addEventListener('loginStatusChange', checkLoginStatus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('loginStatusChange', checkLoginStatus);
+    };
+  }, []);
+
+  // 로그아웃 함수
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // localStorage와 sessionStorage 모두에서 데이터 삭제
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('rememberMe');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        setIsLoggedIn(false);
+        setUser(null);
+        setActiveDropdown(null);
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('로그아웃 에러:', error);
+      // 에러가 발생해도 로컬 스토리지는 정리
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setIsLoggedIn(false);
+      setUser(null);
+      setActiveDropdown(null);
+      navigate('/');
+    }
+  };
 
   const toggleDropdown = (type) => {
     setActiveDropdown(activeDropdown === type ? null : type);
@@ -39,7 +117,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     }
     setActiveDropdown(null);
     onSearch('');     // 전체 뉴스로
-    navigate('/');    // 홈으로
+    
+    // 페이지 새로고침
+    window.location.reload();
   };
 
   return (
@@ -158,15 +238,27 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             className="user-icon" 
             onClick={() => toggleDropdown('user')}
           >
-            👤
+            {isLoggedIn ? (user?.name ? user.name.charAt(0) : '👤') : '👤'}
           </div>
           <div 
             id="user-dropdown" 
             className={`user-dropdown-content ${activeDropdown === 'user' ? 'show' : ''}`}
           >
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
+            {isLoggedIn ? (
+              <>
+                <div className="user-info">
+                  <span className="user-name">{user?.name || '사용자'}</span>
+                  <span className="user-email">{user?.email}</span>
+                </div>
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>로그아웃</a>
+              </>
+            ) : (
+              <>
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
+              </>
+            )}
           </div>
         </div>
       </div>

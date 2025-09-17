@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import session from 'express-session';
 import dotenv from 'dotenv';
 import path from 'path';
 import { AppDataSource } from './config/database';
@@ -10,6 +11,8 @@ import aiRoutes from './routes/ai';
 import newsRoutes from './routes/news';
 import crawlerRoutes from './routes/crawler';
 import commonRoutes from './routes/common';
+import marketSummaryRoutes from "./routes/marketSummary";
+import authRoutes from './routes/auth';
 
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
@@ -28,6 +31,18 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 세션 설정
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-here',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+  }
+}));
 
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -52,10 +67,13 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', crawlerRoutes);
 app.use('/api', commonRoutes);
-app.use('/', newsRoutes);
+app.use('/api', newsRoutes);
+app.use("/api/market", marketSummaryRoutes);
+
 
 async function startServer() {
   try {

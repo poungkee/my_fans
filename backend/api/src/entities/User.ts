@@ -10,8 +10,14 @@ export class User {
   @Column({ type: 'varchar', length: 100, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  username?: string;
+  @Column({ type: 'varchar', length: 50, unique: true })
+  username: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  name?: string; // 실명
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phone?: string; // 연락처
 
   // 소셜 로그인 정보
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -22,6 +28,26 @@ export class User {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   password_hash?: string; // 일반 로그인용
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  previous_password_hash?: string; // 이전 비밀번호 해시 (재사용 방지용)
+
+  // 이메일 인증 관련
+  @Column({ type: 'boolean', default: false })
+  email_verified: boolean;
+
+  @Column({ type: 'varchar', length: 6, nullable: true })
+  email_verification_code?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  email_verification_expires?: Date;
+
+  // 비밀번호 재설정 관련
+  @Column({ type: 'varchar', length: 6, nullable: true })
+  password_reset_code?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  password_reset_expires?: Date;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   profile_image?: string;
