@@ -53,6 +53,37 @@ class NewsCrawlerService {
     }
     return this._naverClientSecret;
   }
+  // 텍스트 정리 함수
+  private cleanText(text: string): string {
+    if (!text) return '';
+
+    return text
+      // HTML 태그 제거
+      .replace(/<[^>]*>/g, '')
+      // CSS 스타일 제거
+      .replace(/\{[^}]*\}/g, '')
+      // CSS 선택자 패턴 제거
+      .replace(/[a-zA-Z-]+:\s*[^;]+;/g, '')
+      .replace(/\.[a-zA-Z-]+\s*\{[^}]*\}/g, '')
+      .replace(/#[a-zA-Z-]+\s*\{[^}]*\}/g, '')
+      // JavaScript 코드 제거
+      .replace(/function\s*\([^)]*\)\s*\{[^}]*\}/g, '')
+      .replace(/var\s+[^;]+;/g, '')
+      .replace(/\$\([^)]*\)[^;]*;/g, '')
+      // 특수 문자 및 패턴 제거
+      .replace(/margin-top:\s*\d+px/gi, '')
+      .replace(/Item:not\([^)]*\)/gi, '')
+      .replace(/\{[^}]*margin[^}]*\}/gi, '')
+      // 연속된 공백, 탭, 줄바꿈 정리
+      .replace(/\s+/g, ' ')
+      .replace(/\t+/g, ' ')
+      .replace(/\n+/g, ' ')
+      // 특수문자 정리
+      .replace(/[^\w\s가-힣.,!?""''()\-]/g, '')
+      // 앞뒤 공백 제거
+      .trim();
+  }
+
   private readonly categories = [
     { name: '정치', query: '정치' },
     { name: '경제', query: '경제' },
@@ -149,19 +180,26 @@ class NewsCrawlerService {
         'h2.media_end_head_headline',
         'h3.tit_view',
         '.article_header h3',
-        'h1',
+        '.article-header h1',
         '.article-title',
         '.news-title',
-        '.title',
+        '.post-title',
+        '.entry-title',
+        '.headline',
+        '.subject',
+        'title',
+        'h1',
         'h2',
-        'h3'
+        'h3',
+        '[class*="title"]',
+        '[class*="headline"]'
       ];
 
       let title = '';
       for (const selector of titleSelectors) {
-        const found = $(selector).first().text().trim();
+        const found = this.cleanText($(selector).first().text());
         console.log(`[DEBUG] 제목 셀렉터 ${selector}: "${found}"`);
-        if (found && found.length > 5) {
+        if (found && found.length > 5 && found.length < 200) {
           title = found;
           break;
         }
@@ -177,19 +215,29 @@ class NewsCrawlerService {
         '#articleBodyContents',
         '.article_view .article_body',
         '.article-content',
+        '.article-body',
+        '.post-content',
+        '.entry-content',
         '.content',
         '.news-content',
+        '.text-content',
         'article',
-        '.post-content',
-        'p'
+        '.story-body',
+        '.article-text',
+        '[class*="content"]',
+        '[class*="article"]',
+        'main p',
+        'section p',
+        'div p'
       ];
 
       console.log(`[DEBUG] 본문 추출 시도 중...`);
       for (const selector of contentSelectors) {
-        const found = $(selector).text();
+        let found = $(selector).text();
+        found = this.cleanText(found);
         console.log(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
-        if (found && found.length > 50) {  // 조건 완화: 100자 → 50자
-          content = found.trim();
+        if (found && found.length > 50 && found.length < 10000) {  // 길이 제한 추가
+          content = found;
           console.log(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
           break;
         }
@@ -198,7 +246,9 @@ class NewsCrawlerService {
       // 만약 위 방법으로 본문을 찾지 못했다면, 모든 p 태그 텍스트 결합
       if (!content) {
         console.log(`[DEBUG] 대체 방법으로 본문 추출 시도...`);
-        const allParagraphs = $('p').map((i, el) => $(el).text().trim()).get().join(' ');
+        const allParagraphs = $('p').map((i, el) => this.cleanText($(el).text())).get()
+          .filter(text => text.length > 10)
+          .join(' ');
         if (allParagraphs && allParagraphs.length > 50) {
           content = allParagraphs;
           console.log(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);
