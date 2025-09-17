@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { geminiService } from '../services/geminiService';
+import { localAIService } from '../services/localAIService';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
 
@@ -17,7 +17,7 @@ router.post('/ai/summarize', async (req, res) => {
       return res.status(400).json({ error: '요약할 텍스트가 너무 짧습니다 (최소 50자)' });
     }
 
-    const result = await geminiService.summarizeText(text);
+    const result = await localAIService.summarizeText(text);
 
     res.json({
       original_length: text.length,
@@ -57,7 +57,7 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
       });
     }
 
-    const result = await geminiService.summarizeText(article.content);
+    const result = await localAIService.summarizeText(article.content);
 
     const shortSummary = result.summary.length > 50
       ? result.summary.substring(0, 47) + '...'
@@ -86,20 +86,20 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
 
 router.get('/ai/health', async (req, res) => {
   try {
-    const isHealthy = await geminiService.checkHealth();
-    const rateLimitStatus = geminiService.getRateLimitStatus();
+    const isHealthy = await localAIService.checkHealth();
+    const rateLimitStatus = localAIService.getRateLimitStatus();
 
     if (isHealthy) {
       res.json({
         status: 'healthy',
-        ai_service: 'gemini-2.5-flash',
+        ai_service: 'local-korean-t5',
         rate_limit: rateLimitStatus,
         timestamp: new Date().toISOString()
       });
     } else {
       res.status(503).json({
         status: 'unhealthy',
-        ai_service: 'gemini-2.5-flash',
+        ai_service: 'local-korean-t5',
         rate_limit: rateLimitStatus,
         timestamp: new Date().toISOString()
       });
@@ -108,7 +108,7 @@ router.get('/ai/health', async (req, res) => {
     console.error('AI Health Check Error:', error);
     res.status(503).json({
       status: 'error',
-      ai_service: 'gemini-2.5-flash',
+      ai_service: 'local-korean-t5',
       error: error.message,
       timestamp: new Date().toISOString()
     });
@@ -145,7 +145,7 @@ router.get('/ai/test-news', async (req, res) => {
 
       try {
         const startTime = Date.now();
-        const summary = await geminiService.summarizeText(news.content);
+        const summary = await localAIService.summarizeText(news.content);
         const endTime = Date.now();
 
         results.push({
@@ -169,7 +169,7 @@ router.get('/ai/test-news', async (req, res) => {
       }
     }
 
-    const rateLimitStatus = geminiService.getRateLimitStatus();
+    const rateLimitStatus = localAIService.getRateLimitStatus();
 
     res.json({
       message: "테스트 뉴스 요약 결과",

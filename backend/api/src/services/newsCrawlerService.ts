@@ -6,7 +6,7 @@ import { NewsArticle } from '../entities/NewsArticle';
 import { MediaSource } from '../entities/MediaSource';
 import { Category } from '../entities/Category';
 import { Journalist } from '../entities/Journalist';
-import { aiService } from './aiService';
+import { localAIService } from './localAIService';
 
 interface NaverNewsApiResponse {
   lastBuildDate: string;
@@ -416,7 +416,7 @@ class NewsCrawlerService {
 
   private async generateAISummaryAsync(articleId: number, content: string): Promise<void> {
     try {
-      const aiResult = await aiService.summarizeText(content);
+      const aiResult = await localAIService.summarizeText(content);
       const shortSummary = aiResult.summary.length > 50
         ? aiResult.summary.substring(0, 47) + '...'
         : aiResult.summary;
