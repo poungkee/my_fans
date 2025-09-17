@@ -35,10 +35,14 @@ interface ParsedNews {
 }
 
 class NewsCrawlerService {
-  private readonly NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID;
-  private readonly NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
+  private NAVER_CLIENT_ID: string;
+  private NAVER_CLIENT_SECRET: string;
 
   constructor() {
+    // 생성자에서 환경변수 읽기 (app.ts에서 dotenv.config() 후에 실행됨)
+    this.NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || '';
+    this.NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || '';
+
     console.log('[CRAWLER DEBUG] NAVER_CLIENT_ID:', this.NAVER_CLIENT_ID ? '***PRESENT***' : 'MISSING');
     console.log('[CRAWLER DEBUG] NAVER_CLIENT_SECRET:', this.NAVER_CLIENT_SECRET ? '***PRESENT***' : 'MISSING');
   }
