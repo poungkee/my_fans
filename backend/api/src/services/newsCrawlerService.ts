@@ -37,6 +37,11 @@ interface ParsedNews {
 class NewsCrawlerService {
   private readonly NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID;
   private readonly NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
+
+  constructor() {
+    console.log('[CRAWLER DEBUG] NAVER_CLIENT_ID:', this.NAVER_CLIENT_ID ? '***PRESENT***' : 'MISSING');
+    console.log('[CRAWLER DEBUG] NAVER_CLIENT_SECRET:', this.NAVER_CLIENT_SECRET ? '***PRESENT***' : 'MISSING');
+  }
   private readonly categories = [
     { name: '정치', query: '정치' },
     { name: '경제', query: '경제' },
