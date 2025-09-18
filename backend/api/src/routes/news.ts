@@ -16,26 +16,20 @@ function mapArticle(a: NewsArticle) {
     id: a.id,
     title: a.title,
     url: a.url,
-    origin_url: a.url,
+    origin_url: a.origin_url || a.url,
     image_url: a.image_url || null,
     video_url: a.video_url || null,
 
     // 카드에서 쓰는 요약 필드들
     ai_summary: a.ai_summary || null,
     short_ai_summary: a.short_ai_summary || null,
-    summary: a.short_ai_summary || a.ai_summary || fallbackSummary,
+    summary: a.short_ai_summary || a.ai_summary || a.summary || fallbackSummary,
 
-    // 메타
-    media_source: a.media_source
-      ? { id: a.media_source.id, name: a.media_source.name }
-      : null,
-    journalist: a.journalist
-      ? { id: a.journalist.id, name: a.journalist.name }
-      : null,
-    category: a.category ? a.category.name : null,
+    // 메타 (단순화된 문자열)
+    source: a.source || null,
+    category: a.category || null,
     pub_date: a.pub_date,
     time: a.pub_date,
-    views: a.views ?? 0,
   };
 }
 
@@ -60,14 +54,13 @@ router.get("/feed", async (req: Request, res: Response) => {
     // 최신순
     // 카테고리 필터가 있으면 where 에 포함
     const where = topics.length
-      ? topics.map((t) => ({ category: { name: t } }))
+      ? topics.map((t) => ({ category: t }))
       : {};
 
     const list = await repo.find({
       where,
       order: { pub_date: "DESC" },
       take: limit,
-      relations: ["media_source", "journalist", "category"],
     });
 
     res.json({ items: list.map(mapArticle) });
@@ -93,10 +86,7 @@ router.get("/search", async (req: Request, res: Response) => {
 
     if (!q) return res.json({ items: [] });
 
-    const order =
-      sort === "views"
-        ? { views: "DESC" as const, pub_date: "DESC" as const }
-        : { pub_date: "DESC" as const };
+    const order = { pub_date: "DESC" as const };
 
     const list = await repo.find({
       where: [
@@ -105,7 +95,6 @@ router.get("/search", async (req: Request, res: Response) => {
       ],
       order,
       take: limit,
-      relations: ["media_source", "journalist", "category"],
     });
 
     res.json({ items: list.map(mapArticle) });
@@ -122,7 +111,6 @@ router.get("/news/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const row = await repo.findOne({
       where: { id },
-      relations: ["media_source", "journalist", "category"],
     });
     if (!row) return res.status(404).json({ error: "NOT_FOUND" });
     res.json(mapArticle(row));

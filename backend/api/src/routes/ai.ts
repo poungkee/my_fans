@@ -26,7 +26,7 @@ router.post('/ai/summarize', async (req, res) => {
       keywords: result.keywords || [],
       success: result.success
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Summarize Error:', error);
     res.status(500).json({ error: error.message || 'AI 요약 처리 중 오류가 발생했습니다' });
   }
@@ -69,8 +69,7 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
     });
 
     const updatedArticle = await repository.findOne({
-      where: { id: Number(newsId) },
-      relations: ['media_source', 'category', 'journalist']
+      where: { id: Number(newsId) }
     });
 
     res.json({
@@ -78,7 +77,7 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
       article: updatedArticle
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('News AI Summarize Error:', error);
     res.status(500).json({ error: error.message || '뉴스 AI 요약 처리 중 오류가 발생했습니다' });
   }

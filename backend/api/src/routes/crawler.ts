@@ -44,8 +44,8 @@ router.post('/crawler/crawl', async (req, res) => {
         title: article.title,
         url: article.url,
         pub_date: article.pub_date,
-        media_source: article.media_source?.name,
-        journalist: article.journalist?.name
+        source: article.source,
+        category: article.category
       }))
     });
 

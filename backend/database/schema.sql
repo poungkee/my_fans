@@ -76,7 +76,7 @@ CREATE INDEX idx_news_created_at ON news_articles(created_at DESC);
 
 -- 전문검색 인덱스
 CREATE INDEX idx_news_search_vector ON news_articles USING GIN(search_vector);
-CREATE INDEX idx_news_title_gin ON news_articles USING GIN(to_tsvector('korean', title));
+CREATE INDEX idx_news_title_gin ON news_articles USING GIN(to_tsvector('simple', title));
 
 -- 키워드 관련 인덱스
 CREATE INDEX idx_keywords_frequency ON keywords(frequency DESC);
@@ -86,7 +86,7 @@ CREATE INDEX idx_news_keywords_relevance ON news_keywords(relevance DESC);
 CREATE OR REPLACE FUNCTION update_search_vector()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.search_vector := to_tsvector('korean', COALESCE(NEW.title, '') || ' ' || COALESCE(NEW.content, '') || ' ' || COALESCE(NEW.ai_summary, ''));
+    NEW.search_vector := to_tsvector('simple', COALESCE(NEW.title, '') || ' ' || COALESCE(NEW.content, '') || ' ' || COALESCE(NEW.ai_summary, ''));
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

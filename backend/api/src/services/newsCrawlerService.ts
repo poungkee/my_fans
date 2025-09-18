@@ -3,9 +3,6 @@ import * as cheerio from 'cheerio';
 import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
-import { MediaSource } from '../entities/MediaSource';
-import { Category } from '../entities/Category';
-import { Journalist } from '../entities/Journalist';
 import { localAIService } from './localAIService';
 
 interface NaverNewsApiResponse {
@@ -395,9 +392,6 @@ class NewsCrawlerService {
   async saveNewsToDatabase(parsedNews: ParsedNews, categoryName: string, originalUrl: string): Promise<NewsArticle | null> {
     try {
       const newsRepo = AppDataSource.getRepository(NewsArticle);
-      const mediaRepo = AppDataSource.getRepository(MediaSource);
-      const categoryRepo = AppDataSource.getRepository(Category);
-      const journalistRepo = AppDataSource.getRepository(Journalist);
 
       // 중복 체크
       const existingNews = await newsRepo.findOne({ where: { url: originalUrl } });
@@ -406,67 +400,23 @@ class NewsCrawlerService {
         return existingNews;
       }
 
-      // MediaSource 찾기 또는 생성
-      let mediaSource = null;
-      if (parsedNews.mediaSource) {
-        mediaSource = await mediaRepo.findOne({ where: { name: parsedNews.mediaSource } });
-        if (!mediaSource) {
-          mediaSource = mediaRepo.create({
-            name: parsedNews.mediaSource,
-            domain: new URL(originalUrl).hostname,
-            description: `${parsedNews.mediaSource} 언론사`
-          });
-          await mediaRepo.save(mediaSource);
-        }
-      }
-
-      // Category 찾기 또는 생성
-      let category = await categoryRepo.findOne({ where: { name: categoryName } });
-      if (!category) {
-        category = categoryRepo.create({
-          name: categoryName,
-          slug: categoryName.toLowerCase(),
-          description: `${categoryName} 관련 뉴스`
-        });
-        await categoryRepo.save(category);
-      }
-
-      // Journalist 찾기 또는 생성
-      let journalist = null;
-      if (parsedNews.journalist && mediaSource) {
-        journalist = await journalistRepo.findOne({
-          where: {
-            name: parsedNews.journalist,
-            media_source: { id: mediaSource.id }
-          }
-        });
-        if (!journalist) {
-          journalist = journalistRepo.create({
-            name: parsedNews.journalist,
-            email: '',
-            media_source: mediaSource
-          });
-          await journalistRepo.save(journalist);
-        }
-      }
-
-      // NewsArticle 생성
+      // NewsArticle 생성 (단순화된 스키마)
       const article = newsRepo.create({
         title: parsedNews.title,
         content: parsedNews.content,
         url: originalUrl,
+        origin_url: originalUrl,
         image_url: parsedNews.imageUrl,
         video_url: parsedNews.videoUrl,
-        media_source: mediaSource,
-        category: category,
-        journalist: journalist,
+        source: parsedNews.mediaSource, // 단순 문자열
+        category: categoryName, // 단순 문자열
         pub_date: parsedNews.pubDate
       });
 
       const savedArticle = await newsRepo.save(article);
 
       // AI 요약 생성 (비동기로 처리)
-      if (parsedNews.content.length >= 50) {
+      if (parsedNews.content && parsedNews.content.length >= 50) {
         this.generateAISummaryAsync(savedArticle.id, parsedNews.content);
       }
 
