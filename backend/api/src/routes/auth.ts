@@ -113,6 +113,16 @@ router.post('/reset-password', async (req, res) => {
 });
 
 /* ==================== 소셜 로그인 ==================== */
+// SPA에서 Kakao/Naver 로그인 시작 URL을 먼저 요청할 수 있도록 별도 엔드포인트 제공
+router.get('/kakao/start', async (req, res) => {
+  try {
+    const authUrl = await authService.startKakaoLogin(req.session);
+    return res.json({ success: true, data: { redirectUrl: authUrl } });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '카카오 로그인 초기화 실패' });
+  }
+});
+
 // 카카오 시작 → 즉시 redirect
 router.get('/kakao', async (req, res) => {
   try {
@@ -138,6 +148,15 @@ router.get('/kakao/callback', async (req, res) => {
   } catch (e: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     return res.redirect(`${frontendUrl}/login-error?error=${encodeURIComponent(e.message)}`);
+  }
+});
+
+router.get('/naver/start', async (req, res) => {
+  try {
+    const authUrl = await authService.startNaverLogin(req.session);
+    return res.json({ success: true, data: { redirectUrl: authUrl } });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '네이버 로그인 초기화 실패' });
   }
 });
 

@@ -3,25 +3,36 @@ import crypto from 'crypto';
 
 // 카카오 OAuth Provider
 export class KakaoOAuthProvider {
+  private static requireEnv(name: 'KAKAO_CLIENT_ID' | 'KAKAO_CLIENT_SECRET'): string {
+    const value = process.env[name];
+    if (!value) {
+      throw new Error(`카카오 OAuth 환경 변수(${name})가 설정되지 않았습니다.`);
+    }
+    return value;
+  }
+
   // 카카오 인증 URL 생성
-  static buildAuthorizeUrl(state: string) {
+  static buildAuthorizeUrl(state: string, redirectUri: string) {
+    const clientId = this.requireEnv('KAKAO_CLIENT_ID');
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: process.env.KAKAO_CLIENT_ID || '',
-      redirect_uri: process.env.KAKAO_REDIRECT_URI || '',
+      client_id: clientId,
+      redirect_uri: redirectUri,
       state,
     });
     return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
   }
 
   // 콜백에서 받은 code로 토큰 교환
-  static async exchangeToken(code: string, state: string) {
+  static async exchangeToken(code: string, redirectUri: string) {
+    const clientId = this.requireEnv('KAKAO_CLIENT_ID');
+    const clientSecret = this.requireEnv('KAKAO_CLIENT_SECRET');
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
-      client_id: process.env.KAKAO_CLIENT_ID || '',
-      client_secret: process.env.KAKAO_CLIENT_SECRET || '',
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri, // ✅ redirect_uri 추가
       code,
-      state,
     });
 
     const { data } = await axios.post(
@@ -64,13 +75,13 @@ export class NaverOAuthProvider {
   }
 
   // 콜백에서 받은 code로 토큰 교환
-  static async exchangeToken(code: string, state: string) {
+  static async exchangeToken(code: string, redirectUri: string) {
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: process.env.NAVER_CLIENT_ID || '',
       client_secret: process.env.NAVER_CLIENT_SECRET || '',
+      redirect_uri: redirectUri, // ✅ redirect_uri 추가
       code,
-      state,
     });
 
     const { data } = await axios.post(
@@ -101,4 +112,3 @@ export class NaverOAuthProvider {
     return crypto.randomBytes(24).toString('hex');
   }
 }
-

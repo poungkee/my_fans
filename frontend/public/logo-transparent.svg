@@ -1,0 +1,83 @@
+<svg width="120" height="48" viewBox="0 0 120 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 보라색 그라디언트 -->
+    <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 빤짝빤짝 효과를 위한 애니메이션 그라디언트 -->
+    <linearGradient id="sparkleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1">
+        <animate attributeName="stop-color"
+                 values="#667eea;#a855f7;#ec4899;#f59e0b;#667eea"
+                 dur="2s"
+                 repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1">
+        <animate attributeName="stop-color"
+                 values="#764ba2;#ec4899;#f59e0b;#10b981;#764ba2"
+                 dur="2s"
+                 repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1">
+        <animate attributeName="stop-color"
+                 values="#9333ea;#f59e0b;#10b981;#06b6d4;#9333ea"
+                 dur="2s"
+                 repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+
+    <!-- 그림자 효과 -->
+    <filter id="purpleShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="rgba(102, 126, 234, 0.6)"/>
+    </filter>
+
+    <!-- 빤짝빤짝 별 효과 -->
+    <g id="sparkle">
+      <circle r="1" fill="#fbbf24">
+        <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+  </defs>
+
+  <!-- 배경 별들 (빤짝빤짝 효과) -->
+  <use href="#sparkle" x="15" y="12">
+    <animateTransform attributeName="transform" type="scale" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+  </use>
+  <use href="#sparkle" x="95" y="15">
+    <animateTransform attributeName="transform" type="scale" values="0;1;0" dur="2.5s" repeatCount="indefinite"/>
+  </use>
+  <use href="#sparkle" x="25" y="38">
+    <animateTransform attributeName="transform" type="scale" values="0;1;0" dur="1.8s" repeatCount="indefinite"/>
+  </use>
+  <use href="#sparkle" x="100" y="35">
+    <animateTransform attributeName="transform" type="scale" values="0;1;0" dur="2.2s" repeatCount="indefinite"/>
+  </use>
+
+  <!-- FANS 텍스트 (빤짝빤짝 색상 애니메이션) -->
+  <text x="60" y="30"
+        font-family="Arial, sans-serif"
+        font-size="24"
+        font-weight="800"
+        text-anchor="middle"
+        letter-spacing="1px"
+        fill="url(#sparkleGradient)"
+        filter="url(#purpleShadow)">FANS
+    <!-- 텍스트에 반짝이는 효과 추가 -->
+    <animate attributeName="opacity" values="0.8;1;0.8" dur="3s" repeatCount="indefinite"/>
+  </text>
+
+  <!-- 추가 반짝이 효과 오버레이 -->
+  <text x="60" y="30"
+        font-family="Arial, sans-serif"
+        font-size="24"
+        font-weight="800"
+        text-anchor="middle"
+        letter-spacing="1px"
+        fill="rgba(255,255,255,0.3)"
+        filter="url(#purpleShadow)">FANS
+    <animate attributeName="opacity" values="0;0.5;0" dur="1s" repeatCount="indefinite"/>
+  </text>
+</svg>

@@ -40,7 +40,7 @@ app.use(helmet({
   },
 }));
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.0.3:3000', 'http://192.168.0.3:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -100,7 +100,7 @@ async function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🌐 External access: http://192.168.0.3:${PORT}/health`);
+      console.log(`🌐 Local access: http://localhost:${PORT}/health`);
     });
   } catch (error) {
     console.error('❌ Database connection failed:', error);
