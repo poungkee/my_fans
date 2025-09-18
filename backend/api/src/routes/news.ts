@@ -12,6 +12,12 @@ function mapArticle(a: NewsArticle) {
     (a.content || "").replace(/\s+/g, " ").slice(0, 160) +
     ((a.content || "").length > 160 ? "…" : "");
 
+  // 카테고리 ID를 이름으로 매핑
+  const categoryIdToName: { [key: number]: string } = {
+    1: '정치', 2: '경제', 3: '사회', 4: '연예',
+    5: '생활/문화', 6: 'IT/과학', 7: '세계', 8: '스포츠'
+  };
+
   return {
     id: a.id,
     title: a.title,
@@ -26,8 +32,8 @@ function mapArticle(a: NewsArticle) {
     summary: a.short_ai_summary || a.ai_summary || a.summary || fallbackSummary,
 
     // 메타 (단순화된 문자열)
-    source: a.source || null,
-    category: a.category || null,
+    source: null,
+    category: categoryIdToName[a.category_id] || null,
     pub_date: a.pub_date,
     time: a.pub_date,
   };
@@ -51,10 +57,19 @@ router.get("/feed", async (req: Request, res: Response) => {
         .map((s) => s.trim())
         .filter(Boolean) || [];
 
+    // 카테고리 이름을 ID로 매핑
+    const categoryNameToId: { [key: string]: number } = {
+      '정치': 1, '경제': 2, '사회': 3, '연예': 4,
+      '생활/문화': 5, 'IT/과학': 6, '세계': 7, '스포츠': 8
+    };
+
     // 최신순
     // 카테고리 필터가 있으면 where 에 포함
     const where = topics.length
-      ? topics.map((t) => ({ category: t }))
+      ? topics
+          .map((t) => categoryNameToId[t])
+          .filter(id => id !== undefined)
+          .map((category_id) => ({ category_id }))
       : {};
 
     const list = await repo.find({

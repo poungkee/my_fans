@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: fans_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - fans_network
     healthcheck:

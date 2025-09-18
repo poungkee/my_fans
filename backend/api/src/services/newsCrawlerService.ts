@@ -400,7 +400,19 @@ class NewsCrawlerService {
         return existingNews;
       }
 
-      // NewsArticle 생성 (단순화된 스키마)
+      // 카테고리 ID 매핑
+      const categoryIdMap: { [key: string]: number } = {
+        '정치': 1,
+        '경제': 2,
+        '사회': 3,
+        '연예': 4,
+        '생활/문화': 5,
+        'IT/과학': 6,
+        '세계': 7,
+        '스포츠': 8
+      };
+
+      // NewsArticle 생성 (새 스키마)
       const article = newsRepo.create({
         title: parsedNews.title,
         content: parsedNews.content,
@@ -408,8 +420,8 @@ class NewsCrawlerService {
         origin_url: originalUrl,
         image_url: parsedNews.imageUrl,
         video_url: parsedNews.videoUrl,
-        source: parsedNews.mediaSource, // 단순 문자열
-        category: categoryName, // 단순 문자열
+        media_source_id: 1, // 기본값: 네이버뉴스
+        category_id: categoryIdMap[categoryName] || 1, // 기본값: 정치
         pub_date: parsedNews.pubDate
       });
 

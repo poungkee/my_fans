@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn } from 'typeorm';
 import { Keyword } from './Keyword';
 
 @Entity('news_articles')
@@ -19,11 +19,11 @@ export class NewsArticle {
   @Column({ type: 'text', nullable: true })
   ai_summary?: string; // AI 생성 요약
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  short_ai_summary?: string; // 짧은 AI 요약 (20-30자)
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  short_ai_summary?: string; // 짧은 AI 요약
 
   // URL 정보
-  @Column({ type: 'varchar', length: 1000, nullable: true })
+  @Column({ type: 'varchar', length: 1000, nullable: true, unique: true })
   url?: string; // 네이버 뉴스 URL
 
   @Column({ type: 'varchar', length: 1000, nullable: true })
@@ -36,12 +36,34 @@ export class NewsArticle {
   @Column({ type: 'varchar', length: 1000, nullable: true })
   video_url?: string;
 
-  // 메타데이터 (단순화된 문자열)
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  source?: string; // 언론사
+  // 관계형 참조 (새 스키마)
+  @Column({ type: 'integer' })
+  media_source_id: number;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  category?: string; // 카테고리
+  @Column({ type: 'integer', nullable: true })
+  journalist_id?: number;
+
+  @Column({ type: 'integer' })
+  category_id: number;
+
+  // 추가 통계 필드
+  @Column({ type: 'integer', default: 0 })
+  view_count: number;
+
+  @Column({ type: 'integer', default: 0 })
+  like_count: number;
+
+  @Column({ type: 'integer', default: 0 })
+  dislike_count: number;
+
+  @Column({ type: 'integer', default: 0 })
+  scrap_count: number;
+
+  @Column({ type: 'integer', default: 0 })
+  comment_count: number;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
+  importance_score?: number;
 
   // 날짜
   @Column({ type: 'timestamptz', nullable: true })
@@ -52,10 +74,6 @@ export class NewsArticle {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at: Date;
-
-  // 전문검색용 (PostgreSQL tsvector)
-  @Column({ type: 'tsvector', nullable: true })
-  search_vector?: string;
 
   // 키워드 관계 (다대다)
   @ManyToMany(() => Keyword, keyword => keyword.articles)
