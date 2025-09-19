@@ -485,7 +485,9 @@ class NewsCrawlerService {
           }
         }
 
-        // 요청 간격 조절 (1초 대기)
+        // 🕒 개별 뉴스 기사 간 요청 간격 조절
+        // 네이버 API 부하 방지를 위한 딜레이 (밀리초 단위)
+        // 1000ms = 1초, 500ms = 0.5초, 2000ms = 2초
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
@@ -505,7 +507,10 @@ class NewsCrawlerService {
         const articles = await this.crawlNewsByCategory(category.name, limitPerCategory);
         results[category.name] = articles;
 
-        // 카테고리 간 요청 간격 (2초 대기)
+        // 🕒 카테고리 간 요청 간격 조절
+        // 각 카테고리 크롤링 완료 후 다음 카테고리로 넘어가기 전 대기 시간
+        // 2000ms = 2초, 1000ms = 1초, 3000ms = 3초
+        // 값을 줄이면 더 빠르게, 늘리면 더 안전하게 크롤링됩니다
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
         console.error(`${category.name} 카테고리 수집 실패:`, error);

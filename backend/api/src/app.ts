@@ -14,6 +14,7 @@ import commonRoutes from './routes/common';
 import marketSummaryRoutes from "./routes/marketSummary";
 import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
+import schedulerRoutes from './routes/scheduler';
 
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
@@ -90,6 +91,7 @@ app.use('/api', crawlerRoutes);
 app.use('/api', commonRoutes);
 app.use('/api', newsRoutes);
 app.use("/api/market", marketSummaryRoutes);
+app.use('/api', schedulerRoutes);
 
 
 async function startServer() {
