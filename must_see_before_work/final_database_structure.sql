@@ -9,18 +9,18 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- 텍스트 검색용
 
 -- 기존 테이블 삭제 (개발 환경용)
-DROP TABLE IF EXISTS news_keywords CASCADE;
-DROP TABLE IF EXISTS bias_analysis CASCADE;
-DROP TABLE IF EXISTS ai_recommendations CASCADE;
-DROP TABLE IF EXISTS article_stats CASCADE;
-DROP TABLE IF EXISTS bookmarks CASCADE;
-DROP TABLE IF EXISTS user_actions CASCADE;
-DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS news_articles CASCADE;
-DROP TABLE IF EXISTS keywords CASCADE;
-DROP TABLE IF EXISTS categories CASCADE;
-DROP TABLE IF EXISTS sources CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+-- DROP TABLE IF EXISTS news_keywords CASCADE;
+-- DROP TABLE IF EXISTS bias_analysis CASCADE;
+-- DROP TABLE IF EXISTS ai_recommendations CASCADE;
+-- DROP TABLE IF EXISTS article_stats CASCADE;
+-- DROP TABLE IF EXISTS bookmarks CASCADE;
+-- DROP TABLE IF EXISTS user_actions CASCADE;
+-- DROP TABLE IF EXISTS user_preferences CASCADE;
+-- DROP TABLE IF EXISTS news_articles CASCADE;
+-- DROP TABLE IF EXISTS keywords CASCADE;
+-- DROP TABLE IF EXISTS categories CASCADE;
+-- DROP TABLE IF EXISTS sources CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
 
 -- ================================
 -- 1. 기본 마스터 테이블
@@ -76,19 +76,19 @@ CREATE TABLE news_articles (
     ai_summary TEXT, -- AI 요약만 저장
     url VARCHAR(1000) UNIQUE,
     image_url VARCHAR(1000),
-
+    
     -- 정규화된 FK
     source_id BIGINT REFERENCES sources(id) ON UPDATE CASCADE,
     category_id BIGINT REFERENCES categories(id) ON UPDATE CASCADE,
-
+    
     -- 기자 정보
     journalist VARCHAR(100),
-
+    
     -- 시간 정보
     pub_date TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-
+    
     -- 전문 검색용 벡터
     search_vector tsvector
 );
@@ -115,7 +115,7 @@ CREATE TABLE user_actions (
     reading_percentage INTEGER CHECK (reading_percentage >= 0 AND reading_percentage <= 100), -- 읽은 비율(%)
     weight DOUBLE PRECISION DEFAULT 1.0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-
+    
     -- 중복 방지 (VIEW는 여러 번 가능하므로 제외)
     CONSTRAINT uk_user_article_action UNIQUE (user_id, article_id, action_type)
 );
@@ -160,7 +160,7 @@ CREATE TABLE ai_recommendations (
     was_read BOOLEAN DEFAULT false,
     feedback_score INTEGER CHECK (feedback_score IN (-1, 0, 1)),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-
+    
     -- 사용자별 기사당 최신 추천만 유지
     CONSTRAINT uk_user_article_recommendation UNIQUE (user_id, article_id)
 );
@@ -171,21 +171,21 @@ CREATE TABLE bias_analysis (
     article_id BIGINT REFERENCES news_articles(id) ON DELETE CASCADE,
     source_id BIGINT REFERENCES sources(id),
     journalist VARCHAR(100),
-
+    
     -- 편향성 점수
     political_bias DECIMAL(3,1) CHECK (political_bias >= -10 AND political_bias <= 10),
     economic_bias DECIMAL(3,1) CHECK (economic_bias >= -10 AND economic_bias <= 10),
     social_bias DECIMAL(3,1) CHECK (social_bias >= -10 AND social_bias <= 10),
-
+    
     confidence_level DECIMAL(3,2) CHECK (confidence_level >= 0 AND confidence_level <= 1),
     analysis_method VARCHAR(50),
     sample_size INTEGER,
-
+    
     -- 추가 분석 데이터 (JSON)
     analysis_data JSONB,
-
+    
     analyzed_at TIMESTAMPTZ DEFAULT NOW(),
-
+    
     -- 기사당 최신 분석만 유지
     CONSTRAINT uk_article_bias UNIQUE (article_id)
 );
@@ -196,16 +196,16 @@ CREATE TABLE user_preferences (
     preferred_categories JSONB, -- {"정치": 0.8, "경제": 0.6}
     preferred_keywords JSONB,    -- {"AI": 0.9, "블록체인": 0.7}
     preferred_sources JSONB,     -- {"조선일보": 0.3, "한겨레": 0.8}
-
+    
     -- 선택적 인구통계
     age INTEGER CHECK (age >= 0 AND age <= 150),
     gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other', 'unknown')),
     location VARCHAR(100),
-
+    
     -- 읽기 패턴
     avg_reading_time INTEGER,
     preferred_time_slots JSONB, -- {"morning": 0.8, "evening": 0.6}
-
+    
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -282,7 +282,7 @@ CREATE TRIGGER trigger_preferences_updated
 CREATE OR REPLACE FUNCTION update_search_vector()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.search_vector :=
+    NEW.search_vector := 
         setweight(to_tsvector('simple', coalesce(NEW.title, '')), 'A') ||
         setweight(to_tsvector('simple', coalesce(NEW.ai_summary, '')), 'B') ||
         setweight(to_tsvector('simple', coalesce(NEW.content, '')), 'C');
@@ -302,48 +302,48 @@ BEGIN
     INSERT INTO article_stats (article_id)
     VALUES (NEW.article_id)
     ON CONFLICT (article_id) DO NOTHING;
-
+    
     -- action_type에 따라 카운트 업데이트
     IF TG_OP = 'INSERT' THEN
         UPDATE article_stats
-        SET
-            view_count = CASE
-                WHEN NEW.action_type = 'VIEW' THEN view_count + 1
-                ELSE view_count
+        SET 
+            view_count = CASE 
+                WHEN NEW.action_type = 'VIEW' THEN view_count + 1 
+                ELSE view_count 
             END,
-            like_count = CASE
-                WHEN NEW.action_type = 'LIKE' THEN like_count + 1
-                ELSE like_count
+            like_count = CASE 
+                WHEN NEW.action_type = 'LIKE' THEN like_count + 1 
+                ELSE like_count 
             END,
-            dislike_count = CASE
-                WHEN NEW.action_type = 'DISLIKE' THEN dislike_count + 1
-                ELSE dislike_count
+            dislike_count = CASE 
+                WHEN NEW.action_type = 'DISLIKE' THEN dislike_count + 1 
+                ELSE dislike_count 
             END,
-            bookmark_count = CASE
-                WHEN NEW.action_type = 'BOOKMARK' THEN bookmark_count + 1
-                ELSE bookmark_count
+            bookmark_count = CASE 
+                WHEN NEW.action_type = 'BOOKMARK' THEN bookmark_count + 1 
+                ELSE bookmark_count 
             END,
             updated_at = NOW()
         WHERE article_id = NEW.article_id;
     ELSIF TG_OP = 'DELETE' THEN
         UPDATE article_stats
-        SET
-            like_count = CASE
+        SET 
+            like_count = CASE 
                 WHEN OLD.action_type = 'LIKE' THEN GREATEST(like_count - 1, 0)
-                ELSE like_count
+                ELSE like_count 
             END,
-            dislike_count = CASE
+            dislike_count = CASE 
                 WHEN OLD.action_type = 'DISLIKE' THEN GREATEST(dislike_count - 1, 0)
-                ELSE dislike_count
+                ELSE dislike_count 
             END,
-            bookmark_count = CASE
+            bookmark_count = CASE 
                 WHEN OLD.action_type = 'BOOKMARK' THEN GREATEST(bookmark_count - 1, 0)
-                ELSE bookmark_count
+                ELSE bookmark_count 
             END,
             updated_at = NOW()
         WHERE article_id = OLD.article_id;
     END IF;
-
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -364,8 +364,8 @@ BEGIN
     ELSIF TG_OP = 'DELETE' THEN
         -- 북마크 삭제 시 user_actions에서도 삭제
         DELETE FROM user_actions
-        WHERE user_id = OLD.user_id
-        AND article_id = OLD.news_id
+        WHERE user_id = OLD.user_id 
+        AND article_id = OLD.news_id 
         AND action_type = 'BOOKMARK';
     END IF;
     RETURN NEW;
@@ -382,7 +382,7 @@ CREATE TRIGGER trigger_bookmark_sync
 
 -- 뉴스 상세 뷰 (조인 간소화)
 CREATE VIEW v_news_detail AS
-SELECT
+SELECT 
     n.id,
     n.title,
     n.content,
@@ -405,7 +405,7 @@ LEFT JOIN article_stats st ON n.id = st.article_id;
 
 -- 인기 뉴스 뷰 (7일 기준)
 CREATE VIEW v_trending_news AS
-SELECT
+SELECT 
     n.id,
     n.title,
     LEFT(n.ai_summary, 100) as short_summary,
@@ -426,7 +426,7 @@ LIMIT 100;
 
 -- 사용자 활동 요약 뷰
 CREATE VIEW v_user_activity_summary AS
-SELECT
+SELECT 
     u.id as user_id,
     u.username,
     COUNT(DISTINCT CASE WHEN ua.action_type = 'VIEW' THEN ua.article_id END) as viewed_articles,
@@ -443,19 +443,31 @@ GROUP BY u.id, u.username;
 -- ================================
 
 -- 기본 카테고리
-INSERT INTO categories (name) VALUES
-    ('정치'), ('경제'), ('사회'), ('생활/문화'),
+INSERT INTO categories (name) VALUES 
+    ('정치'), ('경제'), ('사회'), ('생활/문화'), 
     ('IT/과학'), ('세계'), ('스포츠'), ('연예')
 ON CONFLICT (name) DO NOTHING;
 
 -- 주요 언론사 (예시)
-INSERT INTO sources (name) VALUES
-    ('조선일보'), ('중앙일보'), ('동아일보'),
+INSERT INTO sources (name) VALUES 
+    ('조선일보'), ('중앙일보'), ('동아일보'), 
     ('한겨레'), ('경향신문'), ('한국일보'),
     ('매일경제'), ('한국경제'), ('머니투데이'),
     ('YTN'), ('연합뉴스'), ('JTBC'),
     ('SBS'), ('KBS'), ('MBC')
 ON CONFLICT (name) DO NOTHING;
+
+-- ================================
+-- 10. 권한 설정 (프로덕션용)
+-- ================================
+
+-- 읽기 전용 사용자를 위한 권한 (선택사항)
+-- GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+-- GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO readonly_user;
+
+-- 애플리케이션 사용자 권한 (선택사항)
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+-- GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO app_user;
 
 -- ================================
 -- 완료 메시지
