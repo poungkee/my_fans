@@ -1,0 +1,93 @@
+# ===================================
+# FANS Project - Root .gitignore
+# ===================================
+
+# === Backend API ===
+backend/api/node_modules/
+backend/api/dist/
+backend/api/build/
+backend/api/.env
+backend/api/.env.local
+backend/api/.env.development.local
+backend/api/.env.test.local
+backend/api/.env.production.local
+backend/api/logs/
+backend/api/tmp/
+backend/api/temp/
+backend/api/uploads/
+backend/api/coverage/
+backend/api/*.log
+backend/api/*.tsbuildinfo
+
+# === Frontend ===
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/coverage/
+frontend/*.log
+
+# === Docker ===
+# Docker data volumes (if using local volumes)
+**/postgres_data/
+**/redis_data/
+
+# === Documentation (temporary work files) ===
+docs/
+must\ see\ before\ work/
+
+# === IDE and Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS Generated ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# === Cache ===
+.npm
+.cache/
+.parcel-cache/
+.eslintcache
+
+# === Temporary ===
+*.tmp
+*.temp
+.nyc_output
+
+# === Database ===
+*.sqlite
+*.db
+
+# === TypeScript ===
+*.tsbuildinfo
+
+# === Package managers ===
+*.tgz
+.yarn-integrity
+
+# === Security (in case of accidental commits) ===
+*.pem
+*.key
+*.crt
+secrets/
+.secrets/
