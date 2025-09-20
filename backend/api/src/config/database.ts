@@ -1,8 +1,17 @@
 import { DataSource } from 'typeorm';
 import {
   User,
+  Source,
+  Category,
+  Keyword,
   NewsArticle,
-  Keyword
+  NewsKeyword,
+  UserAction,
+  Bookmark,
+  ArticleStat,
+  AIRecommendation,
+  BiasAnalysis,
+  UserPreference
 } from '../entities';
 
 const isTrue = (value: string | undefined) => value === '1' || value?.toLowerCase() === 'true';
@@ -29,8 +38,17 @@ export const AppDataSource = new DataSource({
   logging: shouldLogQueries(),
   entities: [
     User,
+    Source,
+    Category,
+    Keyword,
     NewsArticle,
-    Keyword
+    NewsKeyword,
+    UserAction,
+    Bookmark,
+    ArticleStat,
+    AIRecommendation,
+    BiasAnalysis,
+    UserPreference
   ],
   migrations: ['src/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts']
