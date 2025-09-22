@@ -69,7 +69,7 @@ export class AuthService {
   }
 
   // ---------- 회원가입 ----------
-  async register(registerData: RegisterDto): Promise<{ user: User; message: string }> {
+  async register(registerData: RegisterDto): Promise<{ user: User; token: string; message: string }> {
     const { name, username, email, password, confirmPassword, phone, age, gender, location } = registerData;
 
     if (password !== confirmPassword) throw new Error('비밀번호가 일치하지 않습니다.');
@@ -85,13 +85,12 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 12);
 
     const user = this.userRepository.create({
-      name,
+      userName: name,
       username,
       email,
       passwordHash: passwordHash,
-      phone,
+      tel: phone,
       provider: 'local',
-      emailVerified: true,
       active: true,
     });
 
@@ -103,7 +102,14 @@ export class AuthService {
       console.error('환영 이메일 전송 실패:', err);
     }
 
-    return { user: savedUser, message: '회원가입이 완료되었습니다. 로그인해주세요.' };
+    // 회원가입 후 자동 로그인을 위한 토큰 생성
+    const token = this.generateJwtToken(savedUser, false);
+
+    return {
+      user: savedUser,
+      token,
+      message: '회원가입이 완료되었습니다. 프로필을 설정해주세요.'
+    };
   }
 
   // ---------- 로그인 ----------
@@ -178,7 +184,7 @@ export class AuthService {
       if (existing) {
         existing.provider = 'kakao';
         existing.socialToken = providerId;
-        existing.name = name || existing.name;
+        existing.userName = name || existing.userName;
         if (profileImage) existing.profileImage = profileImage;
         user = await this.userRepository.save(existing);
       }
@@ -189,7 +195,7 @@ export class AuthService {
         username: `kakao_${providerId || 'unknown'}`,
         email: email || `kakao_${providerId || 'unknown'}@kakao.local`,
         passwordHash: '',
-        name: name || undefined,
+        userName: name || undefined,
         provider: 'kakao',
         socialToken: providerId || undefined,
         profileImage: profileImage || undefined,
@@ -200,8 +206,8 @@ export class AuthService {
       user = await this.userRepository.save(user);
     } else {
       let needsSave = false;
-      if (name && name !== user.name) {
-        user.name = name;
+      if (name && name !== user.userName) {
+        user.userName = name;
         needsSave = true;
       }
       if (profileImage && profileImage !== user.profileImage) {
@@ -263,7 +269,7 @@ export class AuthService {
       if (existing) {
         existing.provider = 'naver';
         existing.socialToken = providerId;
-        existing.name = name || existing.name;
+        existing.userName = name || existing.userName;
         if (profileImage) existing.profileImage = profileImage;
         user = await this.userRepository.save(existing);
       }
@@ -274,7 +280,7 @@ export class AuthService {
         username: `naver_${providerId || 'unknown'}`,
         email: email || `naver_${providerId || 'unknown'}@naver.local`,
         passwordHash: '',
-        name: name || undefined,
+        userName: name || undefined,
         provider: 'naver',
         socialToken: providerId || undefined,
         profileImage: profileImage || undefined,
@@ -285,8 +291,8 @@ export class AuthService {
       user = await this.userRepository.save(user);
     } else {
       let needsSave = false;
-      if (name && name !== user.name) {
-        user.name = name;
+      if (name && name !== user.userName) {
+        user.userName = name;
         needsSave = true;
       }
       if (profileImage && profileImage !== user.profileImage) {
@@ -322,8 +328,30 @@ export class AuthService {
   }
 
   // ---------- 프로필 관리 ----------
-  async getUserProfile(userId: number): Promise<User | null> {
-    return await this.userRepository.findOne({ where: { id: userId, active: true } });
+  async getUserProfile(userId: number): Promise<any | null> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) return null;
+
+    // user_preferences 데이터도 함께 가져오기
+    const preferences = await this.getUserPreferences(userId);
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.userName,
+      phone: user.tel,
+      profileImage: user.profileImage,
+      provider: user.provider,
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin,
+      // preferences 데이터 추가
+      age: preferences?.age || null,
+      gender: preferences?.gender || null,
+      location: preferences?.location || null,
+      preferredCategories: preferences?.preferred_categories || [],
+      preferredSources: preferences?.preferred_sources || []
+    };
   }
 
   async updateUserProfile(userId: number, updateData: any): Promise<User> {
@@ -331,6 +359,176 @@ export class AuthService {
     const updatedUser = await this.userRepository.findOne({ where: { id: userId } });
     if (!updatedUser) throw new Error('사용자를 찾을 수 없습니다.');
     return updatedUser;
+  }
+
+  // ---------- 프로필 셋업 ----------
+  async setupUserProfile(userId: number, profileData: {
+    age?: number;
+    gender?: string;
+    location?: string;
+    preferredCategories?: string[];
+    preferredSources?: string[];
+  }): Promise<any> {
+    const { age, gender, location, preferredCategories, preferredSources } = profileData;
+
+    // user_preferences 테이블에 데이터 삽입 또는 업데이트
+    const query = `
+      INSERT INTO user_preferences (user_id, age, gender, location, preferred_categories, preferred_sources, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        age = EXCLUDED.age,
+        gender = EXCLUDED.gender,
+        location = EXCLUDED.location,
+        preferred_categories = EXCLUDED.preferred_categories,
+        preferred_sources = EXCLUDED.preferred_sources,
+        updated_at = NOW()
+      RETURNING *;
+    `;
+
+    const result = await AppDataSource.query(query, [
+      userId,
+      age || null,
+      gender || null,
+      location || null,
+      preferredCategories ? JSON.stringify(preferredCategories) : null,
+      preferredSources ? JSON.stringify(preferredSources) : null
+    ]);
+
+    return result[0];
+  }
+
+  async getUserPreferences(userId: number): Promise<any> {
+    try {
+      const query = `
+        SELECT * FROM user_preferences WHERE user_id = $1;
+      `;
+
+      const result = await AppDataSource.query(query, [userId]);
+
+      if (result.length === 0) {
+        return null;
+      }
+
+      const preferences = result[0];
+
+      // JSON 필드들을 안전하게 파싱
+      return {
+        ...preferences,
+        preferred_categories: preferences.preferred_categories ?
+          (typeof preferences.preferred_categories === 'string' ?
+            JSON.parse(preferences.preferred_categories) : preferences.preferred_categories) : [],
+        preferred_sources: preferences.preferred_sources ?
+          (typeof preferences.preferred_sources === 'string' ?
+            JSON.parse(preferences.preferred_sources) : preferences.preferred_sources) : [],
+        preferred_keywords: preferences.preferred_keywords ?
+          (typeof preferences.preferred_keywords === 'string' ?
+            JSON.parse(preferences.preferred_keywords) : preferences.preferred_keywords) : [],
+        preferred_time_slots: preferences.preferred_time_slots ?
+          (typeof preferences.preferred_time_slots === 'string' ?
+            JSON.parse(preferences.preferred_time_slots) : preferences.preferred_time_slots) : []
+      };
+    } catch (error) {
+      console.error('Error getting user preferences:', error);
+      return null;
+    }
+  }
+
+  async updateUserPreferences(userId: number, profileData: {
+    age?: number;
+    gender?: string;
+    location?: string;
+    preferredCategories?: string[];
+    preferredSources?: string[];
+  }): Promise<any> {
+    return await this.setupUserProfile(userId, profileData);
+  }
+
+  // ---------- 이메일 인증 ----------
+  private verificationCodes = new Map<string, { code: string; userId: number; type: 'password' | 'delete'; expiry: Date }>();
+
+  async sendVerificationEmail(userId: number, type: 'password' | 'delete'): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 6자리 랜덤 코드 생성
+    const code = Math.random().toString(36).substr(2, 6).toUpperCase();
+
+    // 코드 만료 시간 (5분)
+    const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+    // 메모리에 저장 (실제 운영에서는 Redis 등 사용 권장)
+    const key = `${user.email}_${type}`;
+    this.verificationCodes.set(key, { code, userId, type, expiry });
+
+    // 이메일 발송
+    try {
+      const subject = type === 'password' ? '비밀번호 변경 인증코드' : '회원탈퇴 인증코드';
+      const message = `인증코드: ${code}\n5분 내에 입력해주세요.`;
+
+      await this.emailService.sendVerificationEmail(user.email, subject, message, code);
+
+      return { message: '인증코드가 이메일로 발송되었습니다.' };
+    } catch (err) {
+      console.error('이메일 발송 실패:', err);
+      throw new Error('이메일 발송에 실패했습니다.');
+    }
+  }
+
+  async verifyEmailCode(email: string, code: string, type: 'password' | 'delete'): Promise<{ valid: boolean; userId?: number }> {
+    const key = `${email}_${type}`;
+    const storedData = this.verificationCodes.get(key);
+
+    if (!storedData) {
+      return { valid: false };
+    }
+
+    // 만료 시간 확인
+    if (new Date() > storedData.expiry) {
+      this.verificationCodes.delete(key);
+      return { valid: false };
+    }
+
+    // 코드 일치 확인
+    if (storedData.code !== code.toUpperCase()) {
+      return { valid: false };
+    }
+
+    // 인증 성공 시 코드 삭제
+    this.verificationCodes.delete(key);
+    return { valid: true, userId: storedData.userId };
+  }
+
+  // ---------- 비밀번호 변경 ----------
+  async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 소셜 로그인 사용자는 비밀번호 변경 불가
+    if (user.provider !== 'local') {
+      throw new Error('소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.');
+    }
+
+    // 현재 비밀번호 확인
+    if (!user.passwordHash) {
+      throw new Error('비밀번호가 설정되지 않은 계정입니다.');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      throw new Error('현재 비밀번호가 올바르지 않습니다.');
+    }
+
+    // 새 비밀번호 해시화
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+    // 이전 비밀번호 저장 (필요시)
+    await this.userRepository.update(userId, {
+      passwordHash: newPasswordHash,
+      previousPw: user.passwordHash
+    });
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 
   // ---------- 회원탈퇴 ----------

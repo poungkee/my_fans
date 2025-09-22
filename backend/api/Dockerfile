@@ -7,20 +7,17 @@ WORKDIR /app
 # 패키지 파일 복사
 COPY package*.json ./
 
-# 의존성 설치
-RUN npm ci --only=production
+# 의존성 설치 (개발 의존성 포함)
+RUN npm install
 
 # 소스 코드 복사
 COPY . .
 
-# TypeScript 컴파일
-RUN npm run build
-
 # 포트 설정
-EXPOSE 3000
+EXPOSE 8000
 
-# 프로덕션 환경에서 실행
-ENV NODE_ENV=production
+# 개발 환경에서 실행
+ENV NODE_ENV=development
 
-# 애플리케이션 시작
-CMD ["npm", "start"]
+# 개발 모드로 애플리케이션 시작
+CMD ["npm", "run", "dev"]

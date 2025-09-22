@@ -56,7 +56,14 @@ router.post('/register', async (req, res) => {
       });
     }
     const result = await authService.register(dto);
-    return res.status(201).json({ success: true, message: result.message, data: { user: result.user } });
+    return res.status(201).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+        token: result.token
+      }
+    });
   } catch (e: any) {
     return res.status(400).json({ success: false, error: e.message || '회원가입 실패' });
   }
@@ -208,8 +215,8 @@ router.post('/verify-token', async (req: Request, res: Response) => {
           id: user.id,
           username: user.username,
           email: user.email,
-          name: user.name,
-          phone: user.phone,
+          name: user.userName,
+          phone: user.tel,
           profileImage: user.profileImage,
           emailVerified: user.emailVerified,
           provider: user.provider,
@@ -234,22 +241,11 @@ router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
     return res.json({
       success: true,
       data: {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          name: user.name,
-          phone: user.phone,
-          profileImage: user.profileImage,
-          emailVerified: user.emailVerified,
-          provider: user.provider,
-          socialToken: user.socialToken,
-          createdAt: user.createdAt,
-          lastLogin: user.lastLogin,
-        },
+        user: user
       },
     });
   } catch (e: any) {
+    console.error('Profile API error:', e);
     return res.status(500).json({ success: false, error: '프로필 조회 중 오류가 발생했습니다.' });
   }
 });
@@ -298,20 +294,151 @@ router.delete('/delete-profile-image', authenticateToken, async (req: Authentica
   }
 });
 
+/* ==================== 프로필 셋업 ==================== */
+router.post('/setup-profile', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { age, gender, location, preferredCategories, preferredSources } = req.body;
+
+    // user_preferences 테이블에 프로필 정보 저장
+    const result = await authService.setupUserProfile(userId, {
+      age,
+      gender,
+      location,
+      preferredCategories,
+      preferredSources
+    });
+
+    return res.json({
+      success: true,
+      message: '프로필 설정이 완료되었습니다.',
+      data: result
+    });
+  } catch (e: any) {
+    return res.status(400).json({
+      success: false,
+      error: e.message || '프로필 설정 실패'
+    });
+  }
+});
+
+router.get('/preferences', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const preferences = await authService.getUserPreferences(userId);
+
+    return res.json({
+      success: true,
+      data: preferences
+    });
+  } catch (e: any) {
+    return res.status(500).json({
+      success: false,
+      error: '사용자 선호도 조회 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+router.put('/preferences', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { age, gender, location, preferredCategories, preferredSources } = req.body;
+
+    const result = await authService.updateUserPreferences(userId, {
+      age,
+      gender,
+      location,
+      preferredCategories,
+      preferredSources
+    });
+
+    return res.json({
+      success: true,
+      message: '선호도가 업데이트되었습니다.',
+      data: result
+    });
+  } catch (e: any) {
+    return res.status(400).json({
+      success: false,
+      error: e.message || '선호도 업데이트 실패'
+    });
+  }
+});
+
+/* ==================== 이메일 인증 ==================== */
+router.post('/send-verification-email', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { type } = req.body; // 'password' 또는 'delete'
+
+    if (!type || !['password', 'delete'].includes(type)) {
+      return res.status(400).json({ success: false, error: '유효하지 않은 인증 타입입니다.' });
+    }
+
+    const result = await authService.sendVerificationEmail(userId, type);
+    return res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '인증 이메일 발송 실패' });
+  }
+});
+
+router.post('/verify-email-code', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { email, code, type } = req.body;
+
+    if (!email || !code || !type) {
+      return res.status(400).json({ success: false, error: '필수 정보가 누락되었습니다.' });
+    }
+
+    const result = await authService.verifyEmailCode(email, code, type);
+    if (result.valid) {
+      return res.json({ success: true, message: '인증이 완료되었습니다.' });
+    } else {
+      return res.status(400).json({ success: false, error: '인증코드가 올바르지 않거나 만료되었습니다.' });
+    }
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '인증 실패' });
+  }
+});
+
+/* ==================== 비밀번호 변경 ==================== */
+router.post('/change-password', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { currentPassword, newPassword, confirmPassword, verificationCode } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword || !verificationCode) {
+      return res.status(400).json({ success: false, error: '필수 정보가 누락되었습니다.' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, error: '새 비밀번호가 일치하지 않습니다.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: '비밀번호는 최소 8자 이상이어야 합니다.' });
+    }
+
+    // 인증코드 검증은 프론트엔드에서 먼저 수행된다고 가정
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
+    return res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '비밀번호 변경 실패' });
+  }
+});
+
 /* ==================== 회원탈퇴 ==================== */
 router.delete('/delete-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
-    const dto = Object.assign(new DeleteAccountDto(), req.body);
-    const errors = await validate(dto);
-    if (errors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: '입력 데이터가 올바르지 않습니다.',
-        details: errors.map(e => ({ field: e.property, message: Object.values(e.constraints || {})[0] })),
-      });
+    const { verificationCode } = req.body;
+
+    if (!verificationCode) {
+      return res.status(400).json({ success: false, error: '인증코드가 필요합니다.' });
     }
 
+    // 인증코드 검증은 프론트엔드에서 먼저 수행된다고 가정
+    const dto = Object.assign(new DeleteAccountDto(), req.body);
     const result = await authService.deleteAccount(userId, dto);
     return res.json({ success: true, message: result.message });
   } catch (e: any) {

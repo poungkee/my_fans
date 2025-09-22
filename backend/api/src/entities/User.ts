@@ -21,17 +21,8 @@ export class User {
     @Column({ type: 'varchar', length: 100, nullable: true, name: 'user_name' })
     userName?: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    name?: string;
-
     @Column({ type: 'varchar', length: 20, nullable: true })
     tel?: string;
-
-    @Column({ type: 'varchar', length: 20, nullable: true })
-    phone?: string;
-
-    @Column({ type: 'boolean', default: false, name: 'email_verified' })
-    emailVerified: boolean;
 
     @Column({ type: 'varchar', length: 500, nullable: true, name: 'profile_image' })
     profileImage?: string;

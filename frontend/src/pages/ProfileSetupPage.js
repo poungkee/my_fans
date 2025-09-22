@@ -7,8 +7,8 @@ const ProfileSetupPage = () => {
     age: '',
     gender: '',
     location: '',
-    preferred_categories: [],
-    preferred_media_sources: []
+    preferredCategories: [],
+    preferredSources: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,18 +32,18 @@ const ProfileSetupPage = () => {
   const handleCategoryChange = (category) => {
     setFormData(prev => ({
       ...prev,
-      preferred_categories: prev.preferred_categories.includes(category)
-        ? prev.preferred_categories.filter(c => c !== category)
-        : [...prev.preferred_categories, category]
+      preferredCategories: prev.preferredCategories.includes(category)
+        ? prev.preferredCategories.filter(c => c !== category)
+        : [...prev.preferredCategories, category]
     }));
   };
 
   const handleMediaSourceChange = (source) => {
     setFormData(prev => ({
       ...prev,
-      preferred_media_sources: prev.preferred_media_sources.includes(source)
-        ? prev.preferred_media_sources.filter(s => s !== source)
-        : [...prev.preferred_media_sources, source]
+      preferredSources: prev.preferredSources.includes(source)
+        ? prev.preferredSources.filter(s => s !== source)
+        : [...prev.preferredSources, source]
     }));
   };
 
@@ -66,36 +66,38 @@ const ProfileSetupPage = () => {
         return;
       }
 
-      // 사용자 프로필 업데이트 API 호출
-      const response = await fetch('/api/auth/profile', {
-        method: 'PUT',
+      // 사용자 프로필 셋업 API 호출
+      const response = await fetch('/api/auth/setup-profile', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({
-          ...formData,
           age: formData.age ? parseInt(formData.age) : null,
-          token: token // 백업용
+          gender: formData.gender || null,
+          location: formData.location || null,
+          preferredCategories: formData.preferredCategories,
+          preferredSources: formData.preferredSources
         })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('프로필 설정이 완료되었습니다! 마이페이지로 이동합니다.');
-        
+        setSuccess('프로필 설정이 완료되었습니다! 메인페이지로 이동합니다.');
+
         // localStorage와 sessionStorage의 사용자 정보 업데이트
-        const updatedUser = data.data.user;
+        const updatedUser = data.data || data.user;
         localStorage.setItem('user', JSON.stringify(updatedUser));
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
-        
+
         // 헤더 컴포넌트에 변경 알림
         window.dispatchEvent(new CustomEvent('loginStatusChange'));
-        
+
         setTimeout(() => {
-          navigate('/mypage');
+          navigate('/');
         }, 2000);
       } else {
         setError(data.error || '프로필 설정에 실패했습니다.');
@@ -172,9 +174,9 @@ const ProfileSetupPage = () => {
                 disabled={loading}
               >
                 <option value="">선택하세요</option>
-                <option value="남성">남성</option>
-                <option value="여성">여성</option>
-                <option value="기타">기타</option>
+                <option value="male">남성</option>
+                <option value="female">여성</option>
+                <option value="other">기타</option>
               </select>
             </div>
 
@@ -207,7 +209,7 @@ const ProfileSetupPage = () => {
                   <label key={category} className="checkbox-item">
                     <input
                       type="checkbox"
-                      checked={formData.preferred_categories.includes(category)}
+                      checked={formData.preferredCategories.includes(category)}
                       onChange={() => handleCategoryChange(category)}
                       disabled={loading}
                     />
@@ -233,7 +235,7 @@ const ProfileSetupPage = () => {
                   <label key={source} className="checkbox-item">
                     <input
                       type="checkbox"
-                      checked={formData.preferred_media_sources.includes(source)}
+                      checked={formData.preferredSources.includes(source)}
                       onChange={() => handleMediaSourceChange(source)}
                       disabled={loading}
                     />

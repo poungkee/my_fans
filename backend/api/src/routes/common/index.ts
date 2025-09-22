@@ -36,7 +36,7 @@ const SEARCH_OPTIONS = [
 ];
 
 // 카테고리 목록 API
-router.get('/categories', (req, res) => {
+router.get('/common/categories', (req, res) => {
   res.json({
     success: true,
     data: NEWS_CATEGORIES,
@@ -45,7 +45,7 @@ router.get('/categories', (req, res) => {
 });
 
 // 언론사 목록 API
-router.get('/media-sources', (req, res) => {
+router.get('/common/media-sources', (req, res) => {
   res.json({
     success: true,
     data: MEDIA_SOURCES,
@@ -54,7 +54,7 @@ router.get('/media-sources', (req, res) => {
 });
 
 // 검색 옵션 API
-router.get('/search-options', (req, res) => {
+router.get('/common/search-options', (req, res) => {
   res.json({
     success: true,
     data: {
@@ -66,7 +66,7 @@ router.get('/search-options', (req, res) => {
 });
 
 // 모든 공통 데이터 한번에 가져오기
-router.get('/all', (req, res) => {
+router.get('/common/all', (req, res) => {
   res.json({
     success: true,
     data: {
