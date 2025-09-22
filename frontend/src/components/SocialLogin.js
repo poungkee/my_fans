@@ -3,7 +3,10 @@ import React, { useState } from "react";
 import "./SocialLogin.css";
 
 const SocialLogin = ({ type = "login" }) => {
-  const [loading, setLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    kakao: false,
+    naver: false
+  });
 
   const resolveApiBase = () => {
     const fromEnv = (process.env.REACT_APP_API_BASE || '').trim();
@@ -17,7 +20,7 @@ const SocialLogin = ({ type = "login" }) => {
   };
 
   const go = async (provider) => {
-    setLoading(true);
+    setLoadingStates(prev => ({ ...prev, [provider]: true }));
 
     const candidates = [];
     try {
@@ -71,7 +74,7 @@ const SocialLogin = ({ type = "login" }) => {
       return;
     }
 
-    setLoading(false);
+    setLoadingStates(prev => ({ ...prev, [provider]: false }));
     const message = lastError?.message ? `소셜 로그인 시작에 실패했습니다: ${lastError.message}` : '소셜 로그인 시작에 실패했습니다.';
     alert(message);
   };
@@ -86,10 +89,10 @@ const SocialLogin = ({ type = "login" }) => {
         <button
           className="social-button kakao"
           onClick={() => go('kakao')}
-          disabled={loading}
+          disabled={loadingStates.kakao}
         >
           <span>
-            {loading
+            {loadingStates.kakao
               ? "처리 중..."
               : `카카오로 ${type === "login" ? "로그인" : "회원가입"}`}
           </span>
@@ -98,10 +101,10 @@ const SocialLogin = ({ type = "login" }) => {
         <button
           className="social-button naver"
           onClick={() => go('naver')}
-          disabled={loading}
+          disabled={loadingStates.naver}
         >
           <span>
-            {loading
+            {loadingStates.naver
               ? "처리 중..."
               : `네이버로 ${type === "login" ? "로그인" : "회원가입"}`}
           </span>

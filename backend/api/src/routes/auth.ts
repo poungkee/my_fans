@@ -158,6 +158,13 @@ router.get('/kakao/callback', async (req, res) => {
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+
+    // 신규 사용자인 경우 등록 페이지로 리다이렉트
+    if (e.message.startsWith('NEW_USER:')) {
+      const userData = e.message.substring(9); // 'NEW_USER:' 제거
+      return res.redirect(`${frontendUrl}/register?kakao=${encodeURIComponent(userData)}`);
+    }
+
     return res.redirect(`${frontendUrl}/login-error?error=${encodeURIComponent(e.message)}`);
   }
 });
@@ -195,6 +202,13 @@ router.get('/naver/callback', async (req, res) => {
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+
+    // 신규 네이버 사용자인 경우 회원가입 페이지로 리다이렉트
+    if (e.message.startsWith('NEW_USER:')) {
+      const userData = e.message.substring(9);
+      return res.redirect(`${frontendUrl}/register?naver=${encodeURIComponent(userData)}`);
+    }
+
     return res.redirect(`${frontendUrl}/login-error?error=${encodeURIComponent(e.message)}`);
   }
 });

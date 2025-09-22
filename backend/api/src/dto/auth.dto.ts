@@ -36,6 +36,18 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  socialToken?: string;
+
+  @IsOptional()
+  @IsString()
+  profileImage?: string;
 }
 
 export class LoginDto {

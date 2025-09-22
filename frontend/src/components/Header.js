@@ -128,6 +128,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
         setIsLoggedIn(false);
         setUser(null);
         setActiveDropdown(null);
+        alert('로그아웃되었습니다.');
         navigate('/');
       }
     } catch (error) {
@@ -291,9 +292,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       <div className="user-menu">
         <div className="user-dropdown">
           <div className="user-section">
-            {isLoggedIn && (user?.userName || user?.name) && (
+            {isLoggedIn && (user?.userName || user?.name || user?.username) && (
               <div className="welcome-message">
-                환영합니다 <span className="user-name-highlight">{user.userName || user.name}</span>님
+                환영합니다 <span className="user-name-highlight">{user.userName || user.name || user.username}</span>님
               </div>
             )}
             <div
@@ -302,26 +303,40 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             >
               {isLoggedIn ? (
                 user?.profileImage && user.profileImage.trim() !== '' ? (
-                  <img
-                    src={`http://localhost:3000${user.profileImage}?t=${Date.now()}`}
-                    alt="프로필 이미지"
-                    className="user-profile-image"
-                    crossOrigin="anonymous"
-                    onLoad={() => {
-                      console.log('✅ 헤더 이미지 로드 성공:', user.profileImage);
-                    }}
-                    onError={(e) => {
-                      console.error('❌ 헤더 이미지 로드 실패:', e.target.src);
-                      console.error('❌ 헤더 원본 경로:', user.profileImage);
-                      // 이미지 로드 실패 시 이름 첫 글자 표시
-                      e.target.style.display = 'none';
-                      const userName = user?.userName || user?.name;
-                      e.target.parentNode.innerHTML = userName ? userName.charAt(0).toUpperCase() : '👤';
-                    }}
-                  />
+                  <>
+                    <img
+                      src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                      alt="프로필 이미지"
+                      className="user-profile-image"
+                      crossOrigin="anonymous"
+                      onLoad={() => {
+                        console.log('✅ 헤더 이미지 로드 성공:', user.profileImage);
+                      }}
+                      onError={(e) => {
+                        console.error('❌ 헤더 이미지 로드 실패:', e.target.src);
+                        console.error('❌ 헤더 원본 경로:', user.profileImage);
+                        e.target.style.display = 'none';
+                        // 대체 텍스트 표시
+                        const fallback = e.target.nextElementSibling;
+                        if (fallback && fallback.classList.contains('user-profile-fallback')) {
+                          fallback.style.display = 'block';
+                        }
+                      }}
+                    />
+                    <span
+                      className="user-profile-fallback"
+                      style={{
+                        display: 'none',
+                        fontSize: '18px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {(user?.userName || user?.name || user?.username) ? (user.userName || user.name || user.username).charAt(0).toUpperCase() : '👤'}
+                    </span>
+                  </>
                 ) : (
                   // 이미지가 없을 때 이름 첫 글자 또는 기본 아이콘 표시
-                  (user?.userName || user?.name) ? (user.userName || user.name).charAt(0).toUpperCase() : '👤'
+                  (user?.userName || user?.name || user?.username) ? (user.userName || user.name || user.username).charAt(0).toUpperCase() : '👤'
                 )
               ) : '👤'}
             </div>
@@ -333,7 +348,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             {isLoggedIn ? (
               <>
                 <div className="user-info">
-                  <span className="user-name">{user?.userName || user?.name || '사용자'}</span>
+                  <span className="user-name">{user?.userName || user?.name || user?.username || '사용자'}</span>
                   <span className="user-email">{user?.email}</span>
                 </div>
                 <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
