@@ -91,3 +91,6 @@ lerna-debug.log*
 *.crt
 secrets/
 .secrets/
+
+# === Python Virtual Environment ===
+backend/ai-service/venv/
