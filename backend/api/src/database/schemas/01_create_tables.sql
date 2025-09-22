@@ -143,6 +143,9 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     notification_settings JSONB,
     reading_time_preference VARCHAR(20),
     language VARCHAR(10) DEFAULT 'ko',
+    age INTEGER,
+    gender VARCHAR(10),
+    location VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

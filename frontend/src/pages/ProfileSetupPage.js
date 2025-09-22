@@ -252,15 +252,25 @@ const ProfileSetupPage = () => {
 
             <div className="form-group">
               <label htmlFor="location">지역 (선택)</label>
-              <input
-                type="text"
+              <select
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                placeholder="거주 지역을 입력하세요 (예: 서울, 경기, 부산)"
                 disabled={loading}
-              />
+              >
+                <option value="">지역을 선택하세요</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+                <option value="강원">강원</option>
+                <option value="충북">충북</option>
+                <option value="충남">충남</option>
+                <option value="전북">전북</option>
+                <option value="전남">전남</option>
+                <option value="경북">경북</option>
+                <option value="경남">경남</option>
+                <option value="제주">제주</option>
+              </select>
             </div>
           </div>
         );
