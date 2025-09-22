@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from ai_module import AIModule
 import uvicorn
+import os
 
 app = FastAPI(title="FANS AI Service", version="1.0.0")
 
@@ -39,4 +40,5 @@ def summarize_text(request: SummarizeRequest):
         raise HTTPException(status_code=500, detail=f"AI 요약 생성 실패: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

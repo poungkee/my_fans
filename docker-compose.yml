@@ -27,13 +27,13 @@ services:
     build: ./backend/ai-service
     container_name: fans_ai_service
     ports:
-      - "8001:8001"
+      - "8000:8000"
     environment:
-      - PORT=8001
+      - PORT=8000
     networks:
       - fans_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,7 +43,7 @@ services:
     build: ./backend/api
     container_name: fans_main_api
     ports:
-      - "8000:8000"
+      - "3000:3000"
     environment:
       - NODE_ENV=development
       - DB_HOST=postgres
@@ -51,7 +51,7 @@ services:
       - DB_USERNAME=fans_user
       - DB_PASSWORD=fans_password
       - DB_DATABASE=fans_db
-      - AI_SERVICE_URL=http://ai-service:8001
+      - AI_SERVICE_URL=http://ai-service:8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,9 +68,9 @@ services:
     build: ./frontend
     container_name: fans_frontend
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://localhost:3000
     volumes:
       - ./frontend:/app
       - /app/node_modules
