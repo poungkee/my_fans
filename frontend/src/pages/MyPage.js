@@ -30,6 +30,25 @@ const MyPage = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleteVerificationSent, setDeleteVerificationSent] = useState(false);
 
+  // 프로필 이미지 업로드 상태
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImageLoading, setProfileImageLoading] = useState(false);
+  const [profileImageError, setProfileImageError] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState(null);
+
+  // 토큰 만료 확인 함수
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp < currentTime;
+    } catch (error) {
+      return true;
+    }
+  };
+
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
@@ -47,6 +66,18 @@ const MyPage = () => {
           return;
         }
 
+        // 토큰 만료 확인
+        if (isTokenExpired(token)) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('rememberMe');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+          navigate('/login');
+          return;
+        }
+
         // 사용자 프로필 정보 가져오기
         const response = await fetch('/api/auth/profile', {
           method: 'GET',
@@ -59,11 +90,12 @@ const MyPage = () => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('사용자 데이터:', data.data.user);
-          console.log('선호 카테고리:', data.data.user.preferredCategories);
-          console.log('선호 언론사:', data.data.user.preferredSources);
-          console.log('선호 언론사 타입:', typeof data.data.user.preferredSources);
-          console.log('선호 언론사 배열 여부:', Array.isArray(data.data.user.preferredSources));
+          if (data.data.user.profileImage) {
+            const imageUrl = `http://localhost:3000${data.data.user.profileImage}`;
+
+            // 이미지를 base64로 변환해서 로드
+            loadImageAsDataUrl(imageUrl);
+          }
           setUser(data.data.user);
         } else if (response.status === 401) {
           // 토큰이 만료된 경우
@@ -317,6 +349,161 @@ const MyPage = () => {
     }
   };
 
+  // 프로필 이미지 업로드 함수
+  const handleProfileImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileImageError('파일 크기는 5MB 이하여야 합니다.');
+      return;
+    }
+
+    // 파일 타입 체크
+    if (!file.type.startsWith('image/')) {
+      setProfileImageError('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    try {
+      setProfileImageLoading(true);
+      setProfileImageError('');
+
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const response = await fetch('/api/auth/upload-profile-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // 사용자 정보 즉시 업데이트
+        const newProfileImage = data.data.profileImage;
+
+        // 새 이미지를 base64로 변환
+        loadImageAsDataUrl(`http://localhost:3000${newProfileImage}`);
+
+        setUser(prevUser => ({
+          ...prevUser,
+          profileImage: newProfileImage
+        }));
+
+        // localStorage와 sessionStorage의 사용자 정보도 업데이트
+        const currentUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+        const updatedUser = { ...currentUser, profileImage: newProfileImage };
+
+        if (localStorage.getItem('user')) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        if (sessionStorage.getItem('user')) {
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+
+        // 헤더 컴포넌트에 변경 알림
+        window.dispatchEvent(new Event('loginStatusChange'));
+
+        alert('프로필 이미지가 성공적으로 업로드되었습니다.');
+      } else {
+        setProfileImageError(data.error || '이미지 업로드에 실패했습니다.');
+      }
+    } catch (err) {
+      setProfileImageError('서버 연결에 실패했습니다.');
+    } finally {
+      setProfileImageLoading(false);
+    }
+  };
+
+  // 프로필 이미지 삭제 함수
+  const handleProfileImageDelete = async () => {
+    if (!confirm('프로필 이미지를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      setProfileImageLoading(true);
+      setProfileImageError('');
+
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      const response = await fetch('/api/auth/delete-profile-image', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // 사용자 정보 즉시 업데이트
+        setUser(prevUser => ({
+          ...prevUser,
+          profileImage: null
+        }));
+
+        // localStorage와 sessionStorage의 사용자 정보도 업데이트
+        const currentUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+        const updatedUser = { ...currentUser, profileImage: null };
+
+        if (localStorage.getItem('user')) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        if (sessionStorage.getItem('user')) {
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+
+        // 헤더 컴포넌트에 변경 알림
+        window.dispatchEvent(new Event('loginStatusChange'));
+
+        alert('프로필 이미지가 삭제되었습니다.');
+      } else {
+        setProfileImageError(data.error || '이미지 삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      setProfileImageError('서버 연결에 실패했습니다.');
+    } finally {
+      setProfileImageLoading(false);
+    }
+  };
+
+  // 이미지를 base64로 로드하는 함수
+  const loadImageAsDataUrl = async (imageUrl) => {
+    try {
+      const response = await fetch(imageUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = () => {
+          setImageDataUrl(reader.result);
+        };
+        reader.onerror = () => {
+          setImageDataUrl(null);
+        };
+        reader.readAsDataURL(blob);
+      } else {
+        setImageDataUrl(null);
+      }
+    } catch (error) {
+      setImageDataUrl(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mypage-container">
@@ -374,6 +561,80 @@ const MyPage = () => {
             <h2>📋 회원정보</h2>
             <div className="user-info-card">
               <div className="user-details">
+                {/* 프로필 이미지 섹션 */}
+                <div className="profile-image-section">
+                  <div className="profile-image-container">
+                    {user.profileImage && user.profileImage.trim() !== '' ? (
+                      <>
+                        {imageDataUrl ? (
+                          <img
+                            src={imageDataUrl}
+                            alt="프로필 이미지"
+                            className="profile-image"
+                            onLoad={() => {}}
+                            style={{ display: 'block' }}
+                          />
+                        ) : (
+                          <img
+                            src={`http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                            alt="프로필 이미지"
+                            className="profile-image"
+                            crossOrigin="anonymous"
+                            onLoad={(e) => {
+                              e.target.style.display = 'block';
+                              e.target.nextSibling.style.display = 'none';
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                            style={{ display: 'block' }}
+                          />
+                        )}
+                        <div className="profile-image-placeholder" style={{ display: imageDataUrl ? 'none' : 'none' }}>
+                          <div style={{ fontSize: '3rem', color: '#4a5568' }}>
+                            {user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="profile-image-placeholder">
+                        <div style={{ fontSize: '3rem', color: '#4a5568' }}>
+                          {user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="profile-image-controls">
+                    <input
+                      type="file"
+                      id="profileImageInput"
+                      accept="image/*"
+                      onChange={handleProfileImageUpload}
+                      style={{ display: 'none' }}
+                      disabled={profileImageLoading}
+                    />
+                    <label
+                      htmlFor="profileImageInput"
+                      className={`profile-image-btn upload ${profileImageLoading ? 'loading' : ''}`}
+                    >
+                      {profileImageLoading ? '업로드 중...' : '이미지 변경'}
+                    </label>
+                    {user.profileImage && (
+                      <button
+                        className={`profile-image-btn delete ${profileImageLoading ? 'loading' : ''}`}
+                        onClick={handleProfileImageDelete}
+                        disabled={profileImageLoading}
+                      >
+                        이미지 삭제
+                      </button>
+                    )}
+                  </div>
+                  {profileImageError && (
+                    <div className="profile-image-error">{profileImageError}</div>
+                  )}
+                </div>
+
                 <div className="user-name">{user.name || user.username}</div>
                 <div className="user-email">{user.email}</div>
 

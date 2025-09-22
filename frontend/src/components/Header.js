@@ -13,22 +13,75 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
   // 공통 데이터 가져오기
   const { categories, mediaSources, searchOptions, loading, error } = useCommonData();
 
+  // 토큰 만료 확인 함수
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp < currentTime;
+    } catch (error) {
+      return true;
+    }
+  };
+
+  // 자동 로그아웃 함수
+  const performAutoLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('rememberMe');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    setIsLoggedIn(false);
+    setUser(null);
+    alert('로그인이 만료되어 자동으로 로그아웃되었습니다.');
+    navigate('/login');
+  };
+
   // 로그인 상태 확인
   useEffect(() => {
     const checkLoginStatus = () => {
       // localStorage와 sessionStorage 모두 확인
       let token = localStorage.getItem('token');
       let userData = localStorage.getItem('user');
-      
+      let isRememberMe = localStorage.getItem('rememberMe') === 'true';
+
       // localStorage에 없으면 sessionStorage 확인
       if (!token || !userData) {
         token = sessionStorage.getItem('token');
         userData = sessionStorage.getItem('user');
+        isRememberMe = false;
       }
-      
+
       if (token && userData) {
+        // 토큰 만료 확인
+        if (isTokenExpired(token)) {
+          performAutoLogout();
+          return;
+        }
+
         setIsLoggedIn(true);
         setUser(JSON.parse(userData));
+
+        // 토큰 만료 30분 전에 알림 (rememberMe가 false인 경우만)
+        if (!isRememberMe) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const expirationTime = payload.exp * 1000;
+          const warningTime = expirationTime - (30 * 60 * 1000); // 30분 전
+          const currentTime = Date.now();
+
+          if (currentTime < warningTime) {
+            const timeoutId = setTimeout(() => {
+              if (confirm('로그인이 30분 후 만료됩니다. 연장하시겠습니까?')) {
+                // 토큰 갱신 요청 (선택적 구현)
+                window.location.reload();
+              }
+            }, warningTime - currentTime);
+
+            return () => clearTimeout(timeoutId);
+          }
+        }
       } else {
         setIsLoggedIn(false);
         setUser(null);
@@ -238,24 +291,37 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       <div className="user-menu">
         <div className="user-dropdown">
           <div className="user-section">
-            {isLoggedIn && user?.name && (
+            {isLoggedIn && (user?.name || user?.userName) && (
               <div className="welcome-message">
-                환영합니다 <span className="user-name-highlight">{user.name}</span>님
+                환영합니다 <span className="user-name-highlight">{user.name || user.userName}</span>님
               </div>
             )}
-            <div 
-              className="user-icon" 
+            <div
+              className="user-icon"
               onClick={() => toggleDropdown('user')}
             >
               {isLoggedIn ? (
-                user?.profile_image ? (
-                  <img 
-                    src={user.profile_image} 
-                    alt="프로필 이미지" 
+                user?.profileImage && user.profileImage.trim() !== '' ? (
+                  <img
+                    src={`http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                    alt="프로필 이미지"
                     className="user-profile-image"
+                    crossOrigin="anonymous"
+                    onLoad={() => {
+                      console.log('✅ 헤더 이미지 로드 성공:', user.profileImage);
+                    }}
+                    onError={(e) => {
+                      console.error('❌ 헤더 이미지 로드 실패:', e.target.src);
+                      console.error('❌ 헤더 원본 경로:', user.profileImage);
+                      // 이미지 로드 실패 시 이름 첫 글자 표시
+                      e.target.style.display = 'none';
+                      const userName = user?.name || user?.userName;
+                      e.target.parentNode.innerHTML = userName ? userName.charAt(0).toUpperCase() : '👤';
+                    }}
                   />
                 ) : (
-                  user?.name ? user.name.charAt(0).toUpperCase() : '👤'
+                  // 이미지가 없을 때 이름 첫 글자 또는 기본 아이콘 표시
+                  (user?.name || user?.userName) ? (user.name || user.userName).charAt(0).toUpperCase() : '👤'
                 )
               ) : '👤'}
             </div>
@@ -267,7 +333,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             {isLoggedIn ? (
               <>
                 <div className="user-info">
-                  <span className="user-name">{user?.name || '사용자'}</span>
+                  <span className="user-name">{user?.name || user?.userName || '사용자'}</span>
                   <span className="user-email">{user?.email}</span>
                 </div>
                 <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>

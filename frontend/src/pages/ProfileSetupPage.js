@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { CATEGORIES, MEDIA_SOURCES } from '../constants/commonData';
 import './AuthPages.css';
 
 const ProfileSetupPage = () => {
@@ -126,13 +127,9 @@ const ProfileSetupPage = () => {
     }
   };
 
-  const categories = [
-    '정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예'
-  ];
-
-  const mediaSources = [
-    '조선일보', 'KBS', 'SBS', 'MBC', '한겨레', '중앙일보', '동아일보', '경향신문', '연합뉴스', 'YTN'
-  ];
+  // 공통 상수에서 카테고리와 언론사 목록 가져오기
+  const categories = CATEGORIES;
+  const mediaSources = MEDIA_SOURCES;
 
   if (!userInfo) {
     navigate('/register');

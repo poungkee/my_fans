@@ -111,11 +111,11 @@ const RegisterPage = () => {
         
         // 2초 후 프로필 설정 페이지로 이동
         setTimeout(() => {
-          navigate('/profile-setup', { 
-            state: { 
+          navigate('/profile-setup', {
+            state: {
               user: data.data.user,
               message: '회원가입이 완료되었습니다! 프로필을 설정해주세요.'
-            } 
+            }
           });
         }, 2000);
       } else {

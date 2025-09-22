@@ -25,23 +25,15 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "http:", "https:"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'", "https:", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-    },
-  },
+  contentSecurityPolicy: false, // CSP 완전히 비활성화
+  crossOriginResourcePolicy: false, // CORP 비활성화
 }));
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Type', 'Content-Length']
 }));
 app.use(morgan('combined'));
 app.use(express.json());
@@ -60,7 +52,15 @@ app.use(session({
 }));
 
 app.use(express.static(path.join(__dirname, '../public')));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// 이미지 파일에 CORS 헤더 추가
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => {
   res.json({

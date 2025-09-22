@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { commonAPI } from '../services/api';
+import { CATEGORIES_WITH_ALL, MEDIA_SOURCES_WITH_DOMAIN, SEARCH_OPTIONS } from '../constants/commonData';
 
 // 공통 데이터 훅
 export const useCommonData = () => {
@@ -20,34 +21,21 @@ export const useCommonData = () => {
         setLoading(true);
         setError(null);
 
-        // 임시로 기본 데이터 사용 - API 엔드포인트가 아직 구현되지 않음
+        // 공통 상수를 사용하여 프로필 셋업과 동일한 데이터 제공
         setData({
-          categories: ['전체', '정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예'],
-          mediaSources: [],
-          searchOptions: {
-            sort: ['최신순', '관련도순'],
-            pageSize: [10, 20, 50]
-          }
+          categories: CATEGORIES_WITH_ALL,
+          mediaSources: MEDIA_SOURCES_WITH_DOMAIN,
+          searchOptions: SEARCH_OPTIONS
         });
       } catch (err) {
         console.error('Error fetching common data:', err);
         setError(err.message);
         
-        // 에러 시 기본값 설정 (하드코딩 백업)
+        // 에러 시에도 공통 상수를 사용하여 일관성 유지
         setData({
-          categories: ['정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예'],
-          mediaSources: [
-            { name: '조선일보', domain: 'chosun.com', oid: '023' },
-            { name: 'KBS', domain: 'kbs.co.kr', oid: '056' },
-            { name: 'SBS', domain: 'sbs.co.kr', oid: '055' }
-          ],
-          searchOptions: {
-            sort: [
-              { value: 'date', label: '최신순' },
-              { value: 'sim', label: '정확도순' }
-            ],
-            pageSize: [10, 20, 30, 50]
-          }
+          categories: CATEGORIES_WITH_ALL,
+          mediaSources: MEDIA_SOURCES_WITH_DOMAIN,
+          searchOptions: SEARCH_OPTIONS
         });
       } finally {
         setLoading(false);

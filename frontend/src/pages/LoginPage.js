@@ -35,7 +35,11 @@ const LoginPage = () => {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          rememberMe: formData.rememberMe
+        })
       });
 
       const data = await response.json();
@@ -117,13 +121,18 @@ const LoginPage = () => {
             
             <div className="form-options">
               <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  name="rememberMe"
-                  checked={formData.rememberMe}
-                  onChange={handleChange}
-                />
-                <span>로그인 상태 유지</span>
+                <div>
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                  />
+                  <span>로그인 상태 유지</span>
+                </div>
+                <small className="checkbox-hint">
+                  {formData.rememberMe ? '30일간 로그인 상태가 유지됩니다' : '브라우저 종료 시 로그아웃됩니다'}
+                </small>
               </label>
               <Link to="/forgot-password" className="forgot-link">비밀번호를 잊으셨나요?</Link>
             </div>
