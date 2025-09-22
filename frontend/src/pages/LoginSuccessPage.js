@@ -13,6 +13,7 @@ export default function LoginSuccessPage() {
   const abortRef = useRef(null);
   const mountedRef = useRef(true);
 
+  
   useEffect(() => {
     mountedRef.current = true;
 

@@ -155,6 +155,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     setActiveDropdown(null);
   };
 
+  
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
       onSearch(e.target.value);
