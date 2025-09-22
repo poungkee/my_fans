@@ -63,21 +63,21 @@ services:
       - ./backend/api:/app
       - /app/node_modules
 
-  # React Frontend (Development)
-  frontend:
-    build: ./frontend
-    container_name: fans_frontend
-    ports:
-      - "3001:3001"
-    environment:
-      - REACT_APP_API_URL=http://localhost:3000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - fans_network
-    depends_on:
-      - main-api
+# React Frontend (Development) - Run locally instead of Docker
+  # frontend:
+  #   build: ./frontend
+  #   container_name: fans_frontend
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:3000
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   networks:
+  #     - fans_network
+  #   depends_on:
+  #     - main-api
 
 volumes:
   postgres_data:

@@ -94,3 +94,6 @@ secrets/
 
 # === Python Virtual Environment ===
 backend/ai-service/venv/
+
+# === Claude Code Memory File ===
+CLAUDE.md
