@@ -131,5 +131,13 @@ export class DeleteAccountDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  verificationCode?: string;
+
+  @IsOptional()
+  @IsString()
+  confirmText?: string;
 }
 

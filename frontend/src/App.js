@@ -241,6 +241,96 @@ function HomePage() {
 }
 
 function App() {
+  useEffect(() => {
+    // 소셜 로그인 자동 로그아웃 로직
+    const handleBeforeUnload = () => {
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      if (isSocialLogin) {
+        console.log('소셜 로그인 감지 - 창 닫기 시 세션 정리 실행');
+        // 소셜 로그인 사용자의 경우 창을 닫을 때 세션 정리
+        sessionStorage.clear(); // 전체 세션 스토리지 정리
+      }
+    };
+
+    // 페이지 새로고침/창 닫기 감지
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // 페이지 숨김/표시 감지 (탭 전환, 창 최소화 등)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+        if (isSocialLogin) {
+          // 페이지가 숨겨질 때 타임스탬프 저장
+          sessionStorage.setItem('lastHidden', Date.now().toString());
+        }
+      } else if (document.visibilityState === 'visible') {
+        const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+        const lastHidden = sessionStorage.getItem('lastHidden');
+
+        if (isSocialLogin && lastHidden) {
+          const hiddenTime = Date.now() - parseInt(lastHidden);
+          // 5분 이상 숨겨져 있었다면 자동 로그아웃
+          if (hiddenTime > 5 * 60 * 1000) { // 5분으로 단축
+            sessionStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('rememberMe');
+
+            // 로그인 상태 변경 이벤트 발생
+            window.dispatchEvent(new Event('loginStatusChange'));
+
+            // 메인 페이지로 리다이렉트
+            alert('장시간 비활성으로 인해 자동 로그아웃되었습니다.');
+            window.location.href = '/';
+          }
+          sessionStorage.removeItem('lastHidden');
+        }
+      }
+    };
+
+    // 페이지 포커스 이벤트 감지
+    const handleFocus = () => {
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      if (isSocialLogin && !sessionStorage.getItem('token')) {
+        // 소셜 로그인 토큰이 없어진 경우 강제 로그아웃
+        sessionStorage.clear();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('rememberMe');
+        window.dispatchEvent(new Event('loginStatusChange'));
+        alert('세션이 만료되어 로그아웃되었습니다.');
+        window.location.href = '/';
+      }
+    };
+
+    // 주기적 세션 체크 (30초마다)
+    const sessionCheckInterval = setInterval(() => {
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      const token = sessionStorage.getItem('token');
+
+      if (isSocialLogin && !token) {
+        // 소셜 로그인인데 토큰이 없으면 로그아웃 처리
+        sessionStorage.clear();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('rememberMe');
+        window.dispatchEvent(new Event('loginStatusChange'));
+        window.location.href = '/';
+      }
+    }, 30000); // 30초
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(sessionCheckInterval);
+    };
+  }, []);
+
   return (
     <Router>
       <Routes>

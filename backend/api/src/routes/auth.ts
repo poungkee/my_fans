@@ -255,7 +255,10 @@ router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
     return res.json({
       success: true,
       data: {
-        user: user
+        user: {
+          ...user,
+          hasPassword: !!user.passwordHash, // 비밀번호 설정 여부 추가
+        }
       },
     });
   } catch (e: any) {
@@ -441,22 +444,58 @@ router.post('/change-password', authenticateToken, async (req: AuthenticatedRequ
   }
 });
 
+/* ==================== 소셜 로그인 사용자 비밀번호 설정/변경 ==================== */
+router.post('/set-social-password', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, error: '새 비밀번호를 입력해주세요.' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, error: '새 비밀번호가 일치하지 않습니다.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: '비밀번호는 최소 8자 이상이어야 합니다.' });
+    }
+
+    // 이메일 인증 없이 현재 비밀번호 확인만으로 변경
+    const result = await authService.setSocialUserPassword(userId, currentPassword || null, newPassword);
+    return res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '비밀번호 설정/변경 실패' });
+  }
+});
+
 /* ==================== 회원탈퇴 ==================== */
 router.delete('/delete-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
-    const { verificationCode } = req.body;
-
-    if (!verificationCode) {
-      return res.status(400).json({ success: false, error: '인증코드가 필요합니다.' });
-    }
-
-    // 인증코드 검증은 프론트엔드에서 먼저 수행된다고 가정
     const dto = Object.assign(new DeleteAccountDto(), req.body);
     const result = await authService.deleteAccount(userId, dto);
     return res.json({ success: true, message: result.message });
   } catch (e: any) {
     return res.status(400).json({ success: false, error: e.message || '회원탈퇴 실패' });
+  }
+});
+
+/* ==================== 소셜 로그인 회원탈퇴 (인증코드 없이) ==================== */
+router.delete('/delete-social-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { confirmText } = req.body;
+
+    if (!confirmText) {
+      return res.status(400).json({ success: false, error: '확인 문구가 필요합니다.' });
+    }
+
+    const result = await authService.deleteSocialAccount(userId, confirmText);
+    return res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '소셜 계정 탈퇴 실패' });
   }
 });
 

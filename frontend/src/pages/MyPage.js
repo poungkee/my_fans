@@ -9,7 +9,7 @@ const MyPage = () => {
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState('profile');
 
-  // 비밀번호 변경 상태
+  // 비밀번호 변경 상태 (일반 로그인)
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -20,6 +20,16 @@ const MyPage = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [verificationSent, setVerificationSent] = useState(false);
+
+  // 소셜 로그인 비밀번호 변경 상태
+  const [socialPasswordData, setSocialPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [socialPasswordLoading, setSocialPasswordLoading] = useState(false);
+  const [socialPasswordError, setSocialPasswordError] = useState('');
+  const [socialPasswordSuccess, setSocialPasswordSuccess] = useState('');
 
   // 회원탈퇴 상태
   const [deleteData, setDeleteData] = useState({
@@ -214,7 +224,7 @@ const MyPage = () => {
     }
   };
 
-  // 비밀번호 변경
+  // 비밀번호 변경 (일반 로그인)
   const handlePasswordChange = async (e) => {
     e.preventDefault();
 
@@ -264,6 +274,63 @@ const MyPage = () => {
       setPasswordError('서버 연결에 실패했습니다.');
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  // 소셜 로그인 비밀번호 변경
+  const handleSocialPasswordChange = async (e) => {
+    e.preventDefault();
+
+    if (socialPasswordData.newPassword !== socialPasswordData.confirmPassword) {
+      setSocialPasswordError('새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (socialPasswordData.newPassword.length < 8) {
+      setSocialPasswordError('비밀번호는 최소 8자 이상이어야 합니다.');
+      return;
+    }
+
+    try {
+      setSocialPasswordLoading(true);
+      setSocialPasswordError('');
+
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      const response = await fetch('/api/auth/set-social-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(socialPasswordData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSocialPasswordSuccess(data.message);
+        setSocialPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+
+        // 사용자 정보 업데이트 (비밀번호 설정 여부 반영)
+        setUser(prevUser => ({
+          ...prevUser,
+          hasPassword: true
+        }));
+      } else {
+        setSocialPasswordError(data.error || '비밀번호 설정/변경에 실패했습니다.');
+      }
+    } catch (err) {
+      setSocialPasswordError('서버 연결에 실패했습니다.');
+    } finally {
+      setSocialPasswordLoading(false);
     }
   };
 
@@ -324,14 +391,21 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/delete-account', {
+      // 소셜 로그인 사용자와 일반 로그인 사용자 구분
+      const isSocialLogin = user.provider === 'kakao' || user.provider === 'naver';
+      const apiEndpoint = isSocialLogin ? '/api/auth/delete-social-account' : '/api/auth/delete-account';
+      const requestBody = isSocialLogin
+        ? { confirmText: deleteData.confirmText }
+        : { verificationCode: deleteData.verificationCode };
+
+      const response = await fetch(apiEndpoint, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ verificationCode: deleteData.verificationCode })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -847,6 +921,87 @@ const MyPage = () => {
               </div>
             )}
 
+            {/* 소셜 로그인 비밀번호 설정/변경 */}
+            {(user.provider === 'kakao' || user.provider === 'naver') && (
+              <div className="account-card">
+                <h3>비밀번호 {user.hasPassword ? '변경' : '설정'}</h3>
+                <p>
+                  {user.hasPassword
+                    ? '현재 비밀번호를 입력한 후 새 비밀번호로 변경할 수 있습니다.'
+                    : '소셜 로그인 계정에 비밀번호를 설정하여 일반 로그인도 가능하게 합니다.'}
+                </p>
+
+                <form onSubmit={handleSocialPasswordChange} className="password-form">
+                  {socialPasswordError && (
+                    <div className="error-message">{socialPasswordError}</div>
+                  )}
+                  {socialPasswordSuccess && (
+                    <div className="success-message">{socialPasswordSuccess}</div>
+                  )}
+
+                  {user.hasPassword && (
+                    <div className="form-group">
+                      <label>현재 비밀번호</label>
+                      <input
+                        type="password"
+                        value={socialPasswordData.currentPassword}
+                        onChange={(e) => setSocialPasswordData({...socialPasswordData, currentPassword: e.target.value})}
+                        placeholder="현재 비밀번호를 입력하세요"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>새 비밀번호</label>
+                    <input
+                      type="password"
+                      value={socialPasswordData.newPassword}
+                      onChange={(e) => setSocialPasswordData({...socialPasswordData, newPassword: e.target.value})}
+                      placeholder="최소 8자 이상"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>새 비밀번호 확인</label>
+                    <input
+                      type="password"
+                      value={socialPasswordData.confirmPassword}
+                      onChange={(e) => setSocialPasswordData({...socialPasswordData, confirmPassword: e.target.value})}
+                      placeholder="새 비밀번호를 다시 입력하세요"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="cancel-btn"
+                      onClick={() => {
+                        setSocialPasswordData({
+                          currentPassword: '',
+                          newPassword: '',
+                          confirmPassword: ''
+                        });
+                        setSocialPasswordError('');
+                        setSocialPasswordSuccess('');
+                      }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="submit-btn"
+                      disabled={socialPasswordLoading}
+                    >
+                      {socialPasswordLoading ? (user.hasPassword ? '변경 중...' : '설정 중...') : (user.hasPassword ? '비밀번호 변경' : '비밀번호 설정')}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {/* 회원탈퇴 */}
             <div className="account-card danger">
               <h3>회원탈퇴</h3>
@@ -857,15 +1012,58 @@ const MyPage = () => {
                 <li>• 탈퇴 후 동일한 이메일로 재가입이 제한될 수 있습니다</li>
               </ul>
 
-              {!deleteVerificationSent ? (
-                <button
-                  className="verification-btn danger"
-                  onClick={sendDeleteVerification}
-                  disabled={deleteLoading}
-                >
-                  {deleteLoading ? '발송 중...' : '탈퇴 인증 이메일 발송'}
-                </button>
+              {/* 소셜 로그인 사용자: 이메일 인증 없이 탈퇴 */}
+              {(user.provider === 'kakao' || user.provider === 'naver') ? (
+                <form onSubmit={handleDeleteAccount} className="delete-form">
+                  {deleteError && (
+                    <div className="error-message">{deleteError}</div>
+                  )}
+
+                  <div className="form-group">
+                    <label>확인 문구 입력</label>
+                    <input
+                      type="text"
+                      value={deleteData.confirmText}
+                      onChange={(e) => setDeleteData({...deleteData, confirmText: e.target.value})}
+                      placeholder="'회원탈퇴'를 입력하세요"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="cancel-btn"
+                      onClick={() => {
+                        setDeleteData({
+                          verificationCode: '',
+                          confirmText: ''
+                        });
+                        setDeleteError('');
+                      }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="submit-btn danger"
+                      disabled={deleteLoading}
+                    >
+                      {deleteLoading ? '탈퇴 처리 중...' : '회원탈퇴'}
+                    </button>
+                  </div>
+                </form>
               ) : (
+                /* 일반 로그인 사용자: 기존 이메일 인증 방식 */
+                !deleteVerificationSent ? (
+                  <button
+                    className="verification-btn danger"
+                    onClick={sendDeleteVerification}
+                    disabled={deleteLoading}
+                  >
+                    {deleteLoading ? '발송 중...' : '탈퇴 인증 이메일 발송'}
+                  </button>
+                ) : (
                 <form onSubmit={handleDeleteAccount} className="delete-form">
                   {deleteError && (
                     <div className="error-message">{deleteError}</div>
@@ -917,6 +1115,7 @@ const MyPage = () => {
                     </button>
                   </div>
                 </form>
+                )
               )}
             </div>
           </section>

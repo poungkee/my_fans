@@ -33,6 +33,8 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     localStorage.removeItem('rememberMe');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('socialLogin');
+    sessionStorage.removeItem('lastHidden');
     setIsLoggedIn(false);
     setUser(null);
     alert('로그인이 만료되어 자동으로 로그아웃되었습니다.');
@@ -64,8 +66,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
         setIsLoggedIn(true);
         setUser(JSON.parse(userData));
 
-        // 토큰 만료 30분 전에 알림 (rememberMe가 false인 경우만)
-        if (!isRememberMe) {
+        // 토큰 만료 30분 전에 알림 (일반 로그인이면서 rememberMe가 false인 경우만)
+        const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+        if (!isRememberMe && !isSocialLogin) {
           const payload = JSON.parse(atob(token.split('.')[1]));
           const expirationTime = payload.exp * 1000;
           const warningTime = expirationTime - (30 * 60 * 1000); // 30분 전
@@ -125,6 +128,8 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
         localStorage.removeItem('rememberMe');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('socialLogin');
+        sessionStorage.removeItem('lastHidden');
         setIsLoggedIn(false);
         setUser(null);
         setActiveDropdown(null);
@@ -136,6 +141,11 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       // 에러가 발생해도 로컬 스토리지는 정리
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('rememberMe');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('socialLogin');
+      sessionStorage.removeItem('lastHidden');
       setIsLoggedIn(false);
       setUser(null);
       setActiveDropdown(null);
