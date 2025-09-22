@@ -50,6 +50,17 @@ const ProfileSetupPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 3단계가 아닌 경우 submit 방지
+    if (currentStep !== 3) {
+      return;
+    }
+
+    // 최종 제출 전 유효성 검사
+    if (!validateCurrentStep()) {
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -87,8 +98,6 @@ const ProfileSetupPage = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('프로필 설정이 완료되었습니다! 메인페이지로 이동합니다.');
-
         // localStorage와 sessionStorage의 사용자 정보 업데이트
         const updatedUser = data.data || data.user;
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -97,9 +106,12 @@ const ProfileSetupPage = () => {
         // 헤더 컴포넌트에 변경 알림
         window.dispatchEvent(new CustomEvent('loginStatusChange'));
 
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
+        // 회원가입과 프로필 설정이 모두 완료되었음을 알림
+        navigate('/', {
+          state: {
+            message: '회원가입이 완료되었습니다! 환영합니다.'
+          }
+        });
       } else {
         setError(data.error || '프로필 설정에 실패했습니다.');
       }
@@ -112,10 +124,46 @@ const ProfileSetupPage = () => {
   };
 
   const skipSetup = () => {
-    navigate('/login');
+    // 프로필 설정을 건너뛰고 메인페이지로 이동
+    navigate('/', {
+      state: {
+        message: '회원가입이 완료되었습니다! 환영합니다.'
+      }
+    });
+  };
+
+  // 각 단계별 유효성 검사
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        // 1단계는 모든 항목이 선택사항이므로 항상 통과
+        return true;
+      case 2:
+        // 2단계: 최소 1개 이상의 카테고리 선택
+        if (formData.preferredCategories.length === 0) {
+          setError('관심 있는 뉴스 카테고리를 최소 1개 이상 선택해주세요.');
+          return false;
+        }
+        return true;
+      case 3:
+        // 3단계: 최소 1개 이상의 언론사 선택
+        if (formData.preferredSources.length === 0) {
+          setError('선호하는 언론사를 최소 1개 이상 선택해주세요.');
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
   };
 
   const nextStep = () => {
+    setError(''); // 이전 에러 메시지 초기화
+
+    if (!validateCurrentStep()) {
+      return; // 유효성 검사 실패 시 다음 단계로 이동하지 않음
+    }
+
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     }
@@ -130,6 +178,20 @@ const ProfileSetupPage = () => {
   // 공통 상수에서 카테고리와 언론사 목록 가져오기
   const categories = CATEGORIES;
   const mediaSources = MEDIA_SOURCES;
+
+  // 각 단계별 버튼 활성화 조건
+  const isStepValid = () => {
+    switch (currentStep) {
+      case 1:
+        return true; // 1단계는 항상 진행 가능
+      case 2:
+        return formData.preferredCategories.length > 0;
+      case 3:
+        return formData.preferredSources.length > 0;
+      default:
+        return true;
+    }
+  };
 
   if (!userInfo) {
     navigate('/register');
@@ -197,9 +259,17 @@ const ProfileSetupPage = () => {
           <div className="step-content">
             <div className="step-header">
               <h3>관심 카테고리</h3>
-              <p>관심 있는 뉴스 카테고리를 선택해주세요. (복수 선택 가능)</p>
+              <p>관심 있는 뉴스 카테고리를 선택해주세요. (최소 1개 이상 필수)</p>
+              <div className="selection-status">
+                <span className={`status-indicator ${formData.preferredCategories.length > 0 ? 'success' : 'warning'}`}>
+                  선택됨: {formData.preferredCategories.length}개 / {categories.length}개
+                </span>
+                {formData.preferredCategories.length === 0 && (
+                  <span className="requirement-message">⚠️ 최소 1개 이상 선택해주세요</span>
+                )}
+              </div>
             </div>
-            
+
             <div className="form-group">
               <div className="checkbox-grid">
                 {categories.map(category => (
@@ -223,9 +293,17 @@ const ProfileSetupPage = () => {
           <div className="step-content">
             <div className="step-header">
               <h3>선호 언론사</h3>
-              <p>선호하는 언론사를 선택해주세요. (복수 선택 가능)</p>
+              <p>선호하는 언론사를 선택해주세요. (최소 1개 이상 필수)</p>
+              <div className="selection-status">
+                <span className={`status-indicator ${formData.preferredSources.length > 0 ? 'success' : 'warning'}`}>
+                  선택됨: {formData.preferredSources.length}개 / {mediaSources.length}개
+                </span>
+                {formData.preferredSources.length === 0 && (
+                  <span className="requirement-message">⚠️ 최소 1개 이상 선택해주세요</span>
+                )}
+              </div>
             </div>
-            
+
             <div className="form-group">
               <div className="checkbox-grid">
                 {mediaSources.map(source => (
@@ -253,7 +331,13 @@ const ProfileSetupPage = () => {
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-form">
-          <form onSubmit={handleSubmit} className="auth-form-content">
+          <form onSubmit={handleSubmit} className="auth-form-content" onKeyDown={(e) => {
+            // Enter 키가 눌렸을 때 3단계가 아니면 submit 방지
+            if (e.key === 'Enter' && currentStep !== 3) {
+              e.preventDefault();
+              nextStep();
+            }
+          }}>
             <div className="auth-header">
               <h2>프로필 설정</h2>
               <p>안녕하세요, {userInfo.name}님! 맞춤 뉴스를 위해 추가 정보를 입력해주세요.</p>
@@ -302,21 +386,23 @@ const ProfileSetupPage = () => {
               )}
               
               {currentStep < 3 ? (
-                <button 
-                  type="button" 
-                  className="auth-button primary"
+                <button
+                  type="button"
+                  className={`auth-button ${isStepValid() ? 'primary' : 'disabled'}`}
                   onClick={nextStep}
-                  disabled={loading}
+                  disabled={loading || !isStepValid()}
+                  title={!isStepValid() ? '필수 항목을 선택해주세요' : ''}
                 >
-                  다음
+                  {isStepValid() ? '다음' : `선택 후 다음 (${currentStep === 2 ? formData.preferredCategories.length : formData.preferredSources.length}/1)`}
                 </button>
               ) : (
-                <button 
-                  type="submit" 
-                  className="auth-button primary"
-                  disabled={loading}
+                <button
+                  type="submit"
+                  className={`auth-button ${isStepValid() ? 'primary' : 'disabled'}`}
+                  disabled={loading || !isStepValid()}
+                  title={!isStepValid() ? '선호 언론사를 최소 1개 이상 선택해주세요' : ''}
                 >
-                  {loading ? '설정 중...' : '프로필 설정 완료'}
+                  {loading ? '설정 중...' : isStepValid() ? '프로필 설정 완료' : `언론사 선택 후 완료 (${formData.preferredSources.length}/1)`}
                 </button>
               )}
 

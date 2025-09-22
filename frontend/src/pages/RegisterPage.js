@@ -98,26 +98,22 @@ const RegisterPage = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess(data.message);
-        
         // 토큰을 sessionStorage에 저장 (회원가입 후 자동 로그인은 임시)
         if (data.data.token) {
           sessionStorage.setItem('token', data.data.token);
           sessionStorage.setItem('user', JSON.stringify(data.data.user));
-          
+
           // Header 컴포넌트에 로그인 상태 변화 알림
           window.dispatchEvent(new Event('loginStatusChange'));
         }
-        
-        // 2초 후 프로필 설정 페이지로 이동
-        setTimeout(() => {
-          navigate('/profile-setup', {
-            state: {
-              user: data.data.user,
-              message: '회원가입이 완료되었습니다! 프로필을 설정해주세요.'
-            }
-          });
-        }, 2000);
+
+        // 즉시 프로필 설정 페이지로 이동 (메시지 표시 없이)
+        navigate('/profile-setup', {
+          state: {
+            user: data.data.user,
+            message: '회원가입이 완료되었습니다! 프로필을 설정해주세요.'
+          }
+        });
       } else {
         setError(data.error || '회원가입에 실패했습니다.');
       }
