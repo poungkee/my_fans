@@ -91,7 +91,9 @@ const MyPage = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.data.user.profileImage) {
-            const imageUrl = `http://localhost:3000${data.data.user.profileImage}`;
+            const imageUrl = data.data.user.profileImage.startsWith('http')
+              ? data.data.user.profileImage
+              : `http://localhost:3000${data.data.user.profileImage}`;
 
             // 이미지를 base64로 변환해서 로드
             loadImageAsDataUrl(imageUrl);
@@ -133,6 +135,7 @@ const MyPage = () => {
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
+        alert('로그아웃되었습니다.');
         navigate('/');
       }
     } catch (error) {
@@ -393,7 +396,10 @@ const MyPage = () => {
         const newProfileImage = data.data.profileImage;
 
         // 새 이미지를 base64로 변환
-        loadImageAsDataUrl(`http://localhost:3000${newProfileImage}`);
+        const imageUrl = newProfileImage.startsWith('http')
+          ? newProfileImage
+          : `http://localhost:3000${newProfileImage}`;
+        loadImageAsDataUrl(imageUrl);
 
         setUser(prevUser => ({
           ...prevUser,
@@ -576,7 +582,7 @@ const MyPage = () => {
                           />
                         ) : (
                           <img
-                            src={`http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                            src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:3000${user.profileImage}?t=${Date.now()}`}
                             alt="프로필 이미지"
                             className="profile-image"
                             crossOrigin="anonymous"

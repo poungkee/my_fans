@@ -70,7 +70,7 @@ export class AuthService {
 
   // ---------- 회원가입 ----------
   async register(registerData: RegisterDto): Promise<{ user: User; token: string; message: string }> {
-    const { name, username, email, password, confirmPassword, phone, age, gender, location } = registerData;
+    const { name, username, email, password, confirmPassword, phone, age, gender, location, provider, socialToken, profileImage } = registerData;
 
     if (password !== confirmPassword) throw new Error('비밀번호가 일치하지 않습니다.');
 
@@ -90,7 +90,9 @@ export class AuthService {
       email,
       passwordHash: passwordHash,
       tel: phone,
-      provider: 'local',
+      provider: provider || 'local',
+      socialToken: socialToken || undefined,
+      profileImage: profileImage || undefined,
       active: true,
     });
 
@@ -191,19 +193,14 @@ export class AuthService {
     }
 
     if (!user) {
-      const userData = {
-        username: `kakao_${providerId || 'unknown'}`,
+      // 신규 카카오 사용자인 경우 임시 데이터만 생성하고 등록 페이지로 리다이렉트
+      throw new Error(`NEW_USER:${JSON.stringify({
         email: email || `kakao_${providerId || 'unknown'}@kakao.local`,
-        passwordHash: '',
-        userName: name || undefined,
+        name: name || '카카오사용자',
+        profileImage: profileImage || null,
         provider: 'kakao',
-        socialToken: providerId || undefined,
-        profileImage: profileImage || undefined,
-        emailVerified: true,
-        active: true,
-      };
-      user = this.userRepository.create(userData);
-      user = await this.userRepository.save(user);
+        socialToken: providerId || undefined
+      })}`);
     } else {
       let needsSave = false;
       if (name && name !== user.userName) {
@@ -276,19 +273,14 @@ export class AuthService {
     }
 
     if (!user) {
-      const userData = {
-        username: `naver_${providerId || 'unknown'}`,
+      // 신규 네이버 사용자인 경우 임시 데이터만 생성하고 등록 페이지로 리다이렉트
+      throw new Error(`NEW_USER:${JSON.stringify({
         email: email || `naver_${providerId || 'unknown'}@naver.local`,
-        passwordHash: '',
-        userName: name || undefined,
+        name: name || '네이버사용자',
+        profileImage: profileImage || null,
         provider: 'naver',
-        socialToken: providerId || undefined,
-        profileImage: profileImage || undefined,
-        emailVerified: true,
-        active: true,
-      };
-      user = this.userRepository.create(userData);
-      user = await this.userRepository.save(user);
+        socialToken: providerId || undefined
+      })}`);
     } else {
       let needsSave = false;
       if (name && name !== user.userName) {
