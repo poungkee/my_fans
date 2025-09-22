@@ -9,7 +9,12 @@
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
-    "test": "jest"
+    "test": "jest",
+    "db:init": "src/database/scripts/init-database.sh development",
+    "db:init:prod": "src/database/scripts/init-database.sh production",
+    "db:init:test": "src/database/scripts/init-database.sh test",
+    "db:schema": "psql $DATABASE_URL -f src/database/schemas/01_create_tables.sql",
+    "db:seed": "psql $DATABASE_URL -f src/database/seeds/02_initial_data.sql"
   },
   "dependencies": {
     "@types/multer": "^2.0.0",

@@ -49,23 +49,17 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
       return res.status(400).json({ error: '뉴스 내용이 없어 요약할 수 없습니다' });
     }
 
-    if (article.ai_summary && article.short_ai_summary) {
+    if (article.aiSummary) {
       return res.json({
         message: '이미 AI 요약이 존재합니다',
-        ai_summary: article.ai_summary,
-        short_ai_summary: article.short_ai_summary
+        ai_summary: article.aiSummary
       });
     }
 
     const result = await localAIService.summarizeText(article.content);
 
-    const shortSummary = result.summary.length > 50
-      ? result.summary.substring(0, 47) + '...'
-      : result.summary;
-
     await repository.update(Number(newsId), {
-      ai_summary: result.summary,
-      short_ai_summary: shortSummary
+      aiSummary: result.summary
     });
 
     const updatedArticle = await repository.findOne({

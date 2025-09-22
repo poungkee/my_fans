@@ -20,10 +20,9 @@ const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
 const dotenvResult = dotenv.config({ path: envPath });
 console.log('[DEBUG] Dotenv result:', dotenvResult.error ? dotenvResult.error.message : 'SUCCESS');
-console.log('[DEBUG] GEMINI_API_KEY from process.env:', process.env.GEMINI_API_KEY ? '***PRESENT***' : 'MISSING');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(helmet({
   contentSecurityPolicy: {

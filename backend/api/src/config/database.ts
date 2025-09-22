@@ -11,7 +11,8 @@ import {
   ArticleStat,
   AIRecommendation,
   BiasAnalysis,
-  UserPreference
+  UserPreference,
+  MarketSummary
 } from '../entities';
 
 const isTrue = (value: string | undefined) => value === '1' || value?.toLowerCase() === 'true';
@@ -48,8 +49,9 @@ export const AppDataSource = new DataSource({
     ArticleStat,
     AIRecommendation,
     BiasAnalysis,
-    UserPreference
+    UserPreference,
+    MarketSummary
   ],
-  migrations: ['src/migrations/*.ts'],
+  migrations: ['src/database/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts']
 });

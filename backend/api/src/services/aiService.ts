@@ -32,7 +32,7 @@ export class AIService {
 
       return response.data;
     } catch (error) {
-      console.error('AI Service Error:', error.message);
+      console.error('AI Service Error:', error instanceof Error ? error.message : String(error));
       throw new Error('AI 요약 서비스 연결 실패');
     }
   }
@@ -44,7 +44,7 @@ export class AIService {
       });
       return response.status === 200;
     } catch (error) {
-      console.error('AI Service Health Check Failed:', error.message);
+      console.error('AI Service Health Check Failed:', error instanceof Error ? error.message : String(error));
       return false;
     }
   }

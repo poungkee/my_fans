@@ -35,7 +35,11 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp/;
     const ok = allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype);
-    cb(ok ? null : new Error('이미지 파일만 업로드 가능합니다.'), ok);
+    if (ok) {
+      cb(null, ok);
+    } else {
+      cb(new Error('이미지 파일만 업로드 가능합니다.'));
+    }
   },
 });
 
@@ -65,9 +69,9 @@ router.post('/login', async (req, res) => {
     if (errors.length > 0) return res.status(400).json({ success: false, error: '입력 데이터 오류' });
 
     const result = await authService.login(dto);
-    req.session.userId = result.user.id;
-    req.session.username = result.user.username;
-    req.session.isAuthenticated = true;
+    (req.session as any).userId = result.user.id;
+    (req.session as any).username = result.user.username;
+    (req.session as any).isAuthenticated = true;
 
     return res.json({
       success: true,
@@ -139,9 +143,9 @@ router.get('/kakao/callback', async (req, res) => {
     if (!code) return res.status(400).send('Missing code');
 
     const result = await authService.handleKakaoCallback(req.session, String(code), String(state || ''));
-    req.session.userId = result.user.id;
-    req.session.username = result.user.username;
-    req.session.isAuthenticated = true;
+    (req.session as any).userId = result.user.id;
+    (req.session as any).username = result.user.username;
+    (req.session as any).isAuthenticated = true;
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
@@ -176,9 +180,9 @@ router.get('/naver/callback', async (req, res) => {
     if (!code) return res.status(400).send('Missing code');
 
     const result = await authService.handleNaverCallback(req.session, String(code), String(state || ''));
-    req.session.userId = result.user.id;
-    req.session.username = result.user.username;
-    req.session.isAuthenticated = true;
+    (req.session as any).userId = result.user.id;
+    (req.session as any).username = result.user.username;
+    (req.session as any).isAuthenticated = true;
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
@@ -206,12 +210,12 @@ router.post('/verify-token', async (req: Request, res: Response) => {
           email: user.email,
           name: user.name,
           phone: user.phone,
-          profile_image: user.profile_image,
-          email_verified: user.email_verified,
+          profileImage: user.profileImage,
+          emailVerified: user.emailVerified,
           provider: user.provider,
-          provider_id: user.provider_id,
-          created_at: user.created_at,
-          last_login: user.last_login,
+          socialToken: user.socialToken,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin,
         },
       },
     });
@@ -236,17 +240,12 @@ router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
           email: user.email,
           name: user.name,
           phone: user.phone,
-          profile_image: user.profile_image,
-          age: user.age,
-          gender: user.gender,
-          location: user.location,
-          preferred_categories: user.preferred_categories,
-          preferred_media_sources: user.preferred_media_sources,
-          email_verified: user.email_verified,
+          profileImage: user.profileImage,
+          emailVerified: user.emailVerified,
           provider: user.provider,
-          provider_id: user.provider_id,
-          created_at: user.created_at,
-          last_login: user.last_login,
+          socialToken: user.socialToken,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin,
         },
       },
     });
@@ -276,8 +275,8 @@ router.post(
       if (!req.file) return res.status(400).json({ success: false, error: '이미지 필요' });
 
       const relativePath = `/uploads/profiles/${req.file.filename}`;
-      const user = await authService.updateUserProfile(userId, { profile_image: relativePath });
-      return res.json({ success: true, data: { profile_image: relativePath, user } });
+      const user = await authService.updateUserProfile(userId, { profileImage: relativePath });
+      return res.json({ success: true, data: { profileImage: relativePath, user } });
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e.message || '업로드 실패' });
     }
@@ -288,11 +287,11 @@ router.delete('/delete-profile-image', authenticateToken, async (req: Authentica
   try {
     const userId = req.user!.userId;
     const user = await authService.getUserProfile(userId);
-    if (user?.profile_image) {
-      const imagePath = path.join(__dirname, '../../', user.profile_image);
+    if (user?.profileImage) {
+      const imagePath = path.join(__dirname, '../../', user.profileImage);
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
-    await authService.updateUserProfile(userId, { profile_image: null });
+    await authService.updateUserProfile(userId, { profileImage: null });
     return res.json({ success: true, message: '프로필 이미지 삭제 완료' });
   } catch (e: any) {
     return res.status(500).json({ success: false, error: e.message || '삭제 실패' });

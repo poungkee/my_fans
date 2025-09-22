@@ -32,7 +32,7 @@ export const authenticateToken = async (
     // 사용자 존재 확인
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({
-      where: { id: decoded.userId, is_active: true }
+      where: { id: decoded.userId, active: true }
     });
 
     if (!user) {

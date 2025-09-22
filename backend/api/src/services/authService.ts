@@ -59,7 +59,7 @@ export class AuthService {
     try {
       const decoded = jwt.verify(token, this.getJwtSecret()) as JwtPayload;
       const user = await this.userRepository.findOne({
-        where: { id: decoded.userId, is_active: true },
+        where: { id: decoded.userId, active: true },
       });
       if (!user) throw new Error('사용자를 찾을 수 없습니다.');
       return user;
@@ -88,14 +88,11 @@ export class AuthService {
       name,
       username,
       email,
-      password_hash: passwordHash,
+      passwordHash: passwordHash,
       phone,
-      age,
-      gender,
-      location,
       provider: 'local',
-      email_verified: true,
-      is_active: true,
+      emailVerified: true,
+      active: true,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -113,16 +110,16 @@ export class AuthService {
   async login(loginData: LoginDto): Promise<{ user: User; token: string; message: string }> {
     const { username, password, rememberMe } = loginData;
 
-    const user = await this.userRepository.findOne({ where: { username, is_active: true } });
+    const user = await this.userRepository.findOne({ where: { username, active: true } });
     if (!user) throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
-    if (!user.password_hash) throw new Error('일반 로그인을 사용할 수 없는 계정입니다.');
+    if (!user.passwordHash) throw new Error('일반 로그인을 사용할 수 없는 계정입니다.');
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
 
     const token = this.generateJwtToken(user, rememberMe);
 
-    user.last_login = new Date();
+    user.lastLogin = new Date();
     await this.userRepository.save(user);
 
     return { user, token, message: '로그인 성공' };
@@ -167,37 +164,39 @@ export class AuthService {
     const email: string | null = kakaoAcc.email || null;
     const name: string = kakaoProf.nickname || props.nickname || '카카오사용자';
     const profileImage: string | null =
-      kakaoProf.profile_image_url ||
-      props.profile_image ||
+      kakaoProf.profileImage_url ||
+      props.profileImage ||
       kakaoProf.thumbnail_image_url ||
       null;
 
     let user = await this.userRepository.findOne({
-      where: { provider: 'kakao', provider_id: providerId },
+      where: { provider: 'kakao', socialToken: providerId },
     });
 
     if (!user && email) {
       const existing = await this.userRepository.findOne({ where: { email } });
       if (existing) {
         existing.provider = 'kakao';
-        existing.provider_id = providerId;
+        existing.socialToken = providerId;
         existing.name = name || existing.name;
-        if (profileImage) existing.profile_image = profileImage;
+        if (profileImage) existing.profileImage = profileImage;
         user = await this.userRepository.save(existing);
       }
     }
 
     if (!user) {
-      user = this.userRepository.create({
-        username: `kakao_${providerId}`,
-        email: email || `kakao_${providerId}@kakao.local`,
-        name,
+      const userData = {
+        username: `kakao_${providerId || 'unknown'}`,
+        email: email || `kakao_${providerId || 'unknown'}@kakao.local`,
+        passwordHash: '',
+        name: name || undefined,
         provider: 'kakao',
-        provider_id: providerId,
-        profile_image: profileImage,
-        email_verified: true,
-        is_active: true,
-      });
+        socialToken: providerId || undefined,
+        profileImage: profileImage || undefined,
+        emailVerified: true,
+        active: true,
+      };
+      user = this.userRepository.create(userData);
       user = await this.userRepository.save(user);
     } else {
       let needsSave = false;
@@ -205,14 +204,14 @@ export class AuthService {
         user.name = name;
         needsSave = true;
       }
-      if (profileImage && profileImage !== user.profile_image) {
-        user.profile_image = profileImage;
+      if (profileImage && profileImage !== user.profileImage) {
+        user.profileImage = profileImage;
         needsSave = true;
       }
       if (needsSave) await this.userRepository.save(user);
     }
 
-    user.last_login = new Date();
+    user.lastLogin = new Date();
     await this.userRepository.save(user);
 
     const jwtToken = this.generateJwtToken(user, true);
@@ -253,34 +252,36 @@ export class AuthService {
     const providerId: string = profile.id;
     const email: string | null = profile.email || null;
     const name: string = profile.name || '네이버사용자';
-    const profileImage: string | null = profile.profile_image || null;
+    const profileImage: string | null = profile.profileImage || null;
 
     let user = await this.userRepository.findOne({
-      where: { provider: 'naver', provider_id: providerId },
+      where: { provider: 'naver', socialToken: providerId },
     });
 
     if (!user && email) {
       const existing = await this.userRepository.findOne({ where: { email } });
       if (existing) {
         existing.provider = 'naver';
-        existing.provider_id = providerId;
+        existing.socialToken = providerId;
         existing.name = name || existing.name;
-        if (profileImage) existing.profile_image = profileImage;
+        if (profileImage) existing.profileImage = profileImage;
         user = await this.userRepository.save(existing);
       }
     }
 
     if (!user) {
-      user = this.userRepository.create({
-        username: `naver_${providerId}`,
-        email: email || `naver_${providerId}@naver.local`,
-        name,
+      const userData = {
+        username: `naver_${providerId || 'unknown'}`,
+        email: email || `naver_${providerId || 'unknown'}@naver.local`,
+        passwordHash: '',
+        name: name || undefined,
         provider: 'naver',
-        provider_id: providerId,
-        profile_image: profileImage,
-        email_verified: true,
-        is_active: true,
-      });
+        socialToken: providerId || undefined,
+        profileImage: profileImage || undefined,
+        emailVerified: true,
+        active: true,
+      };
+      user = this.userRepository.create(userData);
       user = await this.userRepository.save(user);
     } else {
       let needsSave = false;
@@ -288,14 +289,14 @@ export class AuthService {
         user.name = name;
         needsSave = true;
       }
-      if (profileImage && profileImage !== user.profile_image) {
-        user.profile_image = profileImage;
+      if (profileImage && profileImage !== user.profileImage) {
+        user.profileImage = profileImage;
         needsSave = true;
       }
       if (needsSave) await this.userRepository.save(user);
     }
 
-    user.last_login = new Date();
+    user.lastLogin = new Date();
     await this.userRepository.save(user);
 
     const jwtToken = this.generateJwtToken(user, true);
@@ -304,5 +305,41 @@ export class AuthService {
     session.isAuthenticated = true;
 
     return { user, token: jwtToken, message: '네이버 로그인 성공' };
+  }
+
+  // ---------- 비밀번호 재설정 ----------
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { email, active: true } });
+    if (!user) throw new Error('해당 이메일로 등록된 계정을 찾을 수 없습니다.');
+
+    // TODO: 실제 이메일 발송 로직 구현
+    return { message: '비밀번호 재설정 이메일이 발송되었습니다.' };
+  }
+
+  async resetPassword(resetData: PasswordResetDto): Promise<{ message: string }> {
+    // TODO: 토큰 검증 및 비밀번호 재설정 로직 구현
+    return { message: '비밀번호가 성공적으로 재설정되었습니다.' };
+  }
+
+  // ---------- 프로필 관리 ----------
+  async getUserProfile(userId: number): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { id: userId, active: true } });
+  }
+
+  async updateUserProfile(userId: number, updateData: any): Promise<User> {
+    await this.userRepository.update(userId, updateData);
+    const updatedUser = await this.userRepository.findOne({ where: { id: userId } });
+    if (!updatedUser) throw new Error('사용자를 찾을 수 없습니다.');
+    return updatedUser;
+  }
+
+  // ---------- 회원탈퇴 ----------
+  async deleteAccount(userId: number, deleteData: DeleteAccountDto): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 소프트 삭제 (active = false)
+    await this.userRepository.update(userId, { active: false });
+    return { message: '계정이 성공적으로 삭제되었습니다.' };
   }
 }

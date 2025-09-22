@@ -43,7 +43,7 @@ router.post('/crawler/crawl', async (req, res) => {
         id: article.id,
         title: article.title,
         url: article.url,
-        pub_date: article.pub_date,
+        pub_date: article.pubDate,
         source: article.source,
         category: article.category
       }))
@@ -126,13 +126,10 @@ router.post('/crawler/test-parse', async (req, res) => {
 router.get('/crawler/status', async (req, res) => {
   try {
     const hasNaverKeys = !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
-    const hasGeminiKey = !!process.env.GEMINI_API_KEY;
-
     res.json({
       status: 'ready',
       configurations: {
-        naverApi: hasNaverKeys,
-        geminiAi: hasGeminiKey
+        naverApi: hasNaverKeys
       },
       supportedCategories: newsCrawlerService.getSupportedCategories(),
       timestamp: new Date().toISOString()

@@ -49,7 +49,10 @@ async function mapArticle(a: NewsArticle) {
 
     // 시간 정보
     created_at: a.createdAt,
-    updated_at: a.updatedAt
+    updated_at: a.updatedAt,
+
+    // 키워드 정보 (기본값)
+    keywords: [] as any[]
   };
 }
 

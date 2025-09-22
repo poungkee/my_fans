@@ -290,8 +290,8 @@ router.get('/recommendations', authenticateToken, async (req: AuthenticatedReque
       category: rec.article.category?.name,
       score: rec.recommendationScore,
       reason: rec.recommendationReason,
-      viewCount: rec.article.stats?.viewCount || 0,
-      likeCount: rec.article.stats?.likeCount || 0
+      viewCount: rec.article.stats?.[0]?.viewCount || 0,
+      likeCount: rec.article.stats?.[0]?.likeCount || 0
     }));
 
     res.json({

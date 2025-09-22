@@ -170,7 +170,7 @@ class NewsCrawlerService {
         html = response.data;
       }
 
-      const $ = cheerio.load(html, { decodeEntities: false });
+      const $ = cheerio.load(html, { xmlMode: false });
 
       // 다양한 뉴스 사이트 구조에 맞게 파싱
       const titleSelectors = [
@@ -315,25 +315,27 @@ class NewsCrawlerService {
       for (const selector of imageSelectors) {
         const images = $(selector);
         for (let i = 0; i < images.length; i++) {
-          const src = $(images[i]).attr('src');
+          const src = $(images[i]).attr('src') || '';
           const alt = $(images[i]).attr('alt') || '';
           const className = $(images[i]).attr('class') || '';
 
           console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
 
           // 로고나 아이콘 이미지 제외 (더 강화)
-          const isLogo = alt.toLowerCase().includes('logo') ||
-                        className.toLowerCase().includes('logo') ||
-                        src.toLowerCase().includes('logo') ||
-                        src.toLowerCase().includes('banner') ||
-                        src.toLowerCase().includes('ad') ||
-                        src.toLowerCase().includes('icon') ||
-                        alt.toLowerCase().includes('아이콘') ||
-                        alt.toLowerCase().includes('로고') ||
-                        alt.toLowerCase().includes('배너') ||
-                        src.includes('/logo/') ||
-                        src.includes('/icon/') ||
-                        src.includes('/banner/');
+          const isLogo = src ? (
+            alt.toLowerCase().includes('logo') ||
+            className.toLowerCase().includes('logo') ||
+            src.toLowerCase().includes('logo') ||
+            src.toLowerCase().includes('banner') ||
+            src.toLowerCase().includes('ad') ||
+            src.toLowerCase().includes('icon') ||
+            alt.toLowerCase().includes('아이콘') ||
+            alt.toLowerCase().includes('로고') ||
+            alt.toLowerCase().includes('배너') ||
+            src.includes('/logo/') ||
+            src.includes('/icon/') ||
+            src.includes('/banner/')
+          ) : true;
 
           // 이미지 크기도 확인 (너무 작은 이미지 제외)
           const width = parseInt($(images[i]).attr('width') || '0');
@@ -417,12 +419,10 @@ class NewsCrawlerService {
         title: parsedNews.title,
         content: parsedNews.content,
         url: originalUrl,
-        origin_url: originalUrl,
-        image_url: parsedNews.imageUrl,
-        video_url: parsedNews.videoUrl,
-        media_source_id: 1, // 기본값: 네이버뉴스
-        category_id: categoryIdMap[categoryName] || 1, // 기본값: 정치
-        pub_date: parsedNews.pubDate
+        imageUrl: parsedNews.imageUrl,
+        sourceId: 1, // 기본값: 네이버뉴스
+        categoryId: categoryIdMap[categoryName] || 1, // 기본값: 정치
+        pubDate: parsedNews.pubDate
       });
 
       const savedArticle = await newsRepo.save(article);
@@ -443,14 +443,10 @@ class NewsCrawlerService {
   private async generateAISummaryAsync(articleId: number, content: string): Promise<void> {
     try {
       const aiResult = await localAIService.summarizeText(content);
-      const shortSummary = aiResult.summary.length > 50
-        ? aiResult.summary.substring(0, 47) + '...'
-        : aiResult.summary;
 
       const newsRepo = AppDataSource.getRepository(NewsArticle);
       await newsRepo.update(articleId, {
-        ai_summary: aiResult.summary,
-        short_ai_summary: shortSummary
+        aiSummary: aiResult.summary
       });
 
       console.log(`AI 요약 생성 완료 - Article ID: ${articleId}`);

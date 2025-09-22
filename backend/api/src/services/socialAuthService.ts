@@ -25,7 +25,7 @@ export class SocialAuthService {
 
       // 기존 사용자 확인
       let user = await this.userRepository.findOne({
-        where: { provider_id: kakaoUserInfo.id.toString() }
+        where: { provider: 'kakao', socialToken: kakaoUserInfo.id.toString() }
       });
 
       if (!user) {
@@ -33,19 +33,17 @@ export class SocialAuthService {
         user = this.userRepository.create({
           username: `kakao_${kakaoUserInfo.id}`,
           email: kakaoUserInfo.kakao_account?.email || `${kakaoUserInfo.id}@kakao.com`,
-          name: kakaoUserInfo.kakao_account?.profile?.nickname || '카카오 사용자',
           provider: 'kakao',
-          provider_id: kakaoUserInfo.id.toString(),
-          profile_image: kakaoUserInfo.kakao_account?.profile?.profile_image_url,
-          email_verified: true, // 카카오는 이메일 인증 완료로 간주
-          is_active: true
+          socialToken: kakaoUserInfo.id.toString(),
+          profileImage: kakaoUserInfo.kakao_account?.profile?.profile_image_url,
+          passwordHash: 'social_login' // 소셜 로그인은 더미 비밀번호
         });
 
         user = await this.userRepository.save(user);
       } else {
         // 기존 사용자 정보 업데이트
-        user.profile_image = kakaoUserInfo.kakao_account?.profile?.profile_image_url;
-        user.last_login = new Date();
+        user.profileImage = kakaoUserInfo.kakao_account?.profile?.profile_image_url;
+        user.lastLogin = new Date();
         user = await this.userRepository.save(user);
       }
 
@@ -75,7 +73,7 @@ export class SocialAuthService {
 
       // 기존 사용자 확인
       let user = await this.userRepository.findOne({
-        where: { provider_id: naverUserInfo.id }
+        where: { provider: 'naver', socialToken: naverUserInfo.id }
       });
 
       if (!user) {
@@ -83,19 +81,17 @@ export class SocialAuthService {
         user = this.userRepository.create({
           username: `naver_${naverUserInfo.id}`,
           email: naverUserInfo.email || `${naverUserInfo.id}@naver.com`,
-          name: naverUserInfo.name || '네이버 사용자',
           provider: 'naver',
-          provider_id: naverUserInfo.id,
-          profile_image: naverUserInfo.profile_image,
-          email_verified: true, // 네이버는 이메일 인증 완료로 간주
-          is_active: true
+          socialToken: naverUserInfo.id,
+          profileImage: naverUserInfo.profile_image,
+          passwordHash: 'social_login' // 소셜 로그인은 더미 비밀번호
         });
 
         user = await this.userRepository.save(user);
       } else {
         // 기존 사용자 정보 업데이트
-        user.profile_image = naverUserInfo.profile_image;
-        user.last_login = new Date();
+        user.profileImage = naverUserInfo.profile_image;
+        user.lastLogin = new Date();
         user = await this.userRepository.save(user);
       }
 
