@@ -414,13 +414,40 @@ class NewsCrawlerService {
         '스포츠': 8
       };
 
+      // 언론사 ID 매핑 (실제 언론사 이름을 DB ID에 매핑)
+      const sourceIdMap: { [key: string]: number } = {
+        '조선일보': 1, '중앙일보': 2, '동아일보': 3,
+        '한겨레': 4, '경향신문': 5, '한국일보': 6,
+        '매일경제': 7, '한국경제': 8, '머니투데이': 9,
+        'YTN': 10, '연합뉴스': 11, 'JTBC': 12,
+        'SBS': 13, 'KBS': 14, 'MBC': 15
+      };
+
+      // 제목에서 언론사 이름 추출 (제목 끝에 있는 언론사명)
+      let extractedSource = '';
+      if (parsedNews.mediaSource) {
+        extractedSource = parsedNews.mediaSource;
+      } else {
+        // 제목에서 언론사 추출 (예: "뉴스 제목 - 조선일보" 형태)
+        const titleParts = parsedNews.title.split(/\s+/);
+        const lastPart = titleParts[titleParts.length - 1];
+        if (sourceIdMap[lastPart]) {
+          extractedSource = lastPart;
+        }
+      }
+
+      // 추출된 언론사명으로 sourceId 결정
+      const sourceId = sourceIdMap[extractedSource] || 11; // 기본값: 연합뉴스
+
+      console.log(`[DEBUG] 언론사 매핑: "${extractedSource}" -> sourceId: ${sourceId}`);
+
       // NewsArticle 생성 (새 스키마)
       const article = newsRepo.create({
         title: parsedNews.title,
         content: parsedNews.content,
         url: originalUrl,
         imageUrl: parsedNews.imageUrl,
-        sourceId: 1, // 기본값: 네이버뉴스
+        sourceId: sourceId,
         categoryId: categoryIdMap[categoryName] || 1, // 기본값: 정치
         pubDate: parsedNews.pubDate
       });

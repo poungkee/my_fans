@@ -15,6 +15,7 @@ import marketSummaryRoutes from "./routes/marketSummary";
 import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
 import schedulerRoutes from './routes/scheduler';
+import subscriptionRoutes from './routes/subscription';
 import { newsSchedulerService } from './services/newsSchedulerService';
 
 const envPath = path.resolve(__dirname, '../.env');
@@ -86,6 +87,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userInteractionsRoutes);
+app.use('/api/user', subscriptionRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', crawlerRoutes);
 app.use('/api', commonRoutes);

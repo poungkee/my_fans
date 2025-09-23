@@ -316,6 +316,8 @@ body {
     transition: box-shadow 0.2s, transform 0.2s;
     cursor: pointer;
     min-height: 460px;
+    display: flex;
+    flex-direction: column;
 }
 
 .news-item:hover {
@@ -340,15 +342,32 @@ body {
 
 .news-content {
     padding: 35px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: calc(460px - 280px - 2px); /* 최소 높이만 설정하고 유연하게 확장 가능 */
 }
 
 .news-title {
-    font-size: 24px;
+    font-size: 18px !important;
     font-weight: bold;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     color: #212529;
-    line-height: 1.4;
+    line-height: 1.4 !important;
     text-decoration: none;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    text-overflow: ellipsis !important;
+    height: auto !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
+    width: 100% !important;
+}
+
+.news-meta-container {
+    margin-top: auto;
 }
 
 .news-title:hover {
@@ -364,11 +383,71 @@ body {
 
 .news-meta {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
     font-size: 15px;
     color: #6c757d;
     margin-top: 18px;
+}
+
+.news-source-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.news-source-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.news-source-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.news-source-fallback {
+    font-size: 16px;
+}
+
+.news-source-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.subscribe-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.subscribe-button:hover {
+    background-color: #0056b3;
+}
+
+.news-details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.news-journalist {
+    font-weight: 500;
+}
+
+.news-time {
+    color: #868e96;
 }
 
 .news-actions {
@@ -718,6 +797,74 @@ body {
     justify-content: center;
     font-size: 12px;
     color: #6c757d;
+    flex-direction: column;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.logo-container h4 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: #6c757d;
+    text-align: center;
+}
+
+.agency-logo-image {
+    max-width: 80px;
+    max-height: 60px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.agency-logo-image-full {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.logo-fallback {
+    font-size: 10px;
+    color: #dc3545;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+.logo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+}
+
+.logo-placeholder h4 {
+    margin: 0 0 5px 0;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.logo-placeholder p {
+    margin: 0;
+    font-size: 10px;
+    color: #adb5bd;
 }
 
 .agency-details {

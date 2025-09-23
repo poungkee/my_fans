@@ -5,51 +5,26 @@ import NewsItem from './NewsItem';
 const PAGE_SIZE = 8; // 한번에 추가로 보여줄 개수
 
 const NewsGrid = ({ newsData, searchQuery }) => {
-  // ✅ 반드시 컴포넌트 최상단에서 선언
-  const [bookmarkedNews, setBookmarkedNews] = useState(new Set());
-  const [likedNews, setLikedNews] = useState(new Set());
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE); // ← 여기!
-
-  // 디버그 로그 추가
-  //console.log('NewsGrid - newsData:', newsData?.length || 0, 'items');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // newsData나 검색어 변경 시 페이지 리셋
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [newsData, searchQuery]);
 
-  const handleBookmark = (newsId) => {
-    const next = new Set(bookmarkedNews);
-    if (next.has(newsId)) {
-      next.delete(newsId);
-      alert('북마크에서 제거되었습니다.');
-    } else {
-      next.add(newsId);
-      alert('북마크에 추가되었습니다!');
-    }
-    setBookmarkedNews(next);
-  };
-
-  const handleLike = (newsId) => {
-    const next = new Set(likedNews);
-    if (next.has(newsId)) next.delete(newsId);
-    else next.add(newsId);
-    setLikedNews(next);
-  };
-
-  const handleShare = (news) => {
-    const link = news.origin_url || news.url || window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: news.title, text: '이 뉴스를 확인해보세요!', url: link });
-    } else {
-      navigator.clipboard.writeText(link).then(() => alert('링크가 클립보드에 복사되었습니다!'));
-    }
-  };
-
   const handleNewsDetail = (news) => {
     const url = news.origin_url || news.url;
     if (url) window.open(url, '_blank', 'noopener');
     else alert(`뉴스 상세 페이지: ${news.title}`);
+  };
+
+  const handleSubscribe = (sourceName) => {
+    if (sourceName && sourceName !== '출처 미상') {
+      alert(`${sourceName} 구독이 추가되었습니다!`);
+      // TODO: 실제 구독 로직 구현
+    } else {
+      alert('구독할 수 없는 언론사입니다.');
+    }
   };
 
   // 검색 필터링
@@ -66,7 +41,7 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   const visibleItems = filteredNews.slice(0, visibleCount);
 
   // 디버그 로그 추가
-  //console.log('NewsGrid - visibleCount:', visibleCount, 'filteredNews:', filteredNews.length, 'visibleItems:', visibleItems.length);
+  console.log('NewsGrid - visibleCount:', visibleCount, 'filteredNews:', filteredNews.length, 'visibleItems:', visibleItems.length);
 
   // 더보기 클릭
   const handleLoadMore = () => {
@@ -83,12 +58,8 @@ const NewsGrid = ({ newsData, searchQuery }) => {
           <NewsItem
             key={news.id}
             news={news}
-            isBookmarked={bookmarkedNews.has(news.id)}
-            isLiked={likedNews.has(news.id)}
-            onBookmark={() => handleBookmark(news.id)}
-            onLike={() => handleLike(news.id)}
-            onShare={() => handleShare(news)}
             onDetail={() => handleNewsDetail(news)}
+            onSubscribe={handleSubscribe}
           />
         ))}
       </div>

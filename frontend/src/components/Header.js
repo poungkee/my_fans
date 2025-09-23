@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useCommonData } from '../hooks/useCommonData';
 import './Header.css';
 
-const Header = ({ onSortChange, onSearch, selectedSort }) => {
+const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSourceFilter }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [showSearchBar, setShowSearchBar] = useState(false); // 검색창 표시 여부
   const navigate = useNavigate();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
   
@@ -157,8 +158,25 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     setActiveDropdown(activeDropdown === type ? null : type);
   };
 
-  const handleMouseEnter = (type) => setActiveDropdown(type);
-  const handleMouseLeave = () => setActiveDropdown(null);
+  // 클릭 외부 영역 감지를 위한 이벤트 핸들러
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // 드롭다운 메뉴의 링크를 클릭한 경우는 외부 클릭으로 처리하지 않음
+      if (event.target.tagName === 'A' && event.target.closest('.user-dropdown-content')) {
+        return; // 링크 클릭은 무시
+      }
+
+      // 드롭다운 내부의 다른 요소들도 체크
+      if (!event.target.closest('.dropdown') && !event.target.closest('.user-dropdown')) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   const handleSortClick = (sortType, displayText) => {
     onSortChange(sortType, displayText);
@@ -168,10 +186,38 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
   
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
-      onSearch(e.target.value);
+      if (onSearch) {
+        onSearch(e.target.value);
+      }
+      setShowSearchBar(false); // 검색 후 검색창 숨기기
     } else if (e.type === 'click') {
       const query = searchInputRef.current?.value ?? '';
-      onSearch(query);
+      if (onSearch) {
+        onSearch(query);
+      }
+      setShowSearchBar(false); // 검색 후 검색창 숨기기
+    }
+  };
+
+  const toggleSearchBar = () => {
+    setShowSearchBar(!showSearchBar);
+    if (!showSearchBar) {
+      // 검색창이 나타날 때 포커스 주기
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 100);
+    }
+  };
+
+  const handleActivityLog = () => {
+    if (isLoggedIn) {
+      // 활동로그 페이지로 이동
+      navigate('/activity-log');
+    } else {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
     }
   };
 
@@ -182,37 +228,55 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       searchInputRef.current.blur();
     }
     setActiveDropdown(null);
-    onSearch('');     // 전체 뉴스로
-    
-    // 페이지 새로고침
-    window.location.reload();
+    if (onSearch) {
+      onSearch('');     // 전체 뉴스로
+    }
+
+    // 홈으로 이동
+    navigate('/');
   };
 
   return (
     <header className="header">
       <div className="header-left">
         <div className="logo" onClick={handleLogoClick}>FANS</div>
-        
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('agency')}
-          onMouseLeave={handleMouseLeave}
+
+        {/* 검색 아이콘 - FANS 로고 오른쪽에 배치 */}
+        <div
+          className="search-icon-button"
+          onClick={toggleSearchBar}
+          title="검색"
         >
-          <div className="news-agency">
-            언론사 ▼
-          </div>
-          <div 
-            id="agency-dropdown" 
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        <div className="dropdown">
+          <button
+            className={`dropdown-button agency-button ${activeDropdown === 'agency' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('agency')}
+          >
+            📰 언론사
+          </button>
+          <div
+            id="agency-dropdown"
             className={`dropdown-content ${activeDropdown === 'agency' ? 'show' : ''}`}
           >
             {loading ? (
               <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
             ) : (
               mediaSources.map((source, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
-                  onClick={(e) => { e.preventDefault(); }}
+                <a
+                  key={index}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onSourceFilter) {
+                      onSourceFilter(source.name);
+                    }
+                    setActiveDropdown(null);
+                  }}
                 >
                   {source.name}
                 </a>
@@ -220,27 +284,32 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             )}
           </div>
         </div>
-        
-        <div 
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('category')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div className="category-nav">
-            카테고리 ▼
-          </div>
-          <div 
-            id="category-dropdown" 
+
+        <div className="dropdown">
+          <button
+            className={`dropdown-button category-button ${activeDropdown === 'category' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('category')}
+          >
+            📂 카테고리
+          </button>
+          <div
+            id="category-dropdown"
             className={`dropdown-content ${activeDropdown === 'category' ? 'show' : ''}`}
           >
             {loading ? (
               <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
             ) : (
               categories.map((category, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
-                  onClick={(e) => { e.preventDefault(); }}
+                <a
+                  key={index}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onCategoryFilter) {
+                      onCategoryFilter(category);
+                    }
+                    setActiveDropdown(null);
+                  }}
                 >
                   {category}
                 </a>
@@ -248,57 +317,82 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             )}
           </div>
         </div>
+
+        {/* 활동로그 버튼 - 카테고리 옆에 배치 */}
+        <button
+          className="activity-log-button"
+          onClick={handleActivityLog}
+          title="나의 활동로그"
+        >
+          📊 활동로그
+        </button>
       </div>
-      
-      <div className="search-section">
-        <div className="dropdown">
-          <div 
-            className="search-filter" 
-            onClick={() => toggleDropdown('sort')}
-          >
-            <span className="search-filter-text">{selectedSort}</span>
-            <span>▼</span>
-          </div>
-          <div 
-            id="sort-dropdown" 
-            className={`dropdown-content ${activeDropdown === 'sort' ? 'show' : ''}`}
-          >
-            {loading ? (
-              <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
-            ) : (
-              searchOptions.sort?.map((option, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
-                  onClick={(e) => { 
-                    e.preventDefault(); 
-                    handleSortClick(option.value, option.label); 
-                  }}
-                >
-                  {option.label}
-                </a>
-              ))
-            )}
-          </div>
-        </div>
-        
-        <input
-          ref={searchInputRef}        // ✅ ref 연결
-          type="text"
-          className="search-input"
-          placeholder="검색어를 입력하세요"
-          onKeyUp={handleSearch}
-        />
-        
-            <div 
-              className="search-icon" 
+
+      <div className="header-right">
+        {/* 여기는 비워둠 */}
+      </div>
+
+      {/* 검색창 - 돋보기 클릭시 나타남 */}
+      {showSearchBar && (
+        <div className="search-overlay">
+          <div className="search-section-expanded">
+            <div className="dropdown">
+              <div
+                className="search-filter"
+                onClick={() => toggleDropdown('sort')}
+              >
+                <span className="search-filter-text">{selectedSort}</span>
+                <span>▼</span>
+              </div>
+              <div
+                id="sort-dropdown"
+                className={`dropdown-content ${activeDropdown === 'sort' ? 'show' : ''}`}
+              >
+                {loading ? (
+                  <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
+                ) : (
+                  searchOptions.sort?.map((option, index) => (
+                    <a
+                      key={index}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSortClick(option.value, option.label);
+                      }}
+                    >
+                      {option.label}
+                    </a>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="search-input-expanded"
+              placeholder="검색어를 입력하세요"
+              onKeyUp={handleSearch}
+            />
+
+            <div
+              className="search-button"
               onClick={handleSearch}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-      </div>
+
+            <button
+              className="close-search-button"
+              onClick={() => setShowSearchBar(false)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="user-menu">
         <div className="user-dropdown">
@@ -362,13 +456,33 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
                   <span className="user-name">{user?.userName || user?.name || user?.username || '사용자'}</span>
                   <span className="user-email">{user?.email}</span>
                 </div>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>로그아웃</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/mypage'), 100);
+                }}>마이페이지</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => handleLogout(), 100);
+                }}>로그아웃</a>
               </>
             ) : (
               <>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/login'), 100);
+                }}>로그인</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/register'), 100);
+                }}>회원가입</a>
               </>
             )}
           </div>

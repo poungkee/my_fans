@@ -6,7 +6,8 @@ export enum ActionType {
     VIEW = 'VIEW',
     LIKE = 'LIKE',
     DISLIKE = 'DISLIKE',
-    BOOKMARK = 'BOOKMARK'
+    BOOKMARK = 'BOOKMARK',
+    COMMENT = 'COMMENT'
 }
 
 @Entity('user_actions')
