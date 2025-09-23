@@ -640,8 +640,8 @@ const MyPage = () => {
           <section className="user-info-section">
             <h2>📋 회원정보</h2>
             <div className="user-info-card">
-              <div className="user-details">
-                {/* 프로필 이미지 섹션 */}
+              <div className="horizontal-layout">
+                {/* 왼쪽: 프로필 이미지 섹션 */}
                 <div className="profile-image-section">
                   <div className="profile-image-container">
                     {user.profileImage && user.profileImage.trim() !== '' ? (
@@ -685,6 +685,10 @@ const MyPage = () => {
                       </div>
                     )}
                   </div>
+
+                  <div className="user-name">{user.name || user.username}</div>
+                  <div className="user-email">{user.email}</div>
+
                   <div className="profile-image-controls">
                     <input
                       type="file"
@@ -715,10 +719,7 @@ const MyPage = () => {
                   )}
                 </div>
 
-                <div className="user-name">{user.name || user.username}</div>
-                <div className="user-email">{user.email}</div>
-
-                {/* 4x2 기본 정보 그리드 */}
+                {/* 오른쪽: 4x2 기본 정보 그리드 */}
                 <div className="user-info-grid">
                   <div className="info-card" style={{ '--index': 0 }}>
                     <div className="info-icon">👤</div>
@@ -768,45 +769,6 @@ const MyPage = () => {
                     <div className="info-value">{user.location || '미설정'}</div>
                   </div>
                 </div>
-
-                {/* 관심사 섹션 */}
-                {(user.preferredCategories && user.preferredCategories.length > 0) && (
-                  <div className="preferences-section">
-                    <h4>🎯 관심 카테고리</h4>
-                    <div className="preference-tags">
-                      {user.preferredCategories.map((category, index) => (
-                        <span key={index} className="preference-tag">{category}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 선호 언론사 섹션 */}
-                <div className="preferences-section">
-                  <h4>📰 선호 언론사</h4>
-                  {(user.preferredSources && Array.isArray(user.preferredSources) && user.preferredSources.length > 0) ? (
-                    <div className="preference-tags">
-                      {user.preferredSources.map((source, index) => (
-                        <span key={index} className="preference-tag">{source}</span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ color: '#718096', textAlign: 'center', padding: '20px' }}>
-                      설정된 선호 언론사가 없습니다.
-                    </p>
-                  )}
-                </div>
-
-                {/* 선호도가 설정되지 않은 경우 */}
-                {(!user.preferredCategories || user.preferredCategories.length === 0) &&
-                 (!user.preferredSources || user.preferredSources.length === 0) && (
-                  <div className="preferences-section">
-                    <h4>🔧 프로필 설정</h4>
-                    <p style={{ color: '#718096', textAlign: 'center', padding: '20px' }}>
-                      아직 선호도가 설정되지 않았습니다. 프로필 설정을 완료해보세요!
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </section>
