@@ -172,19 +172,32 @@ function HomePage() {
 
   /* -------------------- 필터 상태 -------------------- */
   const [categoryFilteredNews, setCategoryFilteredNews] = useState(null);
+  const [sourceFilteredNews, setSourceFilteredNews] = useState(null);
 
   const currentList = isSearching
-    ? (categoryFilteredNews ?? searchResults)
-    : (categoryFilteredNews ?? feedNews);
+    ? (sourceFilteredNews ?? categoryFilteredNews ?? searchResults)
+    : (sourceFilteredNews ?? categoryFilteredNews ?? feedNews);
 
 
   const handleCategoryFilter = (category) => {
-    if (!category) {
+    if (!category || category === '전체') {
       setCategoryFilteredNews(null);
+      setSourceFilteredNews(null);
       return;
     }
     const base = isSearching ? searchResults : feedNews;
-    setCategoryFilteredNews(base.filter((n) => n.category === category));
+    const filtered = base.filter((n) => n.category === category);
+    setCategoryFilteredNews(filtered);
+    setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
+  };
+
+  const handleSourceFilter = (sourceName) => {
+    if (!sourceName) {
+      setSourceFilteredNews(null);
+      return;
+    }
+    const base = categoryFilteredNews || (isSearching ? searchResults : feedNews);
+    setSourceFilteredNews(base.filter((n) => n.source === sourceName));
   };
 
   /* -------------------- 렌더 -------------------- */
@@ -194,6 +207,8 @@ function HomePage() {
         onSortChange={handleSortChange}
         onSearch={handleSearch}
         selectedSort={selectedSort}
+        onCategoryFilter={handleCategoryFilter}
+        onSourceFilter={handleSourceFilter}
       />
 
       {/* 주식 위젯 – 로딩/에러가 있어도 아래 콘텐츠 렌더링은 계속 진행 */}

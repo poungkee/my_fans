@@ -7,7 +7,6 @@ const MyPage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeSection, setActiveSection] = useState('profile');
 
   // 비밀번호 변경 상태 (일반 로그인)
   const [passwordData, setPasswordData] = useState({
@@ -40,8 +39,6 @@ const MyPage = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleteVerificationSent, setDeleteVerificationSent] = useState(false);
 
-  // 프로필 이미지 업로드 상태
-  const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImageLoading, setProfileImageLoading] = useState(false);
   const [profileImageError, setProfileImageError] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState(null);
@@ -620,25 +617,10 @@ const MyPage = () => {
         <h1>마이페이지</h1>
       </div>
 
-      <div className="mypage-nav">
-        <button
-          className={`nav-button ${activeSection === 'profile' ? 'active' : ''}`}
-          onClick={() => setActiveSection('profile')}
-        >
-          회원정보
-        </button>
-        <button
-          className={`nav-button ${activeSection === 'account' ? 'active' : ''}`}
-          onClick={() => setActiveSection('account')}
-        >
-          계정관리
-        </button>
-      </div>
 
       <div className="mypage-content">
-        {activeSection === 'profile' && (
-          <section className="user-info-section">
-            <h2>📋 회원정보</h2>
+        <section className="user-info-section">
+          <h2>📋 회원정보</h2>
             <div className="user-info-card">
               <div className="horizontal-layout">
                 {/* 왼쪽: 프로필 이미지 섹션 */}
@@ -771,12 +753,10 @@ const MyPage = () => {
                 </div>
               </div>
             </div>
-          </section>
-        )}
 
-        {activeSection === 'account' && (
-          <section className="account-management-section">
-            <h2>⚙️ 계정관리</h2>
+            {/* 계정관리 섹션 */}
+            <div className="account-management-section">
+              <h2>⚙️ 계정관리</h2>
 
             {/* 로그아웃 */}
             <div className="account-card">
@@ -1080,8 +1060,8 @@ const MyPage = () => {
                 )
               )}
             </div>
-          </section>
-        )}
+            </div>
+        </section>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CATEGORIES, MEDIA_SOURCES } from '../constants/commonData';
-import './AuthPages.css';
+import './ProfileSetupPage.css';
 
 const ProfileSetupPage = () => {
   const [formData, setFormData] = useState({
@@ -15,11 +14,56 @@ const ProfileSetupPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
+
+  // 데이터베이스에서 가져올 카테고리와 언론사 데이터
+  const [categories, setCategories] = useState([]);
+  const [mediaSources, setMediaSources] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
   const navigate = useNavigate();
   const location = useLocation();
 
   // URL에서 사용자 정보 가져오기
   const userInfo = location.state?.user;
+
+  // 데이터베이스에서 카테고리와 언론사 데이터 가져오기
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setDataLoading(true);
+
+        const [categoriesResponse, sourcesResponse] = await Promise.all([
+          fetch('/api/common/categories'),
+          fetch('/api/common/media-sources')
+        ]);
+
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          if (categoriesData.success && categoriesData.data) {
+            setCategories(categoriesData.data);
+          }
+        }
+
+        if (sourcesResponse.ok) {
+          const sourcesData = await sourcesResponse.json();
+          if (sourcesData.success && sourcesData.data) {
+            // 언론사 데이터에서 name만 추출
+            const sourceNames = sourcesData.data.map(source => source.name);
+            setMediaSources(sourceNames);
+          }
+        }
+      } catch (error) {
+        console.error('카테고리/언론사 데이터 조회 실패:', error);
+        // 에러 발생 시 기본값 사용
+        setCategories(['정치', '경제', '사회', '생활/문화', 'IT/과학', '세계', '스포츠', '연예']);
+        setMediaSources(['조선일보', 'KBS', 'SBS', 'MBC', '한겨레', '중앙일보', '동아일보', '경향신문', '연합뉴스', 'YTN']);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -78,7 +122,7 @@ const ProfileSetupPage = () => {
         return;
       }
 
-      // 사용자 프로필 셋업 API 호출
+      // 사용자 프로필 셋업 API 호출 (user_preferences 테이블에 저장)
       const response = await fetch('/api/auth/setup-profile', {
         method: 'POST',
         headers: {
@@ -186,9 +230,22 @@ const ProfileSetupPage = () => {
     }
   };
 
-  // 공통 상수에서 카테고리와 언론사 목록 가져오기
-  const categories = CATEGORIES;
-  const mediaSources = MEDIA_SOURCES;
+  // 데이터 로딩 중일 때 로딩 표시
+  if (dataLoading) {
+    return (
+      <div className="profile-setup-page">
+        <div className="profile-setup-container">
+          <div className="profile-setup-form">
+            <div className="profile-setup-header">
+              <h2>프로필 설정</h2>
+              <p>카테고리와 언론사 정보를 불러오는 중...</p>
+            </div>
+            <div className="loading-spinner">로딩 중...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 각 단계별 버튼 활성화 조건
   const isStepValid = () => {
@@ -213,14 +270,14 @@ const ProfileSetupPage = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="step-content">
-            <div className="step-header">
+          <div className="step-section">
+            <div className="section-title">
               <h3>기본 정보</h3>
-              <p>나이, 성별, 지역 정보를 입력해주세요.</p>
+              <p>개인화된 뉴스 추천을 위해 기본 정보를 입력해주세요. (선택사항)</p>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="age">나이 (선택)</label>
+
+            <div className="form-field">
+              <label htmlFor="age">나이</label>
               <input
                 type="number"
                 id="age"
@@ -234,8 +291,8 @@ const ProfileSetupPage = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="gender">성별 (선택)</label>
+            <div className="form-field">
+              <label htmlFor="gender">성별</label>
               <select
                 id="gender"
                 name="gender"
@@ -250,8 +307,8 @@ const ProfileSetupPage = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="location">지역 (선택)</label>
+            <div className="form-field">
+              <label htmlFor="location">지역</label>
               <select
                 id="location"
                 name="location"
@@ -277,68 +334,72 @@ const ProfileSetupPage = () => {
 
       case 2:
         return (
-          <div className="step-content">
-            <div className="step-header">
+          <div className="step-section">
+            <div className="section-title">
               <h3>관심 카테고리</h3>
-              <p>관심 있는 뉴스 카테고리를 선택해주세요. (최소 1개 이상 필수)</p>
-              <div className="selection-status">
-                <span className={`status-indicator ${formData.preferredCategories.length > 0 ? 'success' : 'warning'}`}>
-                  선택됨: {formData.preferredCategories.length}개 / {categories.length}개
-                </span>
-                {formData.preferredCategories.length === 0 && (
-                  <span className="requirement-message">⚠️ 최소 1개 이상 선택해주세요</span>
-                )}
-              </div>
+              <p>관심 있는 뉴스 카테고리를 선택해주세요. 최소 1개 이상 선택해야 합니다.</p>
             </div>
 
-            <div className="form-group">
-              <div className="checkbox-grid">
-                {categories.map(category => (
-                  <label key={category} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={formData.preferredCategories.includes(category)}
-                      onChange={() => handleCategoryChange(category)}
-                      disabled={loading}
-                    />
-                    <span>{category}</span>
-                  </label>
-                ))}
+            <div className="selection-status">
+              <div className={`status-badge ${formData.preferredCategories.length > 0 ? 'success' : 'warning'}`}>
+                <span>✓</span>
+                선택됨: {formData.preferredCategories.length}개 / {categories.length}개
               </div>
+              {formData.preferredCategories.length === 0 && (
+                <div className="requirement-hint">
+                  ⚠️ 최소 1개 이상의 카테고리를 선택해주세요
+                </div>
+              )}
+            </div>
+
+            <div className="selection-grid">
+              {categories.map(category => (
+                <label key={category} className={`selection-item ${formData.preferredCategories.includes(category) ? 'selected' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.preferredCategories.includes(category)}
+                    onChange={() => handleCategoryChange(category)}
+                    disabled={loading}
+                  />
+                  <span>{category}</span>
+                </label>
+              ))}
             </div>
           </div>
         );
 
       case 3:
         return (
-          <div className="step-content">
-            <div className="step-header">
+          <div className="step-section">
+            <div className="section-title">
               <h3>선호 언론사</h3>
-              <p>선호하는 언론사를 선택해주세요. (최소 1개 이상 필수)</p>
-              <div className="selection-status">
-                <span className={`status-indicator ${formData.preferredSources.length > 0 ? 'success' : 'warning'}`}>
-                  선택됨: {formData.preferredSources.length}개 / {mediaSources.length}개
-                </span>
-                {formData.preferredSources.length === 0 && (
-                  <span className="requirement-message">⚠️ 최소 1개 이상 선택해주세요</span>
-                )}
-              </div>
+              <p>선호하는 언론사를 선택해주세요. 최소 1개 이상 선택해야 합니다.</p>
             </div>
 
-            <div className="form-group">
-              <div className="checkbox-grid">
-                {mediaSources.map(source => (
-                  <label key={source} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={formData.preferredSources.includes(source)}
-                      onChange={() => handleMediaSourceChange(source)}
-                      disabled={loading}
-                    />
-                    <span>{source}</span>
-                  </label>
-                ))}
+            <div className="selection-status">
+              <div className={`status-badge ${formData.preferredSources.length > 0 ? 'success' : 'warning'}`}>
+                <span>✓</span>
+                선택됨: {formData.preferredSources.length}개 / {mediaSources.length}개
               </div>
+              {formData.preferredSources.length === 0 && (
+                <div className="requirement-hint">
+                  ⚠️ 최소 1개 이상의 언론사를 선택해주세요
+                </div>
+              )}
+            </div>
+
+            <div className="selection-grid">
+              {mediaSources.map(source => (
+                <label key={source} className={`selection-item ${formData.preferredSources.includes(source) ? 'selected' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.preferredSources.includes(source)}
+                    onChange={() => handleMediaSourceChange(source)}
+                    disabled={loading}
+                  />
+                  <span>{source}</span>
+                </label>
+              ))}
             </div>
           </div>
         );
@@ -348,46 +409,57 @@ const ProfileSetupPage = () => {
     }
   };
 
+  const getProgressPercentage = () => {
+    return (currentStep / 3) * 100;
+  };
+
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-form">
-          <form onSubmit={handleSubmit} className="auth-form-content" onKeyDown={(e) => {
-            // Enter 키가 눌렸을 때 3단계가 아니면 submit 방지
+    <div className="profile-setup-page">
+      <div className="profile-setup-container">
+        <div className="profile-setup-form">
+          <div className="profile-setup-header">
+            <h2>프로필 설정</h2>
+            <p>안녕하세요, {userInfo.name}님! 맞춤 뉴스를 위해 추가 정보를 입력해주세요.</p>
+          </div>
+
+          <div className="step-progress">
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${getProgressPercentage()}%` }}
+              ></div>
+            </div>
+
+            <div className="step-indicators">
+              <div className={`step-indicator ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
+                <div className="step-circle">1</div>
+                <div className="step-label">기본 정보</div>
+              </div>
+              <div className={`step-indicator ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
+                <div className="step-circle">2</div>
+                <div className="step-label">관심 카테고리</div>
+              </div>
+              <div className={`step-indicator ${currentStep >= 3 ? 'active' : ''}`}>
+                <div className="step-circle">3</div>
+                <div className="step-label">선호 언론사</div>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="profile-setup-content" onKeyDown={(e) => {
             if (e.key === 'Enter' && currentStep !== 3) {
               e.preventDefault();
               nextStep();
             }
           }}>
-            <div className="auth-header">
-              <h2>프로필 설정</h2>
-              <p>안녕하세요, {userInfo.name}님! 맞춤 뉴스를 위해 추가 정보를 입력해주세요.</p>
-            </div>
-
-            {/* 진행 단계 표시 */}
-            <div className="step-indicator">
-              <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>
-                <span className="step-number">1</span>
-                <span className="step-label">기본 정보</span>
-              </div>
-              <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
-                <span className="step-number">2</span>
-                <span className="step-label">관심 카테고리</span>
-              </div>
-              <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
-                <span className="step-number">3</span>
-                <span className="step-label">선호 언론사</span>
-              </div>
-            </div>
-
             {error && (
-              <div className="error-message">
+              <div className="message error">
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="success-message">
+              <div className="message success">
                 {success}
               </div>
             )}
@@ -396,40 +468,38 @@ const ProfileSetupPage = () => {
 
             <div className="form-actions">
               {currentStep > 1 && (
-                <button 
-                  type="button" 
-                  className="auth-button secondary"
+                <button
+                  type="button"
+                  className="action-btn secondary"
                   onClick={prevStep}
                   disabled={loading}
                 >
                   이전
                 </button>
               )}
-              
+
               {currentStep < 3 ? (
                 <button
                   type="button"
-                  className={`auth-button ${isStepValid() ? 'primary' : 'disabled'}`}
+                  className="action-btn primary"
                   onClick={nextStep}
                   disabled={loading || !isStepValid()}
-                  title={!isStepValid() ? '필수 항목을 선택해주세요' : ''}
                 >
-                  {isStepValid() ? '다음' : `선택 후 다음 (${currentStep === 2 ? formData.preferredCategories.length : formData.preferredSources.length}/1)`}
+                  {loading ? '처리 중...' : '다음'}
                 </button>
               ) : (
                 <button
                   type="submit"
-                  className={`auth-button ${isStepValid() ? 'primary' : 'disabled'}`}
+                  className="action-btn primary"
                   disabled={loading || !isStepValid()}
-                  title={!isStepValid() ? '선호 언론사를 최소 1개 이상 선택해주세요' : ''}
                 >
-                  {loading ? '설정 중...' : isStepValid() ? '프로필 설정 완료' : `언론사 선택 후 완료 (${formData.preferredSources.length}/1)`}
+                  {loading ? '설정 중...' : '프로필 설정 완료'}
                 </button>
               )}
 
-              <button 
-                type="button" 
-                className="auth-button tertiary"
+              <button
+                type="button"
+                className="action-btn tertiary"
                 onClick={skipSetup}
                 disabled={loading}
               >

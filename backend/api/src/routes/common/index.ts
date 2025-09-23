@@ -1,32 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
+import { AppDataSource } from '../../config/database';
+import { Category } from '../../entities/Category';
+import { Source } from '../../entities/Source';
 
 const router = Router();
-
-// 뉴스 카테고리 목록
-const NEWS_CATEGORIES = [
-  '정치',
-  '경제', 
-  '사회',
-  '생활/문화',
-  'IT/과학',
-  '세계',
-  '스포츠',
-  '연예'
-];
-
-// 언론사 목록
-const MEDIA_SOURCES = [
-  { name: '조선일보', domain: 'chosun.com', oid: '023' },
-  { name: 'KBS', domain: 'kbs.co.kr', oid: '056' },
-  { name: 'SBS', domain: 'sbs.co.kr', oid: '055' },
-  { name: 'MBC', domain: 'mbc.co.kr', oid: '214' },
-  { name: '한겨레', domain: 'hani.co.kr', oid: '028' },
-  { name: '중앙일보', domain: 'joongang.co.kr', oid: '025' },
-  { name: '동아일보', domain: 'donga.com', oid: '020' },
-  { name: '경향신문', domain: 'khan.co.kr', oid: '032' },
-  { name: '연합뉴스', domain: 'yna.co.kr', oid: '001' },
-  { name: 'YTN', domain: 'ytn.co.kr', oid: '052' }
-];
 
 // 검색 정렬 옵션
 const SEARCH_OPTIONS = [
@@ -36,21 +13,57 @@ const SEARCH_OPTIONS = [
 ];
 
 // 카테고리 목록 API
-router.get('/common/categories', (req, res) => {
-  res.json({
-    success: true,
-    data: NEWS_CATEGORIES,
-    timestamp: new Date().toISOString()
-  });
+router.get('/common/categories', async (req: Request, res: Response) => {
+  try {
+    const categoryRepository = AppDataSource.getRepository(Category);
+    const categories = await categoryRepository.find({
+      order: { id: 'ASC' }
+    });
+
+    const categoryNames = categories.map(category => category.name);
+
+    res.json({
+      success: true,
+      data: categoryNames,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('카테고리 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: '카테고리 목록을 불러올 수 없습니다.'
+    });
+  }
 });
 
 // 언론사 목록 API
-router.get('/common/media-sources', (req, res) => {
-  res.json({
-    success: true,
-    data: MEDIA_SOURCES,
-    timestamp: new Date().toISOString()
-  });
+router.get('/common/media-sources', async (req: Request, res: Response) => {
+  try {
+    const sourceRepository = AppDataSource.getRepository(Source);
+    const sources = await sourceRepository.find({
+      order: { id: 'ASC' }
+    });
+
+    // 프론트엔드에서 기대하는 형태로 변환 (name, domain, logo_url 포함)
+    const sourcesWithDomain = sources.map(source => ({
+      name: source.name,
+      domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, // 임시 도메인 생성
+      oid: source.id.toString(),
+      logo_url: source.logo_url
+    }));
+
+    res.json({
+      success: true,
+      data: sourcesWithDomain,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('언론사 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: '언론사 목록을 불러올 수 없습니다.'
+    });
+  }
 });
 
 // 검색 옵션 API
@@ -66,19 +79,43 @@ router.get('/common/search-options', (req, res) => {
 });
 
 // 모든 공통 데이터 한번에 가져오기
-router.get('/common/all', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      categories: NEWS_CATEGORIES,
-      mediaSources: MEDIA_SOURCES,
-      searchOptions: {
-        sort: SEARCH_OPTIONS,
-        pageSize: [10, 20, 30, 50, 100]
-      }
-    },
-    timestamp: new Date().toISOString()
-  });
+router.get('/common/all', async (req: Request, res: Response) => {
+  try {
+    const categoryRepository = AppDataSource.getRepository(Category);
+    const sourceRepository = AppDataSource.getRepository(Source);
+
+    const [categories, sources] = await Promise.all([
+      categoryRepository.find({ order: { id: 'ASC' } }),
+      sourceRepository.find({ order: { id: 'ASC' } })
+    ]);
+
+    const categoryNames = categories.map(category => category.name);
+    const sourcesWithDomain = sources.map(source => ({
+      name: source.name,
+      domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      oid: source.id.toString(),
+      logo_url: source.logo_url
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        categories: categoryNames,
+        mediaSources: sourcesWithDomain,
+        searchOptions: {
+          sort: SEARCH_OPTIONS,
+          pageSize: [10, 20, 30, 50, 100]
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('공통 데이터 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: '공통 데이터를 불러올 수 없습니다.'
+    });
+  }
 });
 
 export default router;

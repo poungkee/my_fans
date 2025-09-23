@@ -247,38 +247,6 @@
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.mypage-nav {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  padding: 0 10px;
-}
-
-.nav-button {
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: white;
-  padding: 15px 30px;
-  border-radius: 15px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  border: 2px solid transparent;
-}
-
-.nav-button:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-}
-
-.nav-button.active {
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
 
 .mypage-content {
   max-width: 1200px;
@@ -452,6 +420,10 @@
 }
 
 /* 계정관리 섹션 */
+.account-management-section {
+  margin-top: 50px;
+}
+
 .account-management-section h2 {
   color: white;
   font-size: 1.8rem;

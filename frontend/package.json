@@ -19,7 +19,7 @@
     "node": ">=20.19.5",
     "npm": ">=10.0.0"
   },
-  "proxy": "http://localhost:3000",
+  "proxy": "http://main-api:3000",
   "browserslist": {
     "production": [
       ">0.2%",

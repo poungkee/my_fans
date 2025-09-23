@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCommonData } from '../hooks/useCommonData';
 import './Header.css';
 
-const Header = ({ onSortChange, onSearch, selectedSort }) => {
+const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSourceFilter }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
@@ -158,8 +158,25 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     setActiveDropdown(activeDropdown === type ? null : type);
   };
 
-  const handleMouseEnter = (type) => setActiveDropdown(type);
-  const handleMouseLeave = () => setActiveDropdown(null);
+  // 클릭 외부 영역 감지를 위한 이벤트 핸들러
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // 드롭다운 메뉴의 링크를 클릭한 경우는 외부 클릭으로 처리하지 않음
+      if (event.target.tagName === 'A' && event.target.closest('.user-dropdown-content')) {
+        return; // 링크 클릭은 무시
+      }
+
+      // 드롭다운 내부의 다른 요소들도 체크
+      if (!event.target.closest('.dropdown') && !event.target.closest('.user-dropdown')) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   const handleSortClick = (sortType, displayText) => {
     onSortChange(sortType, displayText);
@@ -235,14 +252,13 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           </svg>
         </div>
 
-        <div
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('agency')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div className="news-agency">
-            언론사 ▼
-          </div>
+        <div className="dropdown">
+          <button
+            className={`dropdown-button agency-button ${activeDropdown === 'agency' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('agency')}
+          >
+            📰 언론사
+          </button>
           <div
             id="agency-dropdown"
             className={`dropdown-content ${activeDropdown === 'agency' ? 'show' : ''}`}
@@ -254,7 +270,13 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
                 <a
                   key={index}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onSourceFilter) {
+                      onSourceFilter(source.name);
+                    }
+                    setActiveDropdown(null);
+                  }}
                 >
                   {source.name}
                 </a>
@@ -263,14 +285,13 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           </div>
         </div>
 
-        <div
-          className="dropdown"
-          onMouseEnter={() => handleMouseEnter('category')}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div className="category-nav">
-            카테고리 ▼
-          </div>
+        <div className="dropdown">
+          <button
+            className={`dropdown-button category-button ${activeDropdown === 'category' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('category')}
+          >
+            📂 카테고리
+          </button>
           <div
             id="category-dropdown"
             className={`dropdown-content ${activeDropdown === 'category' ? 'show' : ''}`}
@@ -282,7 +303,13 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
                 <a
                   key={index}
                   href="#"
-                  onClick={(e) => { e.preventDefault(); }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onCategoryFilter) {
+                      onCategoryFilter(category);
+                    }
+                    setActiveDropdown(null);
+                  }}
                 >
                   {category}
                 </a>
@@ -429,13 +456,33 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
                   <span className="user-name">{user?.userName || user?.name || user?.username || '사용자'}</span>
                   <span className="user-email">{user?.email}</span>
                 </div>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>로그아웃</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/mypage'), 100);
+                }}>마이페이지</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => handleLogout(), 100);
+                }}>로그아웃</a>
               </>
             ) : (
               <>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); setActiveDropdown(null); }}>로그인</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); setActiveDropdown(null); }}>회원가입</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/login'), 100);
+                }}>로그인</a>
+                <a href="#" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActiveDropdown(null);
+                  setTimeout(() => navigate('/register'), 100);
+                }}>회원가입</a>
               </>
             )}
           </div>

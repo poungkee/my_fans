@@ -4,13 +4,14 @@ import { useMediaSources } from '../hooks/useCommonData';
 const AgencySection = ({ selectedAgency, onAgencySelect }) => {
   const { mediaSources, loading, error } = useMediaSources();
   const [activeAgency, setActiveAgency] = useState(mediaSources[0]?.name || '연합뉴스');
-  
+  const [selectedLogo, setSelectedLogo] = useState(null);
+
   // 기존 하드코딩된 데이터는 백업용으로 유지
   const fallbackAgencies = [
-    '연합뉴스', '조선일보', '중앙일보', '동아일보', 
+    '연합뉴스', '조선일보', '중앙일보', '동아일보',
     '한겨레', '경향신문', '한국경제', '전자신문'
   ];
-  
+
   const agencies = mediaSources.length > 0 ? mediaSources.map(source => source.name) : fallbackAgencies;
 
   const agencyDescriptions = {
@@ -36,16 +37,33 @@ const AgencySection = ({ selectedAgency, onAgencySelect }) => {
   };
 
   const handleAgencyClick = (agency) => {
-    setActiveAgency(agency);
-    onAgencySelect(agency);
+    try {
+      setActiveAgency(agency);
+      if (onAgencySelect) {
+        onAgencySelect(agency);
+      }
+
+      // 해당 언론사의 로고 URL 찾기
+      const selectedSource = mediaSources.find(source => source.name === agency);
+      if (selectedSource && selectedSource.logo_url) {
+        setSelectedLogo(selectedSource.logo_url);
+      } else {
+        setSelectedLogo(null);
+      }
+    } catch (error) {
+      console.warn('Agency selection error:', error);
+      // 에러가 발생해도 기본 동작은 계속 수행
+      setActiveAgency(agency);
+      setSelectedLogo(null);
+    }
   };
 
   const handleSubscribe = async () => {
-    if (!confirm(`${activeAgency}을(를) 구독하시겠습니까?`)) {
-      return;
-    }
-
     try {
+      if (!confirm(`${activeAgency}을(를) 구독하시겠습니까?`)) {
+        return;
+      }
+
       // localStorage와 sessionStorage 모두 확인
       let token = localStorage.getItem('token');
       if (!token) {
@@ -97,7 +115,27 @@ const AgencySection = ({ selectedAgency, onAgencySelect }) => {
       </div>
       
       <div className="agency-info">
-        <div className="agency-logo-area">언론사별 로고</div>
+        <div className="agency-logo-area">
+          {selectedLogo ? (
+            <img
+              src={selectedLogo}
+              alt={`${activeAgency} 로고`}
+              className="agency-logo-image-full"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : (
+            <div className="logo-placeholder">
+              <h4>언론사별 로고</h4>
+              <p>언론사를 선택하면 로고가 표시됩니다</p>
+            </div>
+          )}
+          <div className="logo-fallback" style={{display: 'none'}}>
+            로고를 불러올 수 없습니다
+          </div>
+        </div>
         <div className="agency-details">
           <div className="agency-info-box">
             <div className="agency-info-title">언론사 정보</div>
