@@ -6,6 +6,9 @@ import { User } from '../entities/User';
 import { RegisterDto, LoginDto, PasswordResetDto, DeleteAccountDto } from '../dto/auth.dto';
 import { EmailService } from './emailService';
 import { KakaoOAuthProvider, NaverOAuthProvider } from './oauthProviders';
+import fs from 'fs';
+import path from 'path';
+import fetch from 'node-fetch';
 
 type JwtPayload = {
   userId: number;
@@ -30,6 +33,45 @@ export class AuthService {
       throw new Error('카카오 OAuth redirect URI가 설정되지 않았습니다. 환경 변수를 확인해주세요.');
     }
     return redirectUri;
+  }
+
+  // ---------- 프로필 이미지 다운로드 ----------
+  private async downloadProfileImage(imageUrl: string, userId: number): Promise<string | null> {
+    try {
+      if (!imageUrl) return null;
+
+      // uploads/profiles 디렉토리 생성
+      const uploadDir = path.join(__dirname, '../../uploads/profiles');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // 파일명 생성
+      const timestamp = Date.now();
+      const randomNum = Math.round(Math.random() * 1e9);
+      const fileExtension = imageUrl.includes('.jpg') || imageUrl.includes('.jpeg') ? '.jpg' :
+                           imageUrl.includes('.png') ? '.png' :
+                           imageUrl.includes('.gif') ? '.gif' : '.jpg';
+      const filename = `profile-${userId}-${timestamp}-${randomNum}${fileExtension}`;
+      const filepath = path.join(uploadDir, filename);
+
+      // 이미지 다운로드
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        console.warn('[WARN] Failed to download profile image:', response.status);
+        return null;
+      }
+
+      // 파일로 저장
+      const buffer = await response.buffer();
+      fs.writeFileSync(filepath, buffer);
+
+      // 상대 경로 반환
+      return `/uploads/profiles/${filename}`;
+    } catch (error: any) {
+      console.error('[ERROR] Profile image download failed:', error.message);
+      return null;
+    }
   }
 
   // ---------- JWT ----------
@@ -70,7 +112,7 @@ export class AuthService {
 
   // ---------- 회원가입 ----------
   async register(registerData: RegisterDto): Promise<{ user: User; token: string; message: string }> {
-    const { name, username, email, password, confirmPassword, phone, age, gender, location } = registerData;
+    const { name, username, email, password, confirmPassword, phone, age, gender, location, provider, socialToken, profileImage } = registerData;
 
     if (password !== confirmPassword) throw new Error('비밀번호가 일치하지 않습니다.');
 
@@ -90,11 +132,22 @@ export class AuthService {
       email,
       passwordHash: passwordHash,
       tel: phone,
-      provider: 'local',
+      provider: provider || 'local',
+      socialToken: socialToken || undefined,
+      profileImage: undefined, // 임시로 undefined 설정
       active: true,
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    // 소셜 로그인 시 프로필 이미지가 있으면 다운로드하여 저장
+    if (profileImage && (provider === 'kakao' || provider === 'naver')) {
+      const localImagePath = await this.downloadProfileImage(profileImage, savedUser.id);
+      if (localImagePath) {
+        savedUser.profileImage = localImagePath;
+        await this.userRepository.save(savedUser);
+      }
+    }
 
     try {
       await this.emailService.sendWelcomeEmail(email, username);
@@ -185,35 +238,44 @@ export class AuthService {
         existing.provider = 'kakao';
         existing.socialToken = providerId;
         existing.userName = name || existing.userName;
-        if (profileImage) existing.profileImage = profileImage;
+
+        // 프로필 이미지를 로컬에 다운로드하여 저장
+        if (profileImage) {
+          const localImagePath = await this.downloadProfileImage(profileImage, existing.id);
+          if (localImagePath) {
+            existing.profileImage = localImagePath;
+          }
+        }
+
         user = await this.userRepository.save(existing);
       }
     }
 
     if (!user) {
-      const userData = {
-        username: `kakao_${providerId || 'unknown'}`,
+      // 신규 카카오 사용자인 경우 임시 데이터만 생성하고 등록 페이지로 리다이렉트
+      throw new Error(`NEW_USER:${JSON.stringify({
         email: email || `kakao_${providerId || 'unknown'}@kakao.local`,
-        passwordHash: '',
-        userName: name || undefined,
+        name: name || '카카오사용자',
+        profileImage: profileImage || null,
         provider: 'kakao',
-        socialToken: providerId || undefined,
-        profileImage: profileImage || undefined,
-        emailVerified: true,
-        active: true,
-      };
-      user = this.userRepository.create(userData);
-      user = await this.userRepository.save(user);
+        socialToken: providerId || undefined
+      })}`);
     } else {
       let needsSave = false;
       if (name && name !== user.userName) {
         user.userName = name;
         needsSave = true;
       }
-      if (profileImage && profileImage !== user.profileImage) {
-        user.profileImage = profileImage;
-        needsSave = true;
+
+      // 기존 사용자의 프로필 이미지도 로컬에 다운로드하여 저장
+      if (profileImage && !user.profileImage?.startsWith('/uploads/')) {
+        const localImagePath = await this.downloadProfileImage(profileImage, user.id);
+        if (localImagePath) {
+          user.profileImage = localImagePath;
+          needsSave = true;
+        }
       }
+
       if (needsSave) await this.userRepository.save(user);
     }
 
@@ -270,35 +332,44 @@ export class AuthService {
         existing.provider = 'naver';
         existing.socialToken = providerId;
         existing.userName = name || existing.userName;
-        if (profileImage) existing.profileImage = profileImage;
+
+        // 프로필 이미지를 로컬에 다운로드하여 저장
+        if (profileImage) {
+          const localImagePath = await this.downloadProfileImage(profileImage, existing.id);
+          if (localImagePath) {
+            existing.profileImage = localImagePath;
+          }
+        }
+
         user = await this.userRepository.save(existing);
       }
     }
 
     if (!user) {
-      const userData = {
-        username: `naver_${providerId || 'unknown'}`,
+      // 신규 네이버 사용자인 경우 임시 데이터만 생성하고 등록 페이지로 리다이렉트
+      throw new Error(`NEW_USER:${JSON.stringify({
         email: email || `naver_${providerId || 'unknown'}@naver.local`,
-        passwordHash: '',
-        userName: name || undefined,
+        name: name || '네이버사용자',
+        profileImage: profileImage || null,
         provider: 'naver',
-        socialToken: providerId || undefined,
-        profileImage: profileImage || undefined,
-        emailVerified: true,
-        active: true,
-      };
-      user = this.userRepository.create(userData);
-      user = await this.userRepository.save(user);
+        socialToken: providerId || undefined
+      })}`);
     } else {
       let needsSave = false;
       if (name && name !== user.userName) {
         user.userName = name;
         needsSave = true;
       }
-      if (profileImage && profileImage !== user.profileImage) {
-        user.profileImage = profileImage;
-        needsSave = true;
+
+      // 기존 사용자의 프로필 이미지도 로컬에 다운로드하여 저장
+      if (profileImage && !user.profileImage?.startsWith('/uploads/')) {
+        const localImagePath = await this.downloadProfileImage(profileImage, user.id);
+        if (localImagePath) {
+          user.profileImage = localImagePath;
+          needsSave = true;
+        }
       }
+
       if (needsSave) await this.userRepository.save(user);
     }
 
@@ -531,13 +602,76 @@ export class AuthService {
     return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 
+  // ---------- 소셜 로그인 사용자 비밀번호 설정/변경 ----------
+  async setSocialUserPassword(userId: number, currentPassword: string | null, newPassword: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 소셜 로그인 사용자만 허용
+    if (user.provider === 'local') {
+      throw new Error('일반 계정은 기존 비밀번호 변경 기능을 사용해주세요.');
+    }
+
+    // 기존 비밀번호가 있는 경우 확인
+    if (user.passwordHash && currentPassword) {
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isCurrentPasswordValid) {
+        throw new Error('현재 비밀번호가 올바르지 않습니다.');
+      }
+    } else if (user.passwordHash && !currentPassword) {
+      throw new Error('현재 비밀번호를 입력해주세요.');
+    }
+
+    // 새 비밀번호 해시화
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+    // 비밀번호 저장
+    await this.userRepository.update(userId, {
+      passwordHash: newPasswordHash,
+      previousPw: user.passwordHash || undefined
+    });
+
+    const action = user.passwordHash ? '변경' : '설정';
+    return { message: `비밀번호가 성공적으로 ${action}되었습니다.` };
+  }
+
   // ---------- 회원탈퇴 ----------
   async deleteAccount(userId: number, deleteData: DeleteAccountDto): Promise<{ message: string }> {
     const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
     if (!user) throw new Error('사용자를 찾을 수 없습니다.');
 
+    // 소셜 로그인 사용자는 인증코드 검증 생략
+    const isSocialLogin = user.provider === 'kakao' || user.provider === 'naver';
+
+    if (!isSocialLogin && !deleteData.verificationCode) {
+      throw new Error('일반 로그인 사용자는 인증코드가 필요합니다.');
+    }
+
     // 소프트 삭제 (active = false)
     await this.userRepository.update(userId, { active: false });
-    return { message: '계정이 성공적으로 삭제되었습니다.' };
+
+    const loginType = isSocialLogin ? '소셜 로그인' : '일반 로그인';
+    return { message: `${loginType} 계정이 성공적으로 삭제되었습니다.` };
+  }
+
+  // ---------- 소셜 로그인 회원탈퇴 (인증코드 없이) ----------
+  async deleteSocialAccount(userId: number, confirmText: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 소셜 로그인 사용자만 허용
+    if (user.provider !== 'kakao' && user.provider !== 'naver') {
+      throw new Error('소셜 로그인 사용자만 이 기능을 사용할 수 있습니다.');
+    }
+
+    // 확인 문구 검증
+    if (confirmText !== '회원탈퇴') {
+      throw new Error('확인 문구가 올바르지 않습니다.');
+    }
+
+    // 소프트 삭제 (active = false)
+    await this.userRepository.update(userId, { active: false });
+
+    return { message: '소셜 로그인 계정이 성공적으로 삭제되었습니다.' };
   }
 }

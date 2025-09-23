@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import SocialLogin from '../components/SocialLogin';
 import './AuthPages.css';
 
@@ -12,6 +12,9 @@ const RegisterPage = () => {
     confirmPassword: '',
     phone: ''
   });
+  const [kakaoData, setKakaoData] = useState(null);
+  const [naverData, setNaverData] = useState(null);
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -23,6 +26,45 @@ const RegisterPage = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const navigate = useNavigate();
+
+  // 소셜 로그인 데이터 처리
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const kakaoParam = urlParams.get('kakao');
+    const naverParam = urlParams.get('naver');
+
+    if (kakaoParam) {
+      try {
+        const data = JSON.parse(decodeURIComponent(kakaoParam));
+        setKakaoData(data);
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || '',
+          email: data.email || '',
+          username: data.email ? data.email.split('@')[0] : ''
+        }));
+        console.log('카카오 데이터:', data);
+      } catch (error) {
+        console.error('카카오 데이터 파싱 오류:', error);
+      }
+    }
+
+    if (naverParam) {
+      try {
+        const data = JSON.parse(decodeURIComponent(naverParam));
+        setNaverData(data);
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || '',
+          email: data.email || '',
+          username: data.email ? data.email.split('@')[0] : ''
+        }));
+        console.log('네이버 데이터:', data);
+      } catch (error) {
+        console.error('네이버 데이터 파싱 오류:', error);
+      }
+    }
+  }, [location.search]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -86,13 +128,24 @@ const RegisterPage = () => {
     }
 
     try {
+      // 소셜 회원가입인 경우 추가 데이터 포함
+      const socialData = kakaoData || naverData;
+      const submitData = socialData
+        ? {
+            ...formData,
+            provider: socialData.provider,
+            socialToken: socialData.socialToken,
+            profileImage: socialData.profileImage
+          }
+        : formData;
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submitData)
       });
 
       const data = await response.json();
@@ -107,11 +160,12 @@ const RegisterPage = () => {
           window.dispatchEvent(new Event('loginStatusChange'));
         }
 
-        // 즉시 프로필 설정 페이지로 이동 (메시지 표시 없이)
+        // 회원가입 완료 메시지 표시 후 프로필 설정 페이지로 이동
+        alert('회원가입이 완료되었습니다!');
         navigate('/profile-setup', {
           state: {
             user: data.data.user,
-            message: '회원가입이 완료되었습니다! 프로필을 설정해주세요.'
+            message: '프로필을 설정해주세요.'
           }
         });
       } else {
@@ -130,8 +184,33 @@ const RegisterPage = () => {
       <div className="auth-container">
         <div className="auth-form">
           <div className="auth-header">
-            <h2>회원가입</h2>
-            <p>뉴스 포털에 가입하고 맞춤 뉴스를 받아보세요</p>
+            <h2>{kakaoData ? '카카오 계정으로 회원가입' : naverData ? '네이버 계정으로 회원가입' : '회원가입'}</h2>
+            <p>{kakaoData ? '카카오 정보를 확인하고 비밀번호를 설정해주세요' : naverData ? '네이버 정보를 확인하고 비밀번호를 설정해주세요' : '뉴스 포털에 가입하고 맞춤 뉴스를 받아보세요'}</p>
+            {(kakaoData || naverData) && (
+              <div className="kakao-info">
+                <div className="kakao-profile">
+                  {(kakaoData?.profileImage || naverData?.profileImage) && (
+                    <img
+                      src={kakaoData?.profileImage || naverData?.profileImage}
+                      alt={`${kakaoData ? '카카오' : '네이버'} 프로필`}
+                      className="kakao-profile-image"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        console.error(`${kakaoData ? '카카오' : '네이버'} 프로필 이미지 로드 실패:`, e.target.src);
+                        e.target.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log(`${kakaoData ? '카카오' : '네이버'} 프로필 이미지 로드 성공:`, kakaoData?.profileImage || naverData?.profileImage);
+                      }}
+                    />
+                  )}
+                  <div className="kakao-details">
+                    <strong>{(kakaoData || naverData)?.name}</strong>
+                    <span>{(kakaoData || naverData)?.email}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <form onSubmit={handleSubmit} className="auth-form-content">
@@ -185,8 +264,11 @@ const RegisterPage = () => {
                 onChange={handleChange}
                 placeholder="이메일을 입력하세요"
                 required
-                disabled={loading}
+                disabled={loading || kakaoData || naverData}
+                className={kakaoData || naverData ? 'readonly' : ''}
               />
+              {kakaoData && <small className="form-note">카카오 계정 이메일이 자동으로 설정됩니다</small>}
+              {naverData && <small className="form-note">네이버 계정 이메일이 자동으로 설정됩니다</small>}
             </div>
             
             <div className="form-group">

@@ -1,0 +1,222 @@
+.activity-log-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.activity-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.activity-header h1 {
+  font-size: 28px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.activity-header p {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.activity-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 30px;
+  justify-content: center;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.tab-button {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 16px;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-button:hover {
+  color: #3b82f6;
+  background-color: #f8fafc;
+}
+
+.tab-button.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  background-color: #fff;
+}
+
+.activity-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.activity-filters button {
+  padding: 8px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.activity-filters button:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.activity-filters button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.activity-list {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.2s;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item:hover {
+  background-color: #f9fafb;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.activity-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.activity-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.activity-source {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.activity-time {
+  color: #9ca3af;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.no-activities {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.no-activities p {
+  font-size: 16px;
+  margin: 0;
+}
+
+.subscription-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .activity-log-page {
+    padding: 15px;
+  }
+
+  .activity-header h1 {
+    font-size: 24px;
+  }
+
+  .activity-filters {
+    gap: 8px;
+  }
+
+  .activity-filters button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .activity-item {
+    padding: 15px;
+  }
+
+  .activity-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+    margin-right: 12px;
+  }
+
+  .activity-title {
+    font-size: 15px;
+  }
+
+  .activity-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}

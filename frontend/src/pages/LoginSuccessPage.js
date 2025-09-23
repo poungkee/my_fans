@@ -13,6 +13,7 @@ export default function LoginSuccessPage() {
   const abortRef = useRef(null);
   const mountedRef = useRef(true);
 
+  
   useEffect(() => {
     mountedRef.current = true;
 
@@ -25,9 +26,16 @@ export default function LoginSuccessPage() {
       return () => clearTimeout(t);
     }
 
-    // 소셜 로그인은 장기 보관
-    localStorage.setItem('token', token);
-    localStorage.setItem('rememberMe', 'true');
+    // 소셜 로그인은 창 닫으면 자동 로그아웃되도록 sessionStorage 사용
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('socialLogin', 'true');
+
+    // 디버깅을 위한 로그
+    console.log('소셜 로그인 세션 저장 완료:', {
+      token: token.substring(0, 20) + '...',
+      socialLogin: 'true',
+      storage: 'sessionStorage'
+    });
 
     // 검증 요청
     (async () => {
@@ -46,7 +54,7 @@ export default function LoginSuccessPage() {
 
         if (r.ok && data?.success) {
           if (data.data?.user) {
-            localStorage.setItem('user', JSON.stringify(data.data.user));
+            sessionStorage.setItem('user', JSON.stringify(data.data.user));
           }
           // 헤더 등 다른 곳에 로그인 상태 반영
           window.dispatchEvent(new Event('loginStatusChange'));
@@ -55,7 +63,7 @@ export default function LoginSuccessPage() {
           }
         } else {
           // 검증 실패 시 토큰 제거
-          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           if (mountedRef.current) {
             setVerifyMsg(`토큰 검증 실패: ${data?.error || '알 수 없는 오류'}`);
           }
@@ -63,7 +71,7 @@ export default function LoginSuccessPage() {
       } catch (e) {
         if (e?.name !== 'AbortError') {
           console.error('verify-token fetch error:', e);
-          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           if (mountedRef.current) setVerifyMsg('토큰 검증 요청 실패');
         }
       } finally {

@@ -39,6 +39,46 @@
   font-size: 16px;
 }
 
+/* 카카오 프로필 정보 */
+.kakao-info {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.kakao-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kakao-profile-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+}
+
+.kakao-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kakao-details strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.kakao-details span {
+  font-size: 14px;
+  opacity: 0.8;
+  color: white;
+}
+
 .auth-form-content {
   padding: 40px 30px;
 }

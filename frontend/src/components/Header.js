@@ -7,6 +7,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [showSearchBar, setShowSearchBar] = useState(false); // 검색창 표시 여부
   const navigate = useNavigate();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
   
@@ -33,6 +34,8 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     localStorage.removeItem('rememberMe');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('socialLogin');
+    sessionStorage.removeItem('lastHidden');
     setIsLoggedIn(false);
     setUser(null);
     alert('로그인이 만료되어 자동으로 로그아웃되었습니다.');
@@ -64,8 +67,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
         setIsLoggedIn(true);
         setUser(JSON.parse(userData));
 
-        // 토큰 만료 30분 전에 알림 (rememberMe가 false인 경우만)
-        if (!isRememberMe) {
+        // 토큰 만료 30분 전에 알림 (일반 로그인이면서 rememberMe가 false인 경우만)
+        const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+        if (!isRememberMe && !isSocialLogin) {
           const payload = JSON.parse(atob(token.split('.')[1]));
           const expirationTime = payload.exp * 1000;
           const warningTime = expirationTime - (30 * 60 * 1000); // 30분 전
@@ -125,9 +129,12 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
         localStorage.removeItem('rememberMe');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('socialLogin');
+        sessionStorage.removeItem('lastHidden');
         setIsLoggedIn(false);
         setUser(null);
         setActiveDropdown(null);
+        alert('로그아웃되었습니다.');
         navigate('/');
       }
     } catch (error) {
@@ -135,6 +142,11 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       // 에러가 발생해도 로컬 스토리지는 정리
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('rememberMe');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('socialLogin');
+      sessionStorage.removeItem('lastHidden');
       setIsLoggedIn(false);
       setUser(null);
       setActiveDropdown(null);
@@ -154,12 +166,37 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     setActiveDropdown(null);
   };
 
+  
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
       onSearch(e.target.value);
+      setShowSearchBar(false); // 검색 후 검색창 숨기기
     } else if (e.type === 'click') {
       const query = searchInputRef.current?.value ?? '';
       onSearch(query);
+      setShowSearchBar(false); // 검색 후 검색창 숨기기
+    }
+  };
+
+  const toggleSearchBar = () => {
+    setShowSearchBar(!showSearchBar);
+    if (!showSearchBar) {
+      // 검색창이 나타날 때 포커스 주기
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 100);
+    }
+  };
+
+  const handleActivityLog = () => {
+    if (isLoggedIn) {
+      // 활동로그 페이지로 이동
+      navigate('/activity-log');
+    } else {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
     }
   };
 
@@ -171,17 +208,28 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
     }
     setActiveDropdown(null);
     onSearch('');     // 전체 뉴스로
-    
-    // 페이지 새로고침
-    window.location.reload();
+
+    // 홈으로 이동
+    navigate('/');
   };
 
   return (
     <header className="header">
       <div className="header-left">
         <div className="logo" onClick={handleLogoClick}>FANS</div>
-        
-        <div 
+
+        {/* 검색 아이콘 - FANS 로고 오른쪽에 배치 */}
+        <div
+          className="search-icon-button"
+          onClick={toggleSearchBar}
+          title="검색"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        <div
           className="dropdown"
           onMouseEnter={() => handleMouseEnter('agency')}
           onMouseLeave={handleMouseLeave}
@@ -189,17 +237,17 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           <div className="news-agency">
             언론사 ▼
           </div>
-          <div 
-            id="agency-dropdown" 
+          <div
+            id="agency-dropdown"
             className={`dropdown-content ${activeDropdown === 'agency' ? 'show' : ''}`}
           >
             {loading ? (
               <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
             ) : (
               mediaSources.map((source, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
+                <a
+                  key={index}
+                  href="#"
                   onClick={(e) => { e.preventDefault(); }}
                 >
                   {source.name}
@@ -208,8 +256,8 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             )}
           </div>
         </div>
-        
-        <div 
+
+        <div
           className="dropdown"
           onMouseEnter={() => handleMouseEnter('category')}
           onMouseLeave={handleMouseLeave}
@@ -217,17 +265,17 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
           <div className="category-nav">
             카테고리 ▼
           </div>
-          <div 
-            id="category-dropdown" 
+          <div
+            id="category-dropdown"
             className={`dropdown-content ${activeDropdown === 'category' ? 'show' : ''}`}
           >
             {loading ? (
               <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
             ) : (
               categories.map((category, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
+                <a
+                  key={index}
+                  href="#"
                   onClick={(e) => { e.preventDefault(); }}
                 >
                   {category}
@@ -236,64 +284,89 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             )}
           </div>
         </div>
+
+        {/* 활동로그 버튼 - 카테고리 옆에 배치 */}
+        <button
+          className="activity-log-button"
+          onClick={handleActivityLog}
+          title="나의 활동로그"
+        >
+          📊 활동로그
+        </button>
       </div>
-      
-      <div className="search-section">
-        <div className="dropdown">
-          <div 
-            className="search-filter" 
-            onClick={() => toggleDropdown('sort')}
-          >
-            <span className="search-filter-text">{selectedSort}</span>
-            <span>▼</span>
-          </div>
-          <div 
-            id="sort-dropdown" 
-            className={`dropdown-content ${activeDropdown === 'sort' ? 'show' : ''}`}
-          >
-            {loading ? (
-              <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
-            ) : (
-              searchOptions.sort?.map((option, index) => (
-                <a 
-                  key={index} 
-                  href="#" 
-                  onClick={(e) => { 
-                    e.preventDefault(); 
-                    handleSortClick(option.value, option.label); 
-                  }}
-                >
-                  {option.label}
-                </a>
-              ))
-            )}
-          </div>
-        </div>
-        
-        <input
-          ref={searchInputRef}        // ✅ ref 연결
-          type="text"
-          className="search-input"
-          placeholder="검색어를 입력하세요"
-          onKeyUp={handleSearch}
-        />
-        
-            <div 
-              className="search-icon" 
+
+      <div className="header-right">
+        {/* 여기는 비워둠 */}
+      </div>
+
+      {/* 검색창 - 돋보기 클릭시 나타남 */}
+      {showSearchBar && (
+        <div className="search-overlay">
+          <div className="search-section-expanded">
+            <div className="dropdown">
+              <div
+                className="search-filter"
+                onClick={() => toggleDropdown('sort')}
+              >
+                <span className="search-filter-text">{selectedSort}</span>
+                <span>▼</span>
+              </div>
+              <div
+                id="sort-dropdown"
+                className={`dropdown-content ${activeDropdown === 'sort' ? 'show' : ''}`}
+              >
+                {loading ? (
+                  <div style={{padding: '10px', textAlign: 'center'}}>로딩 중...</div>
+                ) : (
+                  searchOptions.sort?.map((option, index) => (
+                    <a
+                      key={index}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSortClick(option.value, option.label);
+                      }}
+                    >
+                      {option.label}
+                    </a>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="search-input-expanded"
+              placeholder="검색어를 입력하세요"
+              onKeyUp={handleSearch}
+            />
+
+            <div
+              className="search-button"
               onClick={handleSearch}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-      </div>
+
+            <button
+              className="close-search-button"
+              onClick={() => setShowSearchBar(false)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="user-menu">
         <div className="user-dropdown">
           <div className="user-section">
-            {isLoggedIn && (user?.userName || user?.name) && (
+            {isLoggedIn && (user?.userName || user?.name || user?.username) && (
               <div className="welcome-message">
-                환영합니다 <span className="user-name-highlight">{user.userName || user.name}</span>님
+                환영합니다 <span className="user-name-highlight">{user.userName || user.name || user.username}</span>님
               </div>
             )}
             <div
@@ -302,26 +375,40 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             >
               {isLoggedIn ? (
                 user?.profileImage && user.profileImage.trim() !== '' ? (
-                  <img
-                    src={`http://localhost:3000${user.profileImage}?t=${Date.now()}`}
-                    alt="프로필 이미지"
-                    className="user-profile-image"
-                    crossOrigin="anonymous"
-                    onLoad={() => {
-                      console.log('✅ 헤더 이미지 로드 성공:', user.profileImage);
-                    }}
-                    onError={(e) => {
-                      console.error('❌ 헤더 이미지 로드 실패:', e.target.src);
-                      console.error('❌ 헤더 원본 경로:', user.profileImage);
-                      // 이미지 로드 실패 시 이름 첫 글자 표시
-                      e.target.style.display = 'none';
-                      const userName = user?.userName || user?.name;
-                      e.target.parentNode.innerHTML = userName ? userName.charAt(0).toUpperCase() : '👤';
-                    }}
-                  />
+                  <>
+                    <img
+                      src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                      alt="프로필 이미지"
+                      className="user-profile-image"
+                      crossOrigin="anonymous"
+                      onLoad={() => {
+                        console.log('✅ 헤더 이미지 로드 성공:', user.profileImage);
+                      }}
+                      onError={(e) => {
+                        console.error('❌ 헤더 이미지 로드 실패:', e.target.src);
+                        console.error('❌ 헤더 원본 경로:', user.profileImage);
+                        e.target.style.display = 'none';
+                        // 대체 텍스트 표시
+                        const fallback = e.target.nextElementSibling;
+                        if (fallback && fallback.classList.contains('user-profile-fallback')) {
+                          fallback.style.display = 'block';
+                        }
+                      }}
+                    />
+                    <span
+                      className="user-profile-fallback"
+                      style={{
+                        display: 'none',
+                        fontSize: '18px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {(user?.userName || user?.name || user?.username) ? (user.userName || user.name || user.username).charAt(0).toUpperCase() : '👤'}
+                    </span>
+                  </>
                 ) : (
                   // 이미지가 없을 때 이름 첫 글자 또는 기본 아이콘 표시
-                  (user?.userName || user?.name) ? (user.userName || user.name).charAt(0).toUpperCase() : '👤'
+                  (user?.userName || user?.name || user?.username) ? (user.userName || user.name || user.username).charAt(0).toUpperCase() : '👤'
                 )
               ) : '👤'}
             </div>
@@ -333,7 +420,7 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
             {isLoggedIn ? (
               <>
                 <div className="user-info">
-                  <span className="user-name">{user?.userName || user?.name || '사용자'}</span>
+                  <span className="user-name">{user?.userName || user?.name || user?.username || '사용자'}</span>
                   <span className="user-email">{user?.email}</span>
                 </div>
                 <a href="#" onClick={(e) => { e.preventDefault(); navigate('/mypage'); setActiveDropdown(null); }}>마이페이지</a>

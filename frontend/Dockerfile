@@ -13,8 +13,11 @@ RUN npm install
 # 소스 코드 복사
 COPY . .
 
+# 환경 변수 설정
+ENV PORT=3001
+
 # 포트 노출
-EXPOSE 3000
+EXPOSE 3001
 
 # 개발 서버 시작
 CMD ["npm", "start"]

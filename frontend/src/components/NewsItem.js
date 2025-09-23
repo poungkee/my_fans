@@ -2,17 +2,12 @@ import React, { useEffect, useState } from 'react';
 
 const NewsItem = ({
   news,
-  isBookmarked,
-  isLiked,
-  onBookmark,
-  onLike,
-  onShare,
-  onDetail
+  onDetail,
+  onSubscribe
 }) => {
   const [thumb, setThumb] = useState(null);
 
   useEffect(() => {
-    // 임시로 이미지 API 비활성화 - 뉴스 데이터에서 직접 사용
     setThumb(news.image_url || null);
   }, [news.image_url]);
 
@@ -38,32 +33,63 @@ const NewsItem = ({
       </div>
 
       <div className="news-content">
-        <h2 className="news-title" onClick={onDetail}>{news.title}</h2>
-        <p className="news-summary">{news.summary}</p>
+        <h2
+          className="news-title"
+          onClick={onDetail}
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxHeight: '75.6px',
+            lineHeight: '1.4',
+            wordWrap: 'break-word'
+          }}
+        >
+          {news.title}
+        </h2>
+
+        <div className="news-meta-container">
         <div className="news-meta">
-          <span className="news-source">
-            {news.media_source?.name || '출처 미상'}
-          </span>
-          <span className="news-category">
-            {news.category?.name}
-          </span>
-          <span className="news-time">
-            {new Date(news.pub_date).toLocaleDateString('ko-KR', {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </span>
+          <div className="news-source-row">
+            <div className="news-source-info">
+              <img
+                className="news-source-logo"
+                src={`/logos/${news.source || 'default'}.png`}
+                alt={news.source || '출처 미상'}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'inline';
+                }}
+              />
+              <span className="news-source-fallback" style={{display: 'none'}}>📰</span>
+              <span className="news-source-name">
+                {news.source || '출처 미상'}
+              </span>
+            </div>
+            <button className="subscribe-button" onClick={() => onSubscribe && onSubscribe(news.source)}>
+              구독하기
+            </button>
+          </div>
+
+          <div className="news-details-row">
+            <span className="news-journalist">
+              {news.journalist || '기자 정보 없음'}
+            </span>
+            <span className="news-time">
+              {(() => {
+                const date = new Date(news.pub_date);
+                const year = date.getFullYear().toString().slice(-2);
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                return `${year}.${month}.${day} ${hours}:${minutes}`;
+              })()}
+            </span>
+          </div>
         </div>
-        <div className="news-actions">
-          <button className={`news-action ${isBookmarked ? 'bookmarked' : ''}`} onClick={onBookmark}>
-            {isBookmarked ? '✅ 북마크됨' : '🔖 북마크'}
-          </button>
-          <button className="news-action" onClick={onShare}>📤 공유</button>
-          <button className="news-action" onClick={onLike} style={{ color: isLiked ? '#dc3545' : '' }}>
-            {isLiked ? '❤️ 좋아요됨' : '👍 좋아요'}
-          </button>
         </div>
       </div>
     </article>

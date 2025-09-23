@@ -98,10 +98,21 @@ const ProfileSetupPage = () => {
       const data = await response.json();
 
       if (data.success) {
-        // localStorage와 sessionStorage의 사용자 정보 업데이트
-        const updatedUser = data.data || data.user;
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        // 기존 사용자 정보를 유지하면서 프로필 설정 정보만 업데이트
+        const existingUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+        const updatedUser = {
+          ...existingUser,
+          ...formData,
+          age: formData.age ? parseInt(formData.age) : null
+        };
+
+        // 어느 스토리지에 저장되어 있는지 확인하고 같은 곳에 업데이트
+        if (localStorage.getItem('user')) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        if (sessionStorage.getItem('user')) {
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        }
 
         // 헤더 컴포넌트에 변경 알림
         window.dispatchEvent(new CustomEvent('loginStatusChange'));
@@ -241,15 +252,25 @@ const ProfileSetupPage = () => {
 
             <div className="form-group">
               <label htmlFor="location">지역 (선택)</label>
-              <input
-                type="text"
+              <select
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                placeholder="거주 지역을 입력하세요 (예: 서울, 경기, 부산)"
                 disabled={loading}
-              />
+              >
+                <option value="">지역을 선택하세요</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+                <option value="강원">강원</option>
+                <option value="충북">충북</option>
+                <option value="충남">충남</option>
+                <option value="전북">전북</option>
+                <option value="전남">전남</option>
+                <option value="경북">경북</option>
+                <option value="경남">경남</option>
+                <option value="제주">제주</option>
+              </select>
             </div>
           </div>
         );

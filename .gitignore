@@ -91,3 +91,9 @@ lerna-debug.log*
 *.crt
 secrets/
 .secrets/
+
+# === Python Virtual Environment ===
+backend/ai-service/venv/
+
+# === Claude Code Memory File ===
+CLAUDE.md

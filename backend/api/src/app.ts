@@ -15,6 +15,7 @@ import marketSummaryRoutes from "./routes/marketSummary";
 import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
 import schedulerRoutes from './routes/scheduler';
+import { newsSchedulerService } from './services/newsSchedulerService';
 
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
@@ -102,6 +103,14 @@ async function startServer() {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🌐 Local access: http://localhost:${PORT}/health`);
+
+      // 뉴스 크롤링 스케줄러 자동 시작
+      console.log('🔄 Starting news crawler scheduler...');
+      newsSchedulerService.start({
+        intervalMinutes: 0.5, // 30초마다 실행
+        limitPerCategory: 1, // 카테고리당 1개씩 수집
+        enabled: true
+      });
     });
   } catch (error) {
     console.error('❌ Database connection failed:', error);
