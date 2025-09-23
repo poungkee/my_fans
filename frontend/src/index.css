@@ -340,15 +340,31 @@ body {
 
 .news-content {
     padding: 35px;
+    display: flex;
+    flex-direction: column;
+    height: calc(460px - 280px - 2px); /* 전체 높이에서 이미지와 border 제외 */
 }
 
 .news-title {
-    font-size: 24px;
+    font-size: 18px !important;
     font-weight: bold;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     color: #212529;
-    line-height: 1.4;
+    line-height: 1.4 !important;
     text-decoration: none;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    text-overflow: ellipsis !important;
+    height: auto !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
+    width: 100% !important;
+}
+
+.news-meta-container {
+    margin-top: auto;
 }
 
 .news-title:hover {
@@ -364,11 +380,71 @@ body {
 
 .news-meta {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
     font-size: 15px;
     color: #6c757d;
     margin-top: 18px;
+}
+
+.news-source-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.news-source-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.news-source-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.news-source-fallback {
+    font-size: 16px;
+}
+
+.news-source-name {
+    font-weight: 600;
+    color: #495057;
+}
+
+.subscribe-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.subscribe-button:hover {
+    background-color: #0056b3;
+}
+
+.news-details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.news-journalist {
+    font-weight: 500;
+}
+
+.news-time {
+    color: #868e96;
 }
 
 .news-actions {

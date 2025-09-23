@@ -6,7 +6,6 @@ import Header from './components/Header';
 import StockSection from './components/StockSection';
 import NewsGrid from './components/NewsGrid';
 import Sidebar from './components/Sidebar';
-import AgencySection from './components/AgencySection';
 import Footer from './components/Footer';
 
 import LoginPage from './pages/LoginPage';
@@ -18,6 +17,7 @@ import MyPage from './pages/MyPage';
 import DeleteAccount from './pages/DeleteAccount';
 import LoginSuccessPage from './pages/LoginSuccessPage';
 import LoginErrorPage from './pages/LoginErrorPage';
+import ActivityLog from './pages/ActivityLog';
 
 function HomePage() {
   /* -------------------- 상태 -------------------- */
@@ -26,7 +26,6 @@ function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
 
   const [selectedSort, setSelectedSort] = useState('최신순');
-  const [selectedAgency, setSelectedAgency] = useState('전체');
   const [searchQuery, setSearchQuery] = useState('');
 
   // 주식 데이터
@@ -172,22 +171,12 @@ function HomePage() {
   };
 
   /* -------------------- 필터 상태 -------------------- */
-  const [agencyFilteredNews, setAgencyFilteredNews] = useState(null);
   const [categoryFilteredNews, setCategoryFilteredNews] = useState(null);
 
   const currentList = isSearching
-    ? (categoryFilteredNews ?? agencyFilteredNews ?? searchResults)
-    : (categoryFilteredNews ?? agencyFilteredNews ?? feedNews);
+    ? (categoryFilteredNews ?? searchResults)
+    : (categoryFilteredNews ?? feedNews);
 
-  const handleAgencySelect = (agency) => {
-    setSelectedAgency(agency);
-    if (!agency || agency === '전체') {
-      setAgencyFilteredNews(null);
-      return;
-    }
-    const base = isSearching ? searchResults : feedNews;
-    setAgencyFilteredNews(base.filter((n) => n.agency === agency));
-  };
 
   const handleCategoryFilter = (category) => {
     if (!category) {
@@ -229,10 +218,6 @@ function HomePage() {
           <Sidebar />
         </div>
 
-        <AgencySection
-          selectedAgency={selectedAgency}
-          onAgencySelect={handleAgencySelect}
-        />
       </main>
 
       <Footer />
@@ -342,6 +327,7 @@ function App() {
         <Route path="/email-verification" element={<EmailVerificationPage />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
+        <Route path="/activity-log" element={<ActivityLog />} />
         <Route path="/login-success" element={<LoginSuccessPage />} />
         <Route path="/login-error" element={<LoginErrorPage />} />
       </Routes>
