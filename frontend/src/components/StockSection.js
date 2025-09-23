@@ -19,8 +19,8 @@ const StockSection = ({ stockData }) => {
                   stock.change > 0 ? "positive" : stock.change < 0 ? "negative" : ""
                 }`}
               >
-                {stock.changePercent !== null
-                  ? `${stock.change.toFixed(2)} (${stock.changePercent.toFixed(2)}%)`
+                {stock.changePercent !== null && stock.change !== null && !isNaN(stock.change)
+                  ? `${Number(stock.change).toFixed(2)} (${Number(stock.changePercent).toFixed(2)}%)`
                   : "-"}
               </div>
             </div>
