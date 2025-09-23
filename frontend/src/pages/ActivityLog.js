@@ -5,12 +5,16 @@ import './ActivityLog.css';
 
 const ActivityLog = () => {
   const [activities, setActivities] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, subscription, read, bookmark, comment, like, dislike
 
   useEffect(() => {
     fetchActivities();
-  }, []);
+    if (filter === 'subscription') {
+      fetchSubscriptions();
+    }
+  }, [filter]);
 
   const fetchActivities = async () => {
     try {
@@ -26,6 +30,34 @@ const ActivityLog = () => {
       console.error('활동 로그 조회 실패:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSubscriptions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setSubscriptions([]);
+        return;
+      }
+
+      const response = await fetch('/api/user/subscriptions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.ok) {
+        setSubscriptions(data.subscriptions || []);
+      } else {
+        console.error('구독 목록 조회 실패:', data.error);
+        setSubscriptions([]);
+      }
+    } catch (error) {
+      console.error('구독 목록 조회 실패:', error);
+      setSubscriptions([]);
     }
   };
 
@@ -137,7 +169,65 @@ const ActivityLog = () => {
 
       {filter === 'subscription' ? (
         <div className="subscription-content">
-          <AgencySection />
+          {subscriptions.length > 0 ? (
+            <div className="subscription-list">
+              <h3>구독 중인 언론사</h3>
+              {subscriptions.map(subscription => (
+                <div key={subscription.id} className="subscription-item">
+                  <div className="subscription-info">
+                    <strong>{subscription.name}</strong>
+                    {subscription.url && (
+                      <a href={subscription.url} target="_blank" rel="noopener noreferrer" className="subscription-link">
+                        웹사이트 방문
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    className="unsubscribe-btn"
+                    onClick={async () => {
+                      if (!confirm(`${subscription.name} 구독을 취소하시겠습니까?`)) return;
+
+                      try {
+                        const token = localStorage.getItem('token');
+                        const response = await fetch('/api/user/unsubscribe', {
+                          method: 'DELETE',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                          },
+                          body: JSON.stringify({
+                            sourceName: subscription.name
+                          })
+                        });
+
+                        const data = await response.json();
+                        if (data.ok) {
+                          alert(data.message);
+                          fetchSubscriptions(); // 목록 새로고침
+                        } else {
+                          alert(data.error || '구독 취소에 실패했습니다.');
+                        }
+                      } catch (error) {
+                        console.error('구독 취소 실패:', error);
+                        alert('구독 취소 중 오류가 발생했습니다.');
+                      }
+                    }}
+                  >
+                    구독 취소
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="no-subscriptions">
+              <p>구독 중인 언론사가 없습니다.</p>
+              <p>뉴스 카드에서 구독하기 버튼을 눌러 언론사를 구독해보세요.</p>
+            </div>
+          )}
+          <div className="agency-management">
+            <h3>언론사 관리</h3>
+            <AgencySection />
+          </div>
         </div>
       ) : (
         <div className="activity-list">

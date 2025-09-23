@@ -40,9 +40,44 @@ const AgencySection = ({ selectedAgency, onAgencySelect }) => {
     onAgencySelect(agency);
   };
 
-  const handleSubscribe = () => {
-    if (confirm(`${activeAgency}을(를) 구독하시겠습니까?`)) {
-      alert(`${activeAgency} 구독이 완료되었습니다!`);
+  const handleSubscribe = async () => {
+    if (!confirm(`${activeAgency}을(를) 구독하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      // localStorage와 sessionStorage 모두 확인
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch('/api/user/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sourceName: activeAgency
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        alert(data.message || `${activeAgency} 구독이 완료되었습니다!`);
+      } else {
+        alert(data.error || '구독에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('구독 요청 실패:', error);
+      alert('구독 요청 중 오류가 발생했습니다.');
     }
   };
 

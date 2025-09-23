@@ -316,6 +316,8 @@ body {
     transition: box-shadow 0.2s, transform 0.2s;
     cursor: pointer;
     min-height: 460px;
+    display: flex;
+    flex-direction: column;
 }
 
 .news-item:hover {
@@ -342,7 +344,8 @@ body {
     padding: 35px;
     display: flex;
     flex-direction: column;
-    height: calc(460px - 280px - 2px); /* 전체 높이에서 이미지와 border 제외 */
+    flex: 1;
+    min-height: calc(460px - 280px - 2px); /* 최소 높이만 설정하고 유연하게 확장 가능 */
 }
 
 .news-title {

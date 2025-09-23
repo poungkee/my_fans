@@ -169,11 +169,15 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
   
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
-      onSearch(e.target.value);
+      if (onSearch) {
+        onSearch(e.target.value);
+      }
       setShowSearchBar(false); // 검색 후 검색창 숨기기
     } else if (e.type === 'click') {
       const query = searchInputRef.current?.value ?? '';
-      onSearch(query);
+      if (onSearch) {
+        onSearch(query);
+      }
       setShowSearchBar(false); // 검색 후 검색창 숨기기
     }
   };
@@ -207,7 +211,9 @@ const Header = ({ onSortChange, onSearch, selectedSort }) => {
       searchInputRef.current.blur();
     }
     setActiveDropdown(null);
-    onSearch('');     // 전체 뉴스로
+    if (onSearch) {
+      onSearch('');     // 전체 뉴스로
+    }
 
     // 홈으로 이동
     navigate('/');

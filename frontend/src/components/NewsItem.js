@@ -42,9 +42,11 @@ const NewsItem = ({
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxHeight: '75.6px',
             lineHeight: '1.4',
-            wordWrap: 'break-word'
+            wordWrap: 'break-word',
+            cursor: 'pointer',
+            height: 'auto',
+            maxHeight: 'none'
           }}
         >
           {news.title}
@@ -68,7 +70,44 @@ const NewsItem = ({
                 {news.source || '출처 미상'}
               </span>
             </div>
-            <button className="subscribe-button" onClick={() => onSubscribe && onSubscribe(news.source)}>
+            <button className="subscribe-button" onClick={async () => {
+              if (!onSubscribe) return;
+
+              try {
+                // localStorage와 sessionStorage 모두 확인
+                let token = localStorage.getItem('token');
+                if (!token) {
+                  token = sessionStorage.getItem('token');
+                }
+
+                if (!token) {
+                  alert('로그인이 필요합니다.');
+                  return;
+                }
+
+                const response = await fetch('/api/user/subscribe', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    sourceName: news.source
+                  })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                  alert(data.message || `${news.source} 구독이 완료되었습니다!`);
+                } else {
+                  alert(data.error || '구독에 실패했습니다.');
+                }
+              } catch (error) {
+                console.error('구독 요청 실패:', error);
+                alert('구독 요청 중 오류가 발생했습니다.');
+              }
+            }}>
               구독하기
             </button>
           </div>

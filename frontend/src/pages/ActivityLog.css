@@ -180,6 +180,86 @@
   overflow: hidden;
 }
 
+.subscription-list {
+  padding: 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.subscription-list h3 {
+  margin-bottom: 15px;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.subscription-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: #f9fafb;
+}
+
+.subscription-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.subscription-info strong {
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.subscription-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.subscription-link:hover {
+  text-decoration: underline;
+}
+
+.unsubscribe-btn {
+  padding: 8px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.unsubscribe-btn:hover {
+  background: #dc2626;
+}
+
+.no-subscriptions {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.no-subscriptions p {
+  margin-bottom: 10px;
+}
+
+.agency-management {
+  padding: 20px;
+}
+
+.agency-management h3 {
+  margin-bottom: 15px;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .activity-log-page {
