@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import AgencySection from '../components/AgencySection';
+import AdSidebar from '../components/AdSidebar';
 import './ActivityLog.css';
 
 const ActivityLog = () => {
@@ -554,18 +555,30 @@ const ActivityLog = () => {
           </div>
         ) : filter === 'subscription' ? (
           <div className="subscription-content">
+            <div className="subscription-header">
+              <h3>📰 구독 관리</h3>
+              <p>구독 중인 언론사를 확인하고 관리하세요</p>
+            </div>
+
             {subscriptions.length > 0 ? (
               <div className="subscription-list">
-                <h3>구독 중인 언론사</h3>
                 {subscriptions.map(subscription => (
-                  <div key={subscription.id} className="subscription-item">
+                  <div key={subscription.id} className="subscription-card">
                     <div className="subscription-info">
-                      <strong>{subscription.name}</strong>
+                      <div className="subscription-name">{subscription.name}</div>
                       {subscription.url && (
-                        <a href={subscription.url} target="_blank" rel="noopener noreferrer" className="subscription-link">
-                          웹사이트 방문
+                        <a
+                          href={subscription.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="subscription-link"
+                        >
+                          🔗 웹사이트 방문
                         </a>
                       )}
+                      <div className="subscription-meta">
+                        구독일: {subscription.created_at ? new Date(subscription.created_at).toLocaleDateString() : '정보 없음'}
+                      </div>
                     </div>
                     <button
                       className="unsubscribe-btn"
@@ -573,7 +586,9 @@ const ActivityLog = () => {
                         if (!confirm(`${subscription.name} 구독을 취소하시겠습니까?`)) return;
 
                         try {
-                          const token = localStorage.getItem('token');
+                          let token = localStorage.getItem('token');
+                          if (!token) token = sessionStorage.getItem('token');
+
                           const response = await fetch('/api/user/unsubscribe', {
                             method: 'DELETE',
                             headers: {
@@ -588,7 +603,7 @@ const ActivityLog = () => {
                           const data = await response.json();
                           if (data.ok) {
                             alert(data.message);
-                            fetchSubscriptions(); // 목록 새로고침
+                            fetchSubscriptions();
                           } else {
                             alert(data.error || '구독 취소에 실패했습니다.');
                           }
@@ -598,19 +613,26 @@ const ActivityLog = () => {
                         }
                       }}
                     >
-                      구독 취소
+                      🚫 구독 취소
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="no-subscriptions">
-                <p>구독 중인 언론사가 없습니다.</p>
-                <p>뉴스 카드에서 구독하기 버튼을 눌러 언론사를 구독해보세요.</p>
+                <div className="empty-state">
+                  <div className="empty-icon">📰</div>
+                  <h4>구독 중인 언론사가 없습니다</h4>
+                  <p>뉴스 카드에서 구독하기 버튼을 눌러 언론사를 구독해보세요.</p>
+                </div>
               </div>
             )}
-            <div className="agency-management">
-              <h3>언론사 관리</h3>
+
+            <div className="agency-management-section">
+              <div className="section-header">
+                <h3>🏢 언론사 관리</h3>
+                <p>전체 언론사 목록을 확인하고 관리하세요</p>
+              </div>
               <AgencySection />
             </div>
           </div>
@@ -641,50 +663,7 @@ const ActivityLog = () => {
         )}
           </div>
 
-          {/* 광고 영역 */}
-          <aside className="activity-sidebar">
-            <div className="sidebar-section">
-              <h3 className="sidebar-title">광고</h3>
-
-              {/* 메인 광고 배너 */}
-              <div className="ad-banner main-ad">
-                <div className="ad-content">
-                  <div className="ad-badge">광고</div>
-                  <h4 className="ad-title">프리미엄 뉴스 서비스</h4>
-                  <p className="ad-description">더 깊이 있는 분석과 독점 뉴스를 만나보세요</p>
-                  <button className="ad-button">지금 시작하기</button>
-                </div>
-              </div>
-
-              {/* 작은 광고 카드들 */}
-              <div className="ad-card">
-                <div className="ad-badge small">광고</div>
-                <div className="ad-card-content">
-                  <h5>뉴스레터 구독</h5>
-                  <p>매일 주요 뉴스를 이메일로 받아보세요</p>
-                  <button className="ad-card-button">구독하기</button>
-                </div>
-              </div>
-
-              <div className="ad-card">
-                <div className="ad-badge small">광고</div>
-                <div className="ad-card-content">
-                  <h5>모바일 앱 다운로드</h5>
-                  <p>언제 어디서나 뉴스를 확인하세요</p>
-                  <button className="ad-card-button">다운로드</button>
-                </div>
-              </div>
-
-              <div className="ad-card">
-                <div className="ad-badge small">광고</div>
-                <div className="ad-card-content">
-                  <h5>프리미엄 구독</h5>
-                  <p>광고 없는 깔끔한 뉴스 경험</p>
-                  <button className="ad-card-button">구독하기</button>
-                </div>
-              </div>
-            </div>
-          </aside>
+          <AdSidebar className="activity-sidebar" />
         </div>
       </div>
     </div>

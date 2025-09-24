@@ -1,17 +1,17 @@
 import React from 'react';
-import './Sidebar.css';
+import './AdSidebar.css';
 
-const Sidebar = () => {
+const AdSidebar = ({ className = '' }) => {
   return (
-    <aside className="sidebar">
+    <aside className={`ad-sidebar ${className}`}>
       <div className="sidebar-section">
         <h3 className="sidebar-title">광고</h3>
-        
+
         {/* 메인 광고 배너 */}
         <div className="ad-banner main-ad">
           <div className="ad-content">
             <div className="ad-badge">광고</div>
-            <h4 className="ad-title">프리미엄 뉴스 서비스</h4>
+            <h4 className="ad-title">뉴스 서비스</h4>
             <p className="ad-description">더 깊이 있는 분석과 독점 뉴스를 만나보세요</p>
             <button className="ad-button">지금 시작하기</button>
           </div>
@@ -49,4 +49,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default AdSidebar;

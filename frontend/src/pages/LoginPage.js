@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import SocialLogin from '../components/SocialLogin';
 import './AuthPages.css';
 
@@ -12,6 +12,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -61,9 +62,12 @@ const LoginPage = () => {
         
         // Header 컴포넌트에 로그인 상태 변화 알림
         window.dispatchEvent(new Event('loginStatusChange'));
-        
+
         alert('로그인 성공!');
-        navigate('/');
+
+        // 이전 페이지로 돌아가기 (상세페이지에서 왔다면 상세페이지로)
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
       } else {
         setError(data.error || '로그인에 실패했습니다.');
       }

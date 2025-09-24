@@ -98,8 +98,161 @@
   gap: 10px;
   margin-bottom: 25px;
   justify-content: center;
-  flex-wrap: wrap;
 }
+
+/* ==============================
+   구독 탭 스타일
+   ============================== */
+
+.subscription-content {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.subscription-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.subscription-header h3 {
+  font-size: 24px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.subscription-header p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.subscription-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.subscription-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.subscription-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.subscription-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subscription-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.subscription-link {
+  font-size: 14px;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.subscription-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.subscription-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.unsubscribe-btn {
+  padding: 8px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.unsubscribe-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.no-subscriptions {
+  text-align: center;
+  padding: 60px 20px;
+  margin-bottom: 40px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-state h4 {
+  font-size: 20px;
+  color: #374151;
+  margin: 0;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.agency-management-section {
+  border-top: 2px solid #f3f4f6;
+  padding-top: 30px;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.section-header h3 {
+  font-size: 20px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.section-header p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
 
 .activity-filters button {
   padding: 8px 16px;
@@ -574,6 +727,39 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+  }
+
+  /* 구독 탭 모바일 스타일 */
+  .subscription-content {
+    padding: 20px 15px;
+  }
+
+  .subscription-header h3 {
+    font-size: 20px;
+  }
+
+  .subscription-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .subscription-name {
+    font-size: 16px;
+  }
+
+  .unsubscribe-btn {
+    align-self: center;
+    width: fit-content;
+  }
+
+  .agency-management-section {
+    padding-top: 20px;
+  }
+
+  .section-header h3 {
+    font-size: 18px;
   }
 
   .profile-info-grid {

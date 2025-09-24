@@ -1,10 +1,26 @@
 import React from 'react';
+import './Footer.css';
 
 const Footer = () => {
   return (
     <footer className="footer">
-      <div className="footer-text">© 2024 뉴스포털. 모든 권리 보유.</div>
-      <div className="footer-subtext">최신 뉴스를 빠르고 정확하게</div>
+      <div className="footer-container">
+        <div className="footer-content">
+          <div className="footer-info">
+            <span className="company-name">FANS</span>
+            <span className="separator">|</span>
+            <span>Fast & AI News Service</span>
+          </div>
+          <div className="footer-links">
+            <a href="/privacy">개인정보처리방침</a>
+            <a href="/terms">이용약관</a>
+            <a href="/contact">문의하기</a>
+          </div>
+          <div className="footer-copyright">
+            © 2025 FANS. All rights reserved.
+          </div>
+        </div>
+      </div>
     </footer>
   );
 };

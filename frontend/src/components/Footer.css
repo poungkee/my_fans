@@ -1,0 +1,117 @@
+/* ==============================
+   Simple Footer 스타일
+   ============================== */
+
+.footer {
+  background: #2d3748;
+  color: #cbd5e1;
+  margin-top: auto;
+  border-top: 1px solid #4a5568;
+}
+
+.footer-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 25px 0;
+  text-align: center;
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.company-name {
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.separator {
+  color: #718096;
+}
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-links a {
+  color: #a0aec0;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: #4f46e5;
+}
+
+.footer-copyright {
+  font-size: 13px;
+  color: #718096;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .footer-container {
+    padding: 0 15px;
+  }
+
+  .footer-content {
+    gap: 12px;
+    padding: 20px 0;
+  }
+
+  .footer-info {
+    flex-direction: column;
+    gap: 5px;
+    font-size: 14px;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .footer-links a {
+    font-size: 13px;
+  }
+
+  .footer-copyright {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-container {
+    padding: 0 10px;
+  }
+
+  .footer-content {
+    padding: 15px 0;
+  }
+
+  .footer-info {
+    font-size: 13px;
+  }
+
+  .footer-links {
+    gap: 10px;
+  }
+
+  .footer-links a {
+    font-size: 12px;
+  }
+}

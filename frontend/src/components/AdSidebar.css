@@ -1,0 +1,358 @@
+/* ==============================
+   AdSidebar 컴포넌트 스타일
+   ============================== */
+
+.ad-sidebar {
+  width: 180px; /* 250px → 180px로 대폭 축소 (70px 감소) */
+  min-width: 180px; /* 최소 너비 강제 */
+  flex-shrink: 0; /* 줄어들지 않도록 */
+  flex-grow: 0; /* 늘어나지 않도록 */
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+  max-height: calc(100vh - 120px); /* 더 작게 조정해서 스크롤바 방지 */
+  overflow-y: hidden; /* 스크롤바 완전 제거 */
+  z-index: 100;
+  order: 2; /* 오른쪽에 배치 */
+}
+
+/* 활동로그 페이지에서 사용할 때 */
+.ad-sidebar.activity-sidebar {
+  width: 280px;
+  top: 20px;
+}
+
+.sidebar-section {
+  margin-bottom: 1rem; /* 2rem → 1rem으로 간격 축소 */
+}
+
+.sidebar-title {
+  font-size: 1rem; /* 1.2rem → 1rem으로 축소 */
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.6rem; /* 1rem → 0.6rem으로 축소 */
+  padding-bottom: 0.3rem; /* 0.5rem → 0.3rem으로 축소 */
+  border-bottom: 2px solid #e5e7eb;
+  text-align: center;
+}
+
+/* 광고 배지 */
+.ad-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ad-badge.small {
+  font-size: 0.6rem;
+  padding: 0.2rem 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 메인 광고 배너 */
+.ad-banner {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  border-radius: 10px;
+  padding: 0.7rem; /* 1rem → 0.7rem으로 더 축소 */
+  margin-bottom: 0.7rem; /* 1rem → 0.7rem으로 더 축소 */
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(107, 114, 128, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ad-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.ad-banner:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(107, 114, 128, 0.4);
+}
+
+.ad-content {
+  position: relative;
+  z-index: 1;
+}
+
+.ad-title {
+  font-size: 0.85rem; /* 0.9rem → 0.85rem으로 더 축소 */
+  font-weight: 700;
+  margin-bottom: 0.4rem; /* 0.5rem → 0.4rem으로 더 축소 */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+}
+
+.ad-description {
+  font-size: 0.7rem; /* 0.75rem → 0.7rem으로 더 축소 */
+  line-height: 1.3;
+  margin-bottom: 0.6rem; /* 0.7rem → 0.6rem으로 더 축소 */
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.ad-button {
+  background: white;
+  color: #6b7280;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ad-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  background: #f8fafc;
+}
+
+/* 작은 광고 카드들 */
+.ad-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.5rem; /* 0.7rem → 0.5rem으로 더 축소 */
+  margin-bottom: 0.5rem; /* 0.7rem → 0.5rem으로 더 축소 */
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ad-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.ad-card-content h5 {
+  font-size: 0.8rem; /* 0.85rem → 0.8rem으로 축소 */
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.3rem; /* 0.4rem → 0.3rem으로 축소 */
+  line-height: 1.2;
+}
+
+.ad-card-content p {
+  font-size: 0.65rem; /* 0.7rem → 0.65rem으로 축소 */
+  color: #6b7280;
+  line-height: 1.3;
+  margin-bottom: 0.5rem; /* 0.6rem → 0.5rem으로 축소 */
+}
+
+.ad-card-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.ad-card-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+/* ==============================
+   반응형 디자인
+   ============================== */
+
+/* 큰 화면 (1200px 이상) */
+@media (min-width: 1200px) {
+  .ad-sidebar {
+    width: 200px; /* 270px → 200px로 3배 더 축소 (70px 추가 감소) */
+    min-width: 200px;
+  }
+
+  .ad-title {
+    font-size: 1rem; /* 1.1rem → 1rem으로 축소 */
+  }
+
+  .ad-description {
+    font-size: 0.8rem; /* 0.85rem → 0.8rem으로 축소 */
+  }
+
+  .ad-button {
+    padding: 0.55rem 1.1rem; /* 약간 축소 */
+    font-size: 0.75rem; /* 0.8rem → 0.75rem으로 축소 */
+  }
+}
+
+/* 중간 화면 (768px - 1199px) */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .ad-sidebar {
+    width: 150px; /* 220px → 150px로 3배 더 축소 (70px 추가 감소) */
+    min-width: 150px;
+  }
+
+  .ad-banner {
+    padding: 1rem;
+  }
+
+  .ad-title {
+    font-size: 0.9rem;
+  }
+
+  .ad-description {
+    font-size: 0.75rem;
+  }
+
+  .ad-button {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.7rem;
+  }
+
+  .ad-card {
+    padding: 0.7rem;
+  }
+
+  .ad-card-content h5 {
+    font-size: 0.8rem;
+  }
+
+  .ad-card-content p {
+    font-size: 0.65rem;
+  }
+}
+
+/* 작은 화면 (767px 이하) */
+@media (max-width: 767px) {
+  .ad-sidebar {
+    width: 100%;
+    position: static;
+    order: -1;
+    max-height: none;
+    margin-bottom: 20px;
+  }
+
+  .ad-banner {
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .ad-title {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .ad-description {
+    font-size: 0.7rem;
+    margin-bottom: 0.6rem;
+    line-height: 1.3;
+  }
+
+  .ad-button {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.65rem;
+  }
+
+  .ad-card {
+    padding: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .ad-card-content h5 {
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .ad-card-content p {
+    font-size: 0.6rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+
+  .ad-card-button {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.6rem;
+  }
+
+  .ad-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .ad-badge.small {
+    font-size: 0.55rem;
+    padding: 0.15rem 0.3rem;
+  }
+}
+
+/* 매우 작은 화면 (480px 이하) */
+@media (max-width: 480px) {
+  .ad-sidebar {
+    margin-bottom: 15px;
+  }
+
+  .sidebar-title {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .ad-banner {
+    padding: 0.6rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .ad-title {
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .ad-description {
+    font-size: 0.65rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .ad-button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.6rem;
+  }
+
+  .ad-card {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .ad-card-content h5 {
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .ad-card-content p {
+    font-size: 0.55rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .ad-card-button {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.55rem;
+  }
+}

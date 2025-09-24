@@ -1,11 +1,11 @@
 // src/App.js
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 import Header from './components/Header';
 import StockSection from './components/StockSection';
 import NewsGrid from './components/NewsGrid';
-import Sidebar from './components/Sidebar';
+import AdSidebar from './components/AdSidebar';
 import Footer from './components/Footer';
 
 import LoginPage from './pages/LoginPage';
@@ -18,8 +18,10 @@ import DeleteAccount from './pages/DeleteAccount';
 import LoginSuccessPage from './pages/LoginSuccessPage';
 import LoginErrorPage from './pages/LoginErrorPage';
 import ActivityLog from './pages/ActivityLog';
+import NewsDetailPage from './pages/NewsDetailPage';
 
-function HomePage() {
+
+function HomePageWrapper() {
   /* -------------------- 상태 -------------------- */
   const [feedNews, setFeedNews] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
@@ -28,6 +30,13 @@ function HomePage() {
   const [selectedSort, setSelectedSort] = useState('최신순');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 스크롤 상태
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+
+  // URL 매개변수 처리를 위한 hooks 추가
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // 주식 데이터
   const [stockData, setStockData] = useState([]);
   const [stockError, setStockError] = useState(null);
@@ -35,6 +44,20 @@ function HomePage() {
 
   // API 베이스 (프록시 사용 시 빈 문자열)
   const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
+
+  // URL 검색 매개변수 처리
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const searchParam = urlParams.get('search');
+
+    if (searchParam) {
+      setSearchQuery(searchParam);
+      setIsSearching(true);
+
+      // URL에서 검색 매개변수 제거 (깔끔한 URL 유지)
+      navigate('/', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // 검색 정렬 키 매핑
   const searchSortKey = useMemo(() => {
@@ -162,6 +185,24 @@ function HomePage() {
     };
   }, [API_BASE]);
 
+  /* -------------------- 스크롤 처리 -------------------- */
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setShowScrollToTop(scrollTop > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   /* -------------------- 헤더 핸들러 -------------------- */
   const handleSortChange = (_sortType, displayText) => setSelectedSort(displayText);
   const handleSearch = (query) => {
@@ -230,12 +271,23 @@ function HomePage() {
               searchQuery={isSearching ? searchQuery : ''}
             />
           </div>
-          <Sidebar />
+          <AdSidebar />
         </div>
 
       </main>
 
       <Footer />
+
+      {/* 맨 위로 올라가는 버튼 */}
+      {showScrollToTop && (
+        <button
+          className="scroll-to-top-button"
+          onClick={scrollToTop}
+          title="맨 위로"
+        >
+          ↑
+        </button>
+      )}
     </div>
   );
 }
@@ -334,7 +386,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePageWrapper />} />
+        <Route path="/news/:id" element={<NewsDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />

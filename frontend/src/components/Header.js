@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCommonData } from '../hooks/useCommonData';
 import './Header.css';
 
@@ -9,6 +9,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   const [user, setUser] = useState(null);
   const [showSearchBar, setShowSearchBar] = useState(false); // 검색창 표시 여부
   const navigate = useNavigate();
+  const location = useLocation();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
   
   // 공통 데이터 가져오기
@@ -135,7 +136,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
         setUser(null);
         setActiveDropdown(null);
         alert('로그아웃되었습니다.');
-        navigate('/');
+        // 뉴스 상세 페이지가 아닐 때만 홈으로 이동
+        if (!location.pathname.startsWith('/news/')) {
+          navigate('/');
+        }
       }
     } catch (error) {
       console.error('로그아웃 에러:', error);
@@ -150,7 +154,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
       setIsLoggedIn(false);
       setUser(null);
       setActiveDropdown(null);
-      navigate('/');
+      // 뉴스 상세 페이지가 아닐 때만 홈으로 이동
+      if (!location.pathname.startsWith('/news/')) {
+        navigate('/');
+      }
     }
   };
 
@@ -185,17 +192,20 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
 
   
   const handleSearch = (e) => {
-    if (e.key === 'Enter') {
-      if (onSearch) {
-        onSearch(e.target.value);
-      }
+    const query = e.key === 'Enter' ? e.target.value : (searchInputRef.current?.value ?? '');
+
+    if (e.key === 'Enter' || e.type === 'click') {
       setShowSearchBar(false); // 검색 후 검색창 숨기기
-    } else if (e.type === 'click') {
-      const query = searchInputRef.current?.value ?? '';
-      if (onSearch) {
-        onSearch(query);
+
+      // 디테일 페이지에서 검색하는 경우 메인 페이지로 이동하면서 검색
+      if (location.pathname.startsWith('/news/')) {
+        navigate(`/?search=${encodeURIComponent(query)}`);
+      } else {
+        // 메인 페이지에서 검색하는 경우 기존 방식
+        if (onSearch) {
+          onSearch(query);
+        }
       }
-      setShowSearchBar(false); // 검색 후 검색창 숨기기
     }
   };
 

@@ -18,7 +18,19 @@ const NewsItem = ({
       data-agency={news.agency}
       data-time={news.timeValue}
     >
-      <div className="news-image" style={{overflow:'hidden', borderRadius: '8px', background:'#eef', display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <div
+        className="news-image"
+        onClick={onDetail}
+        style={{
+          overflow:'hidden',
+          borderRadius: '8px',
+          background:'#eef',
+          display:'flex',
+          alignItems:'center',
+          justifyContent:'center',
+          cursor: 'pointer'
+        }}
+      >
         {thumb ? (
           <img
             src={thumb}
