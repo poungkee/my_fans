@@ -1,4 +1,8 @@
 services:
+  # ================================
+  # 데이터베이스
+  # ================================
+
   # PostgreSQL Database Server (Port: 5432)
   postgres:
     image: postgres:15
@@ -21,14 +25,18 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # AI Backend Service (Port: 8000)
-  ai-service:
-    build: ./backend/ai-service
-    container_name: fans_ai_service
+  # ================================
+  # AI 서비스들
+  # ================================
+
+  # AI Summarization Service (Port: 8000)
+  summarize-ai:
+    build: ./backend/ai/summarize-ai
+    container_name: fans_summarize_ai
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/ai-service/.env
+      - ./backend/ai/summarize-ai/.env
     networks:
       - fans_network
     healthcheck:
@@ -39,9 +47,69 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # ================================
+  # TODO: 구현 예정 AI 서비스들
+  # ================================
+
+  # # AI Recommendation Service (Port: 8001) - TODO: 구현 후 주석 해제
+  # recommendation-ai:
+  #   build: ./backend/ai/recommendation-ai
+  #   container_name: fans_recommendation_ai
+  #   ports:
+  #     - "8001:8001"
+  #   env_file:
+  #     - ./backend/.env
+  #   environment:
+  #     - RECOMMENDATION_AI_PORT=8001
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   volumes:
+  #     - ./backend/ai/recommendation-ai:/app
+  #     - /app/node_modules
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
+
+  # # AI Bias Analysis Service (Port: 8002) - TODO: 구현 후 주석 해제
+  # bias-analysis-ai:
+  #   build: ./backend/ai/bias-analysis-ai
+  #   container_name: fans_bias_analysis_ai
+  #   ports:
+  #     - "8002:8002"
+  #   env_file:
+  #     - ./backend/.env
+  #   environment:
+  #     - BIAS_ANALYSIS_AI_PORT=8002
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   volumes:
+  #     - ./backend/ai/bias-analysis-ai:/app
+  #     - /app/node_modules
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
+
+  # ================================
+  # 크롤러 서비스들
+  # ================================
+
   # RSS Crawler Service (Port: 4002)
   rss-crawler:
-    build: ./backend/rss-crawler
+    build: ./backend/crawler/rss-crawler
     container_name: fans_rss_crawler
     ports:
       - "4002:4002"
@@ -55,13 +123,13 @@ services:
     networks:
       - fans_network
     volumes:
-      - ./backend/rss-crawler:/app
+      - ./backend/crawler/rss-crawler:/app
       - /app/node_modules
     restart: unless-stopped
 
   # API Crawler Service (Port: 4003)
   api-crawler:
-    build: ./backend/api-crawler
+    build: ./backend/crawler/api-crawler
     container_name: fans_api_crawler
     ports:
       - "4003:4003"
@@ -75,9 +143,13 @@ services:
     networks:
       - fans_network
     volumes:
-      - ./backend/api-crawler:/app
+      - ./backend/crawler/api-crawler:/app
       - /app/node_modules
     restart: unless-stopped
+
+  # ================================
+  # 메인 API 서비스
+  # ================================
 
   # Main Backend API (Port: 3000)
   main-api:
@@ -92,7 +164,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ai-service:
+      summarize-ai:
         condition: service_healthy
       rss-crawler:
         condition: service_started
@@ -106,6 +178,10 @@ services:
       - ./backend/api/uploads:/app/uploads
     restart: unless-stopped
 
+  # ================================
+  # 프론트엔드
+  # ================================
+
   # React Frontend (Port: 3001)
   frontend:
     build: ./frontend
@@ -115,7 +191,7 @@ services:
     environment:
       - REACT_APP_API_BASE=
       - REACT_APP_API_URL=http://main-api:3000
-      - REACT_APP_AI_SERVICE_URL=http://ai-service:8000
+      - REACT_APP_AI_SERVICE_URL=http://summarize-ai:8000
       - PORT=3001
     volumes:
       - ./frontend:/app
