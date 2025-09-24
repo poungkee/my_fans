@@ -340,6 +340,37 @@ class NewsCrawlerService {
       // 기자 정보 추출 (개선된 버전)
       let journalist = '';
 
+      // 기자 이름 정리 함수
+      const cleanJournalistName = (name: string): string => {
+        if (!name) return '';
+
+        // 이메일 주소, 전화번호, 기타 불필요한 정보 제거
+        name = name
+          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '') // 이메일 제거
+          .replace(/\d{2,4}-\d{2,4}-\d{4}/g, '') // 전화번호 제거
+          .replace(/\d{3}-\d{3,4}-\d{4}/g, '') // 전화번호 제거
+          .replace(/\([^)]*\)/g, '') // 괄호와 내용 제거
+          .replace(/\[[^\]]*\]/g, '') // 대괄호와 내용 제거
+          .replace(/기자|reporter|작성자|글쓴이|입력|수정|승인|배포|송고|편집|교정|교열/gi, '') // 불필요한 단어 제거
+          .replace(/\d{4}[-.년년]\d{1,2}[-.월월]\d{1,2}/g, '') // 날짜 제거
+          .replace(/\d{1,2}:\d{2}/g, '') // 시간 제거
+          .replace(/[^\w\s가-힣]/g, ' ') // 특수문자를 공백으로
+          .replace(/\s+/g, ' ') // 연속 공백 제거
+          .trim();
+
+        // 한글 이름만 추출 (2-4글자)
+        const koreanNameMatch = name.match(/[가-힣]{2,4}/);
+        if (koreanNameMatch) {
+          const extractedName = koreanNameMatch[0];
+          // 일반적이지 않은 이름 패턴 필터링
+          if (!extractedName.match(/^(뉴스|기사|제공|출처|언론|매체|신문|방송|통신|미디어|편집|부서|팀장|대표|위원|의원|장관|차관|실장|국장|과장|부장|센터|연구소|대학교|교수|박사|석사|학사)$/)) {
+            return extractedName;
+          }
+        }
+
+        return '';
+      };
+
       // 1단계: 다양한 셀렉터로 기자 정보 추출
       const journalistSelectors = [
         '.media_end_head_journalist .name',
@@ -358,9 +389,11 @@ class NewsCrawlerService {
 
       for (const selector of journalistSelectors) {
         const found = $(selector).text().trim();
-        if (found && found.length > 1 && found.length < 50) {
-          journalist = found.replace(/기자|reporter|작성자|글쓴이/gi, '').trim();
-          if (journalist && !journalist.match(/^\d+$/) && !journalist.includes('http')) {
+        if (found && found.length > 1 && found.length < 100) {
+          const cleanedName = cleanJournalistName(found);
+          if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
+            journalist = cleanedName;
+            console.log(`[DEBUG] 셀렉터로 기자 추출: ${selector} -> "${found}" -> "${journalist}"`);
             break;
           }
         }
@@ -371,19 +404,23 @@ class NewsCrawlerService {
         const reporterPatterns = [
           /([가-힣]{2,4})\s*기자/g,
           /기자\s*([가-힣]{2,4})/g,
-          /([가-힣]{2,4})\s*@/g,
-          /\[([가-힣]{2,4})\s*기자\]/g
+          /\[([가-힣]{2,4})\s*기자\]/g,
+          /=\s*([가-힣]{2,4})\s*기자/g
         ];
 
         for (const pattern of reporterPatterns) {
-          const matches = content.match(pattern);
+          const matches = [...content.matchAll(pattern)];
           if (matches && matches.length > 0) {
-            // 첫 번째 매치에서 이름 추출
-            const match = matches[0].replace(/기자|@|\[|\]/g, '').trim();
-            if (match && match.length >= 2 && match.length <= 4) {
-              journalist = match;
-              break;
+            for (const match of matches) {
+              const extractedName = match[1] ? match[1].trim() : '';
+              const cleanedName = cleanJournalistName(extractedName);
+              if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
+                journalist = cleanedName;
+                console.log(`[DEBUG] 본문 패턴으로 기자 추출: "${match[0]}" -> "${journalist}"`);
+                break;
+              }
             }
+            if (journalist) break;
           }
         }
       }
@@ -550,13 +587,13 @@ class NewsCrawlerService {
         '스포츠': 8
       };
 
-      // 언론사 ID 매핑 (실제 언론사 이름을 DB ID에 매핑)
+      // 언론사 ID 매핑 (14개 타겟 언론사 - 실제 DB ID 기준)
       const sourceIdMap: { [key: string]: number } = {
-        '조선일보': 1, '중앙일보': 2, '동아일보': 3,
-        '한겨레': 4, '경향신문': 5, '한국일보': 6,
-        '매일경제': 7, '한국경제': 8, '머니투데이': 9,
-        'YTN': 10, '연합뉴스': 11, 'JTBC': 12,
-        'SBS': 13, 'KBS': 14, 'MBC': 15
+        '연합뉴스': 1, '동아일보': 2, '문화일보': 3,
+        '세계일보': 4, '조선일보': 5, '중앙일보': 6,
+        '한겨레': 7, '경향신문': 8, '한국일보': 9,
+        '매일경제': 10, '한국경제': 11, '머니투데이': 12,
+        'YTN': 13, 'JTBC': 14
       };
 
       // 제목에서 언론사 이름 추출 (제목 끝에 있는 언론사명)
@@ -573,9 +610,15 @@ class NewsCrawlerService {
       }
 
       // 추출된 언론사명으로 sourceId 결정
-      const sourceId = sourceIdMap[extractedSource] || 11; // 기본값: 연합뉴스
+      const sourceId = sourceIdMap[extractedSource] || 1; // 기본값: 연합뉴스
 
       console.log(`[DEBUG] 언론사 매핑: "${extractedSource}" -> sourceId: ${sourceId}`);
+
+      // 타겟 언론사가 아닌 경우 저장하지 않음
+      if (!sourceIdMap[extractedSource]) {
+        console.log(`[DEBUG] 비타겟 언론사로 뉴스 저장 건너뜀: ${extractedSource}`);
+        return null;
+      }
 
       // NewsArticle 생성 (새 스키마)
       const article = newsRepo.create({
@@ -583,6 +626,7 @@ class NewsCrawlerService {
         content: parsedNews.content,
         url: originalUrl,
         imageUrl: parsedNews.imageUrl,
+        journalist: parsedNews.journalist,
         sourceId: sourceId,
         categoryId: categoryIdMap[categoryName] || 1, // 기본값: 정치
         pubDate: parsedNews.pubDate
