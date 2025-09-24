@@ -77,12 +77,19 @@ function HomePageWrapper() {
 
   /* -------------------- 데이터 로드: 홈 피드 -------------------- */
   useEffect(() => {
+    // 강제 상태 초기화
+    console.log('🔄 피드 데이터 로드 시작');
+    setCategoryFilteredNews(null);
+    setSourceFilteredNews(null);
+    setFeedNews([]); // feedNews도 초기화
+
     const controller = new AbortController();
     // topics는 없어도 동작하도록 파라미터 분리
     const params = new URLSearchParams({
       limit: '60',
       sort: 'latest',
       topics: '정치,경제,사회,세계,IT/과학,생활/문화',
+      _t: Date.now() // 캐시 무효화용 타임스탬프
     });
     const url = `${API_BASE}/api/feed?${params.toString()}`;
 
@@ -91,6 +98,16 @@ function HomePageWrapper() {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        console.log('🔍 피드 데이터 수신:');
+        console.log('- 전체 기사:', data.items?.length || 0);
+        const hankyoreh = data.items?.filter(item => item.source === '한겨레') || [];
+        console.log('- 한겨레 기사:', hankyoreh.length);
+        console.log('- 한겨레 기사 ID들:', hankyoreh.map(item => item.id));
+
+        // 모든 소스 확인
+        const allSources = [...new Set(data.items?.map(item => item.source) || [])];
+        console.log('- 받은 모든 소스들:', allSources);
+        console.log('- 한겨레 상세:', hankyoreh.map(item => ({id: item.id, title: item.title})));
         setFeedNews(Array.isArray(data.items) ? data.items : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -101,7 +118,7 @@ function HomePageWrapper() {
     })();
 
     return () => controller.abort();
-  }, [API_BASE]);
+  }, [API_BASE]); // 의존성은 그대로 두고
 
   /* -------------------- 데이터 로드: 검색 -------------------- */
   useEffect(() => {
@@ -211,13 +228,40 @@ function HomePageWrapper() {
     setIsSearching(!!q);
   };
 
+  // 강제 데이터 새로고침 함수
+  const forceRefresh = () => {
+    console.log('🔄 강제 새로고침 시작');
+    setCategoryFilteredNews(null);
+    setSourceFilteredNews(null);
+    setFeedNews([]);
+    // 컴포넌트 다시 마운트 효과를 위해 key 변경
+    window.location.reload();
+  };
+
   /* -------------------- 필터 상태 -------------------- */
   const [categoryFilteredNews, setCategoryFilteredNews] = useState(null);
   const [sourceFilteredNews, setSourceFilteredNews] = useState(null);
 
+  // 언론사별 로딩 상태 및 페이지 관리
+  const [sourceLoadingState, setSourceLoadingState] = useState({
+    sourceName: null,
+    page: 1,
+    hasMore: true,
+    isLoading: false
+  });
+
   const currentList = isSearching
     ? (sourceFilteredNews ?? categoryFilteredNews ?? searchResults)
     : (sourceFilteredNews ?? categoryFilteredNews ?? feedNews);
+
+  // 디버깅: currentList 상태 확인
+  useEffect(() => {
+    console.log('🔍 App.js currentList 상태:');
+    console.log('- sourceFilteredNews:', sourceFilteredNews?.length || 'null');
+    console.log('- categoryFilteredNews:', categoryFilteredNews?.length || 'null');
+    console.log('- feedNews:', feedNews?.length || 0);
+    console.log('- currentList:', currentList?.length || 0);
+  }, [sourceFilteredNews, categoryFilteredNews, feedNews, currentList]);
 
 
   const handleCategoryFilter = (category) => {
@@ -232,13 +276,84 @@ function HomePageWrapper() {
     setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
   };
 
-  const handleSourceFilter = (sourceName) => {
+  const handleSourceFilter = async (sourceName) => {
+    console.log('🔍 소스 필터링:', sourceName);
     if (!sourceName) {
       setSourceFilteredNews(null);
       return;
     }
-    const base = categoryFilteredNews || (isSearching ? searchResults : feedNews);
-    setSourceFilteredNews(base.filter((n) => n.source === sourceName));
+
+    // 언론사별 전용 API 호출
+    try {
+      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceName)}?page=1&limit=50&days=7`;
+      console.log('- API URL:', url);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      console.log('- 언론사별 API 응답:', data.items?.length || 0);
+      console.log('- 받은 기사 ID들:', data.items?.map(item => item.id) || []);
+
+      setSourceFilteredNews(Array.isArray(data.items) ? data.items : []);
+
+      // 로딩 상태 초기화
+      setSourceLoadingState({
+        sourceName: sourceName,
+        page: 1,
+        hasMore: data.pagination?.hasMore || false,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('언론사별 API 호출 실패:', error);
+      // 실패 시 기존 방식으로 폴백
+      const base = categoryFilteredNews || (isSearching ? searchResults : feedNews);
+      const filtered = base.filter((n) => n.source === sourceName);
+      setSourceFilteredNews(filtered);
+    }
+  };
+
+  // 언론사별 추가 데이터 로드 함수
+  const loadMoreSourceNews = async () => {
+    if (!sourceLoadingState.sourceName || sourceLoadingState.isLoading || !sourceLoadingState.hasMore) {
+      return;
+    }
+
+    setSourceLoadingState(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const nextPage = sourceLoadingState.page + 1;
+      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceLoadingState.sourceName)}?page=${nextPage}&limit=20&days=7`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      console.log(`- 페이지 ${nextPage} 로드:`, data.items?.length || 0);
+
+      if (data.items && data.items.length > 0) {
+        setSourceFilteredNews(prev => [...(prev || []), ...data.items]);
+        setSourceLoadingState(prev => ({
+          ...prev,
+          page: nextPage,
+          hasMore: data.pagination?.hasMore || false,
+          isLoading: false
+        }));
+      } else {
+        setSourceLoadingState(prev => ({
+          ...prev,
+          hasMore: false,
+          isLoading: false
+        }));
+      }
+    } catch (error) {
+      console.error('추가 로드 실패:', error);
+      setSourceLoadingState(prev => ({
+        ...prev,
+        hasMore: false,
+        isLoading: false
+      }));
+    }
   };
 
   /* -------------------- 렌더 -------------------- */
@@ -269,6 +384,9 @@ function HomePageWrapper() {
             <NewsGrid
               newsData={currentList}
               searchQuery={isSearching ? searchQuery : ''}
+              onLoadMore={sourceLoadingState.sourceName ? loadMoreSourceNews : null}
+              isLoadingMore={sourceLoadingState.isLoading}
+              hasMore={sourceLoadingState.hasMore}
             />
           </div>
           <AdSidebar />

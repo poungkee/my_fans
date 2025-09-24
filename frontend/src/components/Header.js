@@ -242,6 +242,14 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
       onSearch('');     // 전체 뉴스로
     }
 
+    // 필터 초기화 강제 실행
+    if (onCategoryFilter) {
+      onCategoryFilter('전체');
+    }
+    if (onSourceFilter) {
+      onSourceFilter(null);
+    }
+
     // 홈으로 이동
     navigate('/');
   };
@@ -335,6 +343,25 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           title="나의 활동로그"
         >
           📊 활동로그
+        </button>
+
+        {/* 새로고침 버튼 추가 */}
+        <button
+          className="refresh-button"
+          onClick={() => window.location.reload()}
+          title="페이지 새로고침"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'white',
+            fontSize: '14px',
+            cursor: 'pointer',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            marginLeft: '10px'
+          }}
+        >
+          🔄 새로고침
         </button>
       </div>
 

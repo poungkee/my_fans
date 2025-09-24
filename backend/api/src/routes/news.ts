@@ -181,6 +181,71 @@ router.get("/trending", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/news/by-source/:sourceName
+ * 특정 언론사의 뉴스 조회 (일주일치)
+ * ?page=1&limit=20&days=7
+ */
+router.get("/news/by-source/:sourceName", async (req: Request, res: Response) => {
+  try {
+    const newsRepo = AppDataSource.getRepository(NewsArticle);
+    const sourceRepo = AppDataSource.getRepository(Source);
+
+    const sourceName = String(req.params.sourceName || "").trim();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const days = Math.min(Number(req.query.days) || 7, 30);
+
+    if (!sourceName) {
+      return res.status(400).json({ error: "SOURCE_NAME_REQUIRED" });
+    }
+
+    // 해당 언론사 찾기
+    const source = await sourceRepo.findOne({ where: { name: sourceName } });
+    if (!source) {
+      return res.status(404).json({ error: "SOURCE_NOT_FOUND" });
+    }
+
+    // N일 전 날짜 계산
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - days);
+
+    const skip = (page - 1) * limit;
+
+    const articles = await newsRepo.createQueryBuilder("article")
+      .leftJoinAndSelect("article.source", "source")
+      .leftJoinAndSelect("article.category", "category")
+      .leftJoinAndSelect("article.stats", "stats")
+      .where("article.sourceId = :sourceId", { sourceId: source.id })
+      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .orderBy("article.pubDate", "DESC")
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    const items = await Promise.all(articles.map(mapArticle));
+
+    // 전체 개수도 함께 반환
+    const total = await newsRepo.createQueryBuilder("article")
+      .where("article.sourceId = :sourceId", { sourceId: source.id })
+      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .getCount();
+
+    res.json({
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + items.length < total
+      }
+    });
+  } catch (e: any) {
+    console.error("BY_SOURCE_ERROR:", e);
+    res.status(500).json({ items: [], error: e?.message || "BY_SOURCE_FAILED" });
+  }
+});
+
+/**
  * GET /api/news/:id
  * 뉴스 상세 조회
  */

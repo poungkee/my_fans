@@ -6,11 +6,20 @@ import './NewsGrid.css';
 
 const PAGE_SIZE = 8; // 한번에 추가로 보여줄 개수
 
-const NewsGrid = ({ newsData, searchQuery }) => {
+const NewsGrid = ({ newsData, searchQuery, onLoadMore, isLoadingMore, hasMore }) => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
   const observer = useRef();
   const navigate = useNavigate();
+
+  // 디버깅용 로그
+  useEffect(() => {
+    console.log('🔍 NewsGrid가 받은 데이터:');
+    console.log('- 전체 기사:', newsData?.length || 0);
+    const hankyoreh = newsData?.filter(item => item.source === '한겨레') || [];
+    console.log('- 한겨레 기사:', hankyoreh.length);
+    console.log('- 한겨레 기사 ID들:', hankyoreh.map(item => item.id));
+  }, [newsData]);
 
   // newsData나 검색어 변경 시 페이지 리셋
   useEffect(() => {
@@ -52,23 +61,40 @@ const NewsGrid = ({ newsData, searchQuery }) => {
   // 현재 화면에 보여줄 아이템
   const visibleItems = filteredNews.slice(0, visibleCount);
 
+  // 디버깅: visibleItems 확인
+  useEffect(() => {
+    console.log('🔍 화면에 표시될 아이템:');
+    console.log('- 필터링된 뉴스:', filteredNews.length);
+    console.log('- 표시 개수:', visibleCount);
+    console.log('- 실제 표시 아이템:', visibleItems.length);
+    const hankyoreh = visibleItems?.filter(item => item.source === '한겨레') || [];
+    console.log('- 표시될 한겨레 기사:', hankyoreh.length);
+    console.log('- 표시될 한겨레 기사 ID들:', hankyoreh.map(item => item.id));
+  }, [visibleItems, filteredNews, visibleCount]);
+
   // 무한 스크롤을 위한 마지막 요소 참조
   const lastNewsElementRef = useCallback(node => {
-    if (isLoading) return;
+    if (isLoading || isLoadingMore) return;
     if (observer.current) observer.current.disconnect();
     observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && visibleCount < filteredNews.length) {
-        setIsLoading(true);
-        setTimeout(() => {
-          setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredNews.length));
-          setIsLoading(false);
-        }, 300); // 로딩 효과를 위한 지연
+      if (entries[0].isIntersecting) {
+        if (onLoadMore && hasMore) {
+          // 언론사별 무한 스크롤
+          onLoadMore();
+        } else if (visibleCount < filteredNews.length) {
+          // 기존 페이징
+          setIsLoading(true);
+          setTimeout(() => {
+            setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredNews.length));
+            setIsLoading(false);
+          }, 300);
+        }
       }
     });
     if (node) observer.current.observe(node);
-  }, [isLoading, visibleCount, filteredNews.length]);
+  }, [isLoading, isLoadingMore, visibleCount, filteredNews.length, onLoadMore, hasMore]);
 
-  const hasMore = visibleCount < filteredNews.length;
+  const hasMoreVisible = visibleCount < filteredNews.length;
 
   return (
     <div className="news-container">
@@ -99,7 +125,7 @@ const NewsGrid = ({ newsData, searchQuery }) => {
       </div>
 
       {/* 로딩 인디케이터 */}
-      {isLoading && (
+      {(isLoading || isLoadingMore) && (
         <div style={{
           display: 'flex',
           justifyContent: 'center',
@@ -126,7 +152,7 @@ const NewsGrid = ({ newsData, searchQuery }) => {
       )}
 
       {/* 모든 뉴스를 다 보여준 경우 */}
-      {!hasMore && visibleItems.length > 0 && (
+      {!hasMoreVisible && !hasMore && visibleItems.length > 0 && (
         <div style={{
           display: 'flex',
           justifyContent: 'center',
