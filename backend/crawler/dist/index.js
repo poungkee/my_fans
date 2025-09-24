@@ -51,7 +51,7 @@ app.post('/crawl/api/start', async (req, res) => {
 app.post('/crawl/rss/start', async (req, res) => {
     try {
         console.log('📰 RSS 크롤링 시작...');
-        const results = await rssCrawlerService_1.rssCrawlerService.crawlAllRSSFeeds(10);
+        const results = await rssCrawlerService_1.rssCrawlerService.crawlAllRSSFeeds(4);
         let totalSaved = 0;
         const summary = [];
         for (const [sourceName, count] of Object.entries(results)) {
@@ -81,7 +81,7 @@ app.post('/crawl/all/start', async (req, res) => {
             apiCollected += articles.length;
         }
         // RSS 크롤링
-        const rssResults = await rssCrawlerService_1.rssCrawlerService.crawlAllRSSFeeds(10);
+        const rssResults = await rssCrawlerService_1.rssCrawlerService.crawlAllRSSFeeds(4);
         let rssSaved = 0;
         for (const count of Object.values(rssResults)) {
             rssSaved += count;

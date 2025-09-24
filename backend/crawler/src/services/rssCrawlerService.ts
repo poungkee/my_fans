@@ -67,13 +67,17 @@ class RSSCrawlerService {
 
       const response = await axios.get(feed.feedUrl, {
         timeout: 10000,
+        responseType: 'arraybuffer',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
 
+      // Buffer를 UTF-8로 디코딩
+      const xmlData = Buffer.from(response.data).toString('utf-8');
+
       const parser = new xml2js.Parser({ trim: true, explicitArray: true });
-      const result = await parser.parseStringPromise(response.data);
+      const result = await parser.parseStringPromise(xmlData);
 
       const items: RSSItem[] = result.rss?.channel?.[0]?.item || [];
       console.log(`[RSS DEBUG] ${feed.sourceName}에서 ${items.length}개 아이템 발견`);

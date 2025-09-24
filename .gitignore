@@ -95,4 +95,4 @@ secrets/
 backend/ai-service/venv/
 
 # === Claude Code Memory File ===
-CLAUDE.md
+CLAUDE.mdnode_modules/

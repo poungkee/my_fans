@@ -39,6 +39,46 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # RSS Crawler Service (Port: 4002)
+  rss-crawler:
+    build: ./backend/rss-crawler
+    container_name: fans_rss_crawler
+    ports:
+      - "4002:4002"
+    env_file:
+      - ./backend/.env
+    environment:
+      - RSS_CRAWLER_PORT=4002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/rss-crawler:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  # API Crawler Service (Port: 4003)
+  api-crawler:
+    build: ./backend/api-crawler
+    container_name: fans_api_crawler
+    ports:
+      - "4003:4003"
+    env_file:
+      - ./backend/.env
+    environment:
+      - API_CRAWLER_PORT=4003
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/api-crawler:/app
+      - /app/node_modules
+    restart: unless-stopped
+
   # Main Backend API (Port: 3000)
   main-api:
     build: ./backend/api
@@ -54,6 +94,10 @@ services:
         condition: service_healthy
       ai-service:
         condition: service_healthy
+      rss-crawler:
+        condition: service_started
+      api-crawler:
+        condition: service_started
     networks:
       - fans_network
     volumes:
@@ -70,8 +114,8 @@ services:
       - "3001:3001"
     environment:
       - REACT_APP_API_BASE=
-      - REACT_APP_API_URL=http://localhost:3000
-      - REACT_APP_AI_SERVICE_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://main-api:3000
+      - REACT_APP_AI_SERVICE_URL=http://ai-service:8000
       - PORT=3001
     volumes:
       - ./frontend:/app
