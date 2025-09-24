@@ -456,18 +456,15 @@ function NewsDetailPage() {
             )}
 
             <div className="article-content-text">
-              {article.content ? (
+              {article.content && article.content.trim().length > 0 ? (
                 article.content.split('\n').map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))
               ) : (
-                <>
-                  <p>최근 발표된 연구 결과에 따르면, 인공지능 기술의 발전이 다양한 산업 분야에서 혁신적인 변화를 이끌어내고 있다고 밝혔습니다.</p>
-                  <p>특히 의료, 금융, 교육 등의 분야에서 AI 기술의 활용도가 급격히 증가하고 있으며, 이는 기존의 업무 방식과 서비스 제공 방식에 근본적인 변화를 가져오고 있습니다.</p>
-                  <p>의료 분야에서는 AI를 활용한 진단 시스템이 의사들의 정확한 진단을 돕고 있으며, 환자 개개인에게 맞춤형 치료법을 제공하는 데 큰 도움을 주고 있습니다.</p>
-                  <p>금융업계에서는 AI 기반의 위험 관리 시스템과 자동화된 투자 상담 서비스가 고객들에게 더 나은 금융 서비스를 제공하고 있습니다.</p>
-                  <p>교육 분야에서도 AI 기술의 도입으로 개인화된 학습 경험이 가능해지고 있습니다. 학습자의 수준과 선호도를 분석하여 최적화된 학습 콘텐츠를 제공하고 있습니다.</p>
-                </>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                  <p>기사 본문을 불러올 수 없습니다.</p>
+                  <p>원본 기사는 <a href={article.url} target="_blank" rel="noopener noreferrer">여기</a>에서 확인하실 수 있습니다.</p>
+                </div>
               )}
             </div>
           </div>

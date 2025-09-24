@@ -18,16 +18,11 @@ export const RSS_FEEDS: RSSFeed[] = [
   {
     sourceName: '한겨레',
     feedUrl: 'https://www.hani.co.kr/rss/',
-    sourceId: 3
+    sourceId: 7
   },
   {
     sourceName: '조선일보',
     feedUrl: 'https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml',
-    sourceId: 4
-  },
-  {
-    sourceName: '국민일보',
-    feedUrl: 'http://rss.kmib.co.kr/data/kmibRssAll.xml',
     sourceId: 5
   }
 ];

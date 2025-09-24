@@ -32,6 +32,9 @@ async function mapArticle(a: NewsArticle) {
     url: a.url,
     image_url: a.imageUrl || null,
 
+    // 기사 본문
+    content: a.content || null,
+
     // 요약 필드들
     ai_summary: a.aiSummary || null,
     summary: a.aiSummary || fallbackSummary,
