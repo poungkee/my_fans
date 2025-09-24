@@ -44,9 +44,9 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 언론사 마스터 (간소화)
+-- 언론사 마스터 (OID 기반 14개 타겟 언론사)
 CREATE TABLE sources (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY, -- OID를 직접 사용
     name VARCHAR(100) NOT NULL UNIQUE
 );
 
@@ -448,14 +448,23 @@ INSERT INTO categories (name) VALUES
     ('IT/과학'), ('세계'), ('스포츠'), ('연예')
 ON CONFLICT (name) DO NOTHING;
 
--- 주요 언론사 (예시)
-INSERT INTO sources (name) VALUES
-    ('조선일보'), ('중앙일보'), ('동아일보'),
-    ('한겨레'), ('경향신문'), ('한국일보'),
-    ('매일경제'), ('한국경제'), ('머니투데이'),
-    ('YTN'), ('연합뉴스'), ('JTBC'),
-    ('SBS'), ('KBS'), ('MBC')
-ON CONFLICT (name) DO NOTHING;
+-- 14개 타겟 언론사 (OID 기반)
+INSERT INTO sources (id, name) VALUES
+    (001, '연합뉴스'),
+    (020, '동아일보'),
+    (021, '문화일보'),
+    (022, '세계일보'),
+    (023, '조선일보'),
+    (025, '중앙일보'),
+    (028, '한겨레'),
+    (032, '경향신문'),
+    (055, '한국일보'),
+    (056, '매일경제'),
+    (214, '한국경제'),
+    (421, '머니투데이'),
+    (437, 'YTN'),
+    (448, 'JTBC')
+ON CONFLICT (id) DO NOTHING;
 
 -- ================================
 -- 완료 메시지

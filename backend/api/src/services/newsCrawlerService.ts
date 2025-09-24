@@ -51,6 +51,91 @@ class NewsCrawlerService {
     return this._naverClientSecret;
   }
   // 텍스트 정리 함수
+  // URL에서 언론사 추출
+  private extractMediaSourceFromUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.toLowerCase();
+
+      // 도메인 기반 언론사 매핑
+      const domainToMedia: { [key: string]: string } = {
+        'yna.co.kr': '연합뉴스',
+        'yonhapnews.co.kr': '연합뉴스',
+        'chosun.com': '조선일보',
+        'joongang.co.kr': '중앙일보',
+        'donga.com': '동아일보',
+        'hani.co.kr': '한겨레',
+        'khan.co.kr': '경향신문',
+        'hankookilbo.com': '한국일보',
+        'sbs.co.kr': 'SBS',
+        'kbs.co.kr': 'KBS',
+        'mbc.co.kr': 'MBC',
+        'jtbc.co.kr': 'JTBC',
+        'mt.co.kr': '머니투데이',
+        'mk.co.kr': '매일경제',
+        'hankyung.com': '한국경제',
+        'wikitree.co.kr': '위키트리',
+        'news1.kr': '뉴스1',
+        'newsen.com': '뉴스엔',
+        'heraldcorp.com': '헤럴드경제',
+        'choicenews.co.kr': '초이스경제',
+        'ccnnews.co.kr': '충청뉴스',
+        'dailian.co.kr': '데일리안',
+        'sateconomy.co.kr': '새턴경제',
+        'biz.heraldcorp.com': '헤럴드경제',
+        'jmbc.co.kr': '전주MBC'
+      };
+
+      // 정확한 도메인 매치
+      if (domainToMedia[domain]) {
+        return domainToMedia[domain];
+      }
+
+      // 서브도메인 제거하고 매치 시도
+      const mainDomain = domain.split('.').slice(-2).join('.');
+      if (domainToMedia[mainDomain]) {
+        return domainToMedia[mainDomain];
+      }
+
+      // 부분 매치 시도
+      for (const [key, value] of Object.entries(domainToMedia)) {
+        if (domain.includes(key.split('.')[0])) {
+          return value;
+        }
+      }
+
+      return '';
+    } catch (error) {
+      console.log(`[DEBUG] URL 파싱 오류: ${url}`);
+      return '';
+    }
+  }
+
+  // 제목에서 언론사 추출 (개선된 버전)
+  private extractMediaSourceFromTitle(title: string): string {
+    // 제목 끝에 있는 언론사명 패턴들
+    const patterns = [
+      /\s-\s(.+)$/, // "제목 - 언론사"
+      /\s\|\s(.+)$/, // "제목 | 언론사"
+      /\s(.+)$/,     // "제목 언론사" (마지막 단어)
+    ];
+
+    for (const pattern of patterns) {
+      const match = title.match(pattern);
+      if (match) {
+        const candidate = match[1].trim();
+        // 언론사명으로 보이는 패턴인지 확인
+        if (candidate.length >= 2 && candidate.length <= 15 &&
+            !candidate.includes('http') &&
+            !candidate.match(/^\d+$/)) {
+          return candidate;
+        }
+      }
+    }
+
+    return '';
+  }
+
   private cleanText(text: string): string {
     if (!text) return '';
 
@@ -252,40 +337,91 @@ class NewsCrawlerService {
         }
       }
 
-      // 기자 정보 추출
+      // 기자 정보 추출 (개선된 버전)
+      let journalist = '';
+
+      // 1단계: 다양한 셀렉터로 기자 정보 추출
       const journalistSelectors = [
         '.media_end_head_journalist .name',
         '.article_reporter .reporter_name',
         '.reporter .name',
-        '.byline_p'
+        '.byline_p',
+        '.reporter',
+        '.author',
+        '.writer',
+        '.byline',
+        '[class*="reporter"]',
+        '[class*="author"]',
+        '[class*="writer"]',
+        '[class*="journalist"]'
       ];
 
-      let journalist = '';
       for (const selector of journalistSelectors) {
         const found = $(selector).text().trim();
-        if (found) {
-          journalist = found.replace(/기자|reporter/gi, '').trim();
-          break;
+        if (found && found.length > 1 && found.length < 50) {
+          journalist = found.replace(/기자|reporter|작성자|글쓴이/gi, '').trim();
+          if (journalist && !journalist.match(/^\d+$/) && !journalist.includes('http')) {
+            break;
+          }
         }
       }
 
-      // 언론사 정보 추출
-      const mediaSelectors = [
-        '.media_end_head_top .media_logo img',
-        '.article_header .press_logo img',
-        '.media_logo img',
-        '.press_name'
-      ];
+      // 2단계: 본문에서 기자 정보 추출 (패턴 매칭)
+      if (!journalist && content) {
+        const reporterPatterns = [
+          /([가-힣]{2,4})\s*기자/g,
+          /기자\s*([가-힣]{2,4})/g,
+          /([가-힣]{2,4})\s*@/g,
+          /\[([가-힣]{2,4})\s*기자\]/g
+        ];
 
-      let mediaSource = '';
-      for (const selector of mediaSelectors) {
-        const element = $(selector);
-        if (element.is('img')) {
-          mediaSource = element.attr('alt') || element.attr('title') || '';
-        } else {
-          mediaSource = element.text().trim();
+        for (const pattern of reporterPatterns) {
+          const matches = content.match(pattern);
+          if (matches && matches.length > 0) {
+            // 첫 번째 매치에서 이름 추출
+            const match = matches[0].replace(/기자|@|\[|\]/g, '').trim();
+            if (match && match.length >= 2 && match.length <= 4) {
+              journalist = match;
+              break;
+            }
+          }
         }
-        if (mediaSource) break;
+      }
+
+      // 1단계: URL에서 언론사 추출
+      let mediaSource = this.extractMediaSourceFromUrl(url);
+
+      // 2단계: HTML에서 언론사 정보 추출 (URL에서 추출 못한 경우)
+      if (!mediaSource) {
+        const mediaSelectors = [
+          '.media_end_head_top .media_logo img',
+          '.article_header .press_logo img',
+          '.media_logo img',
+          '.press_name',
+          '.source',
+          '.publisher',
+          '[class*="press"]',
+          '[class*="media"]',
+          '[class*="source"]'
+        ];
+
+        for (const selector of mediaSelectors) {
+          const element = $(selector);
+          if (element.is('img')) {
+            mediaSource = element.attr('alt') || element.attr('title') || '';
+          } else {
+            mediaSource = element.text().trim();
+          }
+          if (mediaSource && mediaSource.length > 1 && mediaSource.length < 50) {
+            mediaSource = mediaSource.replace(/로고|logo|신문사|뉴스|news/gi, '').trim();
+            if (mediaSource) break;
+          }
+        }
+      }
+
+      // 3단계: 제목에서 언론사 추출 (마지막 방법)
+      if (!mediaSource) {
+        mediaSource = this.extractMediaSourceFromTitle(title);
       }
 
       // 이미지 URL 추출 - 본문 이미지 우선 (로고 제외)
