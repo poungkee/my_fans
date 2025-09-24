@@ -15,13 +15,25 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   // 공통 데이터 가져오기
   const { categories, mediaSources, searchOptions, loading, error } = useCommonData();
 
-  // 토큰 만료 확인 함수
+  // 토큰 만료 확인 함수 (소셜 로그인 고려)
   const isTokenExpired = (token) => {
     if (!token) return true;
 
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
+
+      // 소셜 로그인의 경우 24시간 후 만료
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      if (isSocialLogin) {
+        const socialLoginTime = sessionStorage.getItem('socialLoginTime');
+        if (socialLoginTime) {
+          const loginTime = parseInt(socialLoginTime);
+          const twentyFourHours = 24 * 60 * 60 * 1000; // 24시간
+          return (Date.now() - loginTime) > twentyFourHours;
+        }
+      }
+
       return payload.exp < currentTime;
     } catch (error) {
       return true;
@@ -46,16 +58,29 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   // 로그인 상태 확인
   useEffect(() => {
     const checkLoginStatus = () => {
-      // localStorage와 sessionStorage 모두 확인
-      let token = localStorage.getItem('token');
-      let userData = localStorage.getItem('user');
-      let isRememberMe = localStorage.getItem('rememberMe') === 'true';
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      let token, userData, isRememberMe = false;
 
-      // localStorage에 없으면 sessionStorage 확인
-      if (!token || !userData) {
+      if (isSocialLogin) {
+        // 소셜 로그인의 경우 sessionStorage 우선 사용
         token = sessionStorage.getItem('token');
         userData = sessionStorage.getItem('user');
-        isRememberMe = false;
+
+        // 소셜 로그인 시간 확인 및 설정
+        if (!sessionStorage.getItem('socialLoginTime')) {
+          sessionStorage.setItem('socialLoginTime', Date.now().toString());
+        }
+      } else {
+        // 일반 로그인의 경우 localStorage 먼저 확인
+        token = localStorage.getItem('token');
+        userData = localStorage.getItem('user');
+        isRememberMe = localStorage.getItem('rememberMe') === 'true';
+
+        // localStorage에 없으면 sessionStorage 확인
+        if (!token || !userData) {
+          token = sessionStorage.getItem('token');
+          userData = sessionStorage.getItem('user');
+        }
       }
 
       if (token && userData) {
@@ -68,9 +93,8 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
         setIsLoggedIn(true);
         setUser(JSON.parse(userData));
 
-        // 토큰 만료 30분 전에 알림 (일반 로그인이면서 rememberMe가 false인 경우만)
-        const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
-        if (!isRememberMe && !isSocialLogin) {
+        // 소셜 로그인이 아닌 경우에만 30분 전 알림 설정
+        if (!isSocialLogin && !isRememberMe) {
           const payload = JSON.parse(atob(token.split('.')[1]));
           const expirationTime = payload.exp * 1000;
           const warningTime = expirationTime - (30 * 60 * 1000); // 30분 전
@@ -79,7 +103,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           if (currentTime < warningTime) {
             const timeoutId = setTimeout(() => {
               if (confirm('로그인이 30분 후 만료됩니다. 연장하시겠습니까?')) {
-                // 토큰 갱신 요청 (선택적 구현)
+                // 토큰 갱신 요청
                 window.location.reload();
               }
             }, warningTime - currentTime);
@@ -232,6 +256,12 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   };
 
   const handleLogoClick = () => {
+    // 메인 페이지에서 로고 클릭 시 새로고침
+    if (location.pathname === '/') {
+      window.location.reload();
+      return;
+    }
+
     // ✅ 검색창 입력값 비우고 포커스 해제 + 상태 초기화
     if (searchInputRef.current) {
       searchInputRef.current.value = '';
@@ -345,24 +375,6 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           📊 활동로그
         </button>
 
-        {/* 새로고침 버튼 추가 */}
-        <button
-          className="refresh-button"
-          onClick={() => window.location.reload()}
-          title="페이지 새로고침"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'white',
-            fontSize: '14px',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            marginLeft: '10px'
-          }}
-        >
-          🔄 새로고침
-        </button>
       </div>
 
       <div className="header-right">

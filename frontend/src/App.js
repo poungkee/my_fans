@@ -45,19 +45,7 @@ function HomePageWrapper() {
   // API 베이스 (프록시 사용 시 빈 문자열)
   const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
 
-  // URL 검색 매개변수 처리
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const searchParam = urlParams.get('search');
-
-    if (searchParam) {
-      setSearchQuery(searchParam);
-      setIsSearching(true);
-
-      // URL에서 검색 매개변수 제거 (깔끔한 URL 유지)
-      navigate('/', { replace: true });
-    }
-  }, [location.search, navigate]);
+  // URL 검색 매개변수 처리 (handleCategoryFilter, handleSourceFilter 정의 후 실행하도록 아래로 이동)
 
   // 검색 정렬 키 매핑
   const searchSortKey = useMemo(() => {
@@ -356,6 +344,32 @@ function HomePageWrapper() {
     }
   };
 
+  // URL 검색 매개변수 처리
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const searchParam = urlParams.get('search');
+    const categoryParam = urlParams.get('category');
+    const sourceParam = urlParams.get('source');
+
+    if (searchParam) {
+      setSearchQuery(searchParam);
+      setIsSearching(true);
+    }
+
+    if (categoryParam) {
+      handleCategoryFilter(categoryParam);
+    }
+
+    if (sourceParam) {
+      handleSourceFilter(sourceParam);
+    }
+
+    // URL 파라미터가 있었다면 깔끔한 URL로 정리
+    if (searchParam || categoryParam || sourceParam) {
+      navigate('/', { replace: true });
+    }
+  }, [location.search, navigate]);
+
   /* -------------------- 렌더 -------------------- */
   return (
     <div className="App">
@@ -412,20 +426,56 @@ function HomePageWrapper() {
 
 function App() {
   useEffect(() => {
-    // 소셜 로그인 자동 로그아웃 로직
-    const handleBeforeUnload = () => {
+    // 소셜 로그인 세션 관리 개선
+    const handleBeforeUnload = (e) => {
       const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
       if (isSocialLogin) {
-        console.log('소셜 로그인 감지 - 창 닫기 시 세션 정리 실행');
-        // 소셜 로그인 사용자의 경우 창을 닫을 때 세션 정리
-        sessionStorage.clear(); // 전체 세션 스토리지 정리
+        // 새로고침 vs 브라우저 종료 구분을 위한 플래그 설정
+        sessionStorage.setItem('isRefreshing', 'true');
+
+        // 잠시 후 플래그 제거 (새로고침인 경우)
+        setTimeout(() => {
+          sessionStorage.removeItem('isRefreshing');
+        }, 100);
+      }
+    };
+
+    // 페이지 로드 시 새로고침인지 확인
+    const handleLoad = () => {
+      const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
+      const isRefreshing = sessionStorage.getItem('isRefreshing') === 'true';
+
+      if (isSocialLogin) {
+        if (!isRefreshing) {
+          // 새로고침이 아닌 경우 (브라우저 재시작 등) - 세션 확인
+          const socialLoginTime = sessionStorage.getItem('socialLoginTime');
+          if (socialLoginTime) {
+            const loginTime = parseInt(socialLoginTime);
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+
+            if ((Date.now() - loginTime) > twentyFourHours) {
+              // 24시간 경과 시 로그아웃
+              sessionStorage.clear();
+              localStorage.clear();
+              alert('24시간이 경과하여 자동 로그아웃되었습니다.');
+              window.location.href = '/login';
+              return;
+            }
+          }
+        }
+        // 새로고침 플래그 제거
+        sessionStorage.removeItem('isRefreshing');
       }
     };
 
     // 페이지 새로고침/창 닫기 감지
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('load', handleLoad);
 
-    // 페이지 숨김/표시 감지 (탭 전환, 창 최소화 등)
+    // 페이지 로드 시 즉시 실행
+    handleLoad();
+
+    // 페이지 숨김/표시 감지 (탭 전환, 창 최소화 등) - 소셜 로그인 시 장시간 비활성 체크
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
@@ -439,8 +489,8 @@ function App() {
 
         if (isSocialLogin && lastHidden) {
           const hiddenTime = Date.now() - parseInt(lastHidden);
-          // 5분 이상 숨겨져 있었다면 자동 로그아웃
-          if (hiddenTime > 5 * 60 * 1000) { // 5분으로 단축
+          // 2시간 이상 숨겨져 있었다면 자동 로그아웃 (소셜 로그인은 더 관대하게)
+          if (hiddenTime > 2 * 60 * 60 * 1000) { // 2시간으로 연장
             sessionStorage.clear();
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -458,36 +508,48 @@ function App() {
       }
     };
 
-    // 페이지 포커스 이벤트 감지
+    // 페이지 포커스 이벤트 감지 - 소셜 로그인 24시간 만료 체크
     const handleFocus = () => {
       const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
-      if (isSocialLogin && !sessionStorage.getItem('token')) {
-        // 소셜 로그인 토큰이 없어진 경우 강제 로그아웃
-        sessionStorage.clear();
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('rememberMe');
-        window.dispatchEvent(new Event('loginStatusChange'));
-        alert('세션이 만료되어 로그아웃되었습니다.');
-        window.location.href = '/';
+      if (isSocialLogin) {
+        const socialLoginTime = sessionStorage.getItem('socialLoginTime');
+        if (socialLoginTime) {
+          const loginTime = parseInt(socialLoginTime);
+          const twentyFourHours = 24 * 60 * 60 * 1000;
+
+          if ((Date.now() - loginTime) > twentyFourHours) {
+            // 24시간 경과 시 로그아웃
+            sessionStorage.clear();
+            localStorage.clear();
+            window.dispatchEvent(new Event('loginStatusChange'));
+            alert('24시간이 경과하여 자동 로그아웃되었습니다.');
+            window.location.href = '/login';
+          }
+        }
       }
     };
 
-    // 주기적 세션 체크 (30초마다)
+    // 주기적 세션 체크 (5분마다) - 소셜 로그인 24시간 만료 체크
     const sessionCheckInterval = setInterval(() => {
       const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';
-      const token = sessionStorage.getItem('token');
 
-      if (isSocialLogin && !token) {
-        // 소셜 로그인인데 토큰이 없으면 로그아웃 처리
-        sessionStorage.clear();
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('rememberMe');
-        window.dispatchEvent(new Event('loginStatusChange'));
-        window.location.href = '/';
+      if (isSocialLogin) {
+        const socialLoginTime = sessionStorage.getItem('socialLoginTime');
+        if (socialLoginTime) {
+          const loginTime = parseInt(socialLoginTime);
+          const twentyFourHours = 24 * 60 * 60 * 1000;
+
+          if ((Date.now() - loginTime) > twentyFourHours) {
+            // 24시간 경과 시 로그아웃
+            sessionStorage.clear();
+            localStorage.clear();
+            window.dispatchEvent(new Event('loginStatusChange'));
+            alert('24시간이 경과하여 자동 로그아웃되었습니다.');
+            window.location.href = '/login';
+          }
+        }
       }
-    }, 30000); // 30초
+    }, 5 * 60 * 1000); // 5분마다
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);

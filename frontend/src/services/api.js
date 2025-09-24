@@ -33,18 +33,17 @@ export const newsAPI = {
   // 뉴스 검색 (검색어 입력시)
   search: (params) => {
     const queryString = new URLSearchParams(params).toString();
-    return fetchApi(`/news?${queryString}`);
+    return fetchApi(`/api/search?${queryString}`);
   },
 
   // 최신 뉴스 (비로그인 사용자 - 시간순 정렬)
   getLatest: (params = {}) => {
     const defaultParams = {
-      page: 1,
       limit: 20,
       ...params
     };
     const queryString = new URLSearchParams(defaultParams).toString();
-    return fetchApi(`/news?${queryString}`);
+    return fetchApi(`/api/feed?${queryString}`);
   },
 
   // 맞춤 뉴스 (로그인 사용자 - 성향 기반)

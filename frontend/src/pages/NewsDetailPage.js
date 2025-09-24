@@ -303,6 +303,29 @@ function NewsDetailPage() {
     setReplyText('');
   };
 
+  // Header 핸들러 함수들
+  const handleSortChange = (sortType, displayText) => {
+    // NewsDetail 페이지에서는 정렬 기능이 필요없지만 Header에서 필요로 함
+    console.log('Sort changed:', sortType, displayText);
+  };
+
+  const handleSearch = (query) => {
+    // 검색 기능 - 메인 페이지로 이동하면서 검색어 전달
+    if (query && query.trim()) {
+      navigate(`/?search=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
+  const handleCategoryFilter = (category) => {
+    // 카테고리 필터 - 메인 페이지로 이동하면서 카테고리 전달
+    navigate(`/?category=${encodeURIComponent(category)}`);
+  };
+
+  const handleSourceFilter = (sourceName) => {
+    // 언론사 필터 - 메인 페이지로 이동하면서 언론사 전달
+    navigate(`/?source=${encodeURIComponent(sourceName)}`);
+  };
+
   if (loading) {
     return (
       <div className="news-detail-container">
@@ -327,7 +350,13 @@ function NewsDetailPage() {
   return (
     <div className="news-detail-container">
       {/* 헤더 */}
-      <Header />
+      <Header
+        onSortChange={handleSortChange}
+        onSearch={handleSearch}
+        selectedSort="최신순"
+        onCategoryFilter={handleCategoryFilter}
+        onSourceFilter={handleSourceFilter}
+      />
 
       <div className="news-content-wrapper">
         <div className="main-article-area">

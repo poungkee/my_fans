@@ -818,43 +818,66 @@
   }
 }
 
-/* 활동 로그 사이드바 스타일 */
+/* 활동 로그 사이드바 스타일 - 메인페이지 AdSidebar와 완전히 동일한 280px 크기 */
 .activity-sidebar {
-  width: 180px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 16px;
-  height: fit-content;
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  flex-grow: 0;
   position: sticky;
   top: 20px;
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+  overflow-y: hidden;
   z-index: 100;
-  transition: box-shadow 0.3s ease;
-  flex-shrink: 0;
-}
-
-.activity-sidebar:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  order: 2;
 }
 
 .activity-sidebar .sidebar-section {
-  margin-bottom: 20px;
+  margin-bottom: 1rem;
 }
 
 .activity-sidebar .sidebar-title {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 14px;
-  color: #495057;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid #e5e7eb;
+  text-align: center;
 }
 
-/* 광고 영역 스타일 */
+/* 광고 배지 - 뉴스상세페이지와 동일한 색상 */
+.activity-sidebar .ad-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.activity-sidebar .ad-badge.small {
+  font-size: 0.6rem;
+  padding: 0.2rem 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 메인 광고 배너 - 뉴스상세페이지와 동일한 색상 */
 .activity-sidebar .ad-banner {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  border-radius: 10px;
+  padding: 0.7rem;
+  margin-bottom: 0.7rem;
   color: white;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   position: relative;
   overflow: hidden;
 }
@@ -862,137 +885,108 @@
 .activity-sidebar .ad-banner::before {
   content: '';
   position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  transform: scale(0);
-  transition: transform 0.3s ease;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+  pointer-events: none;
 }
 
-.activity-sidebar .ad-banner:hover::before {
-  transform: scale(1);
+.activity-sidebar .ad-banner:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
 }
 
-.activity-sidebar .ad-badge {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  display: inline-block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.activity-sidebar .ad-badge.small {
-  background-color: #e9ecef;
-  color: #6c757d;
-  font-size: 9px;
-  margin-bottom: 6px;
+.activity-sidebar .ad-content {
+  position: relative;
+  z-index: 1;
 }
 
 .activity-sidebar .ad-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-  line-height: 1.3;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
 }
 
 .activity-sidebar .ad-description {
-  font-size: 12px;
-  margin: 0 0 12px 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  margin-bottom: 0.6rem;
   opacity: 0.9;
-  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .activity-sidebar .ad-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .activity-sidebar .ad-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  background: #f8fafc;
 }
 
+/* 작은 광고 카드들 */
 .activity-sidebar .ad-card {
-  background-color: white;
-  border: 1px solid #e9ecef;
+  background: white;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .activity-sidebar .ad-card:hover {
-  border-color: #007bff;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
 }
 
-.activity-sidebar .ad-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transform: scaleY(0);
-  transition: transform 0.3s ease;
-}
-
-.activity-sidebar .ad-card:hover::before {
-  transform: scaleY(1);
-}
-
 .activity-sidebar .ad-card-content h5 {
-  font-size: 13px;
+  font-size: 0.8rem;
   font-weight: 600;
-  margin: 0 0 6px 0;
-  color: #495057;
+  color: #1f2937;
+  margin-bottom: 0.3rem;
+  line-height: 1.2;
 }
 
 .activity-sidebar .ad-card-content p {
-  font-size: 11px;
-  color: #6c757d;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
+  font-size: 0.65rem;
+  color: #6b7280;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
 }
 
 .activity-sidebar .ad-card-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-size: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  width: 100%;
 }
 
 .activity-sidebar .ad-card-button:hover {
-  background-color: #0056b3;
+  background: #e5e7eb;
+  border-color: #9ca3af;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
 }

@@ -57,7 +57,7 @@ class NewsCrawlerService {
       const urlObj = new URL(url);
       const domain = urlObj.hostname.toLowerCase();
 
-      // 도메인 기반 언론사 매핑
+      // 도메인 기반 언론사 매핑 - sources 테이블에 있는 언론사만
       const domainToMedia: { [key: string]: string } = {
         'yna.co.kr': '연합뉴스',
         'yonhapnews.co.kr': '연합뉴스',
@@ -65,7 +65,6 @@ class NewsCrawlerService {
         'joongang.co.kr': '중앙일보',
         'donga.com': '동아일보',
         'hani.co.kr': '한겨레',
-        'khan.co.kr': '경향신문',
         'hankookilbo.com': '한국일보',
         'sbs.co.kr': 'SBS',
         'kbs.co.kr': 'KBS',
@@ -74,16 +73,7 @@ class NewsCrawlerService {
         'mt.co.kr': '머니투데이',
         'mk.co.kr': '매일경제',
         'hankyung.com': '한국경제',
-        'wikitree.co.kr': '위키트리',
-        'news1.kr': '뉴스1',
-        'newsen.com': '뉴스엔',
-        'heraldcorp.com': '헤럴드경제',
-        'choicenews.co.kr': '초이스경제',
-        'ccnnews.co.kr': '충청뉴스',
-        'dailian.co.kr': '데일리안',
-        'sateconomy.co.kr': '새턴경제',
-        'biz.heraldcorp.com': '헤럴드경제',
-        'jmbc.co.kr': '전주MBC'
+        'ytn.co.kr': 'YTN'
       };
 
       // 정확한 도메인 매치
@@ -587,13 +577,22 @@ class NewsCrawlerService {
         '스포츠': 8
       };
 
-      // 언론사 ID 매핑 (14개 타겟 언론사 - 실제 DB ID 기준)
+      // 언론사 ID 매핑 - 실제 DB sources 테이블 기준
       const sourceIdMap: { [key: string]: number } = {
-        '연합뉴스': 1, '동아일보': 2, '문화일보': 3,
-        '세계일보': 4, '조선일보': 5, '중앙일보': 6,
-        '한겨레': 7, '경향신문': 8, '한국일보': 9,
-        '매일경제': 10, '한국경제': 11, '머니투데이': 12,
-        'YTN': 13, 'JTBC': 14
+        '조선일보': 1,
+        '중앙일보': 2,
+        '동아일보': 3,
+        '한겨레': 4,
+        '머니투데이': 5,
+        '한국일보': 6,
+        '매일경제': 7,
+        '한국경제': 8,
+        'YTN': 10,
+        '연합뉴스': 11,
+        'JTBC': 12,
+        'SBS': 13,
+        'KBS': 14,
+        'MBC': 15
       };
 
       // 제목에서 언론사 이름 추출 (제목 끝에 있는 언론사명)
@@ -610,13 +609,31 @@ class NewsCrawlerService {
       }
 
       // 추출된 언론사명으로 sourceId 결정
-      const sourceId = sourceIdMap[extractedSource] || 1; // 기본값: 연합뉴스
+      let sourceId: number | null = null;
 
-      console.log(`[DEBUG] 언론사 매핑: "${extractedSource}" -> sourceId: ${sourceId}`);
+      if (extractedSource && sourceIdMap[extractedSource]) {
+        sourceId = sourceIdMap[extractedSource];
+        console.log(`[DEBUG] 언론사 매핑 성공: "${extractedSource}" -> sourceId: ${sourceId}`);
+      } else {
+        console.log(`[DEBUG] 언론사 매핑 실패 또는 비타겟 언론사: "${extractedSource}"`);
+        console.log(`[DEBUG] 사용 가능한 언론사:`, Object.keys(sourceIdMap));
+
+        // 제목에서 추가로 언론사를 찾아보기
+        const titleWords = parsedNews.title.split(/[\s\-\|\[\]]+/);
+        for (const word of titleWords) {
+          const cleanWord = word.trim();
+          if (sourceIdMap[cleanWord]) {
+            sourceId = sourceIdMap[cleanWord];
+            extractedSource = cleanWord;
+            console.log(`[DEBUG] 제목에서 언론사 발견: "${cleanWord}" -> sourceId: ${sourceId}`);
+            break;
+          }
+        }
+      }
 
       // 타겟 언론사가 아닌 경우 저장하지 않음
-      if (!sourceIdMap[extractedSource]) {
-        console.log(`[DEBUG] 비타겟 언론사로 뉴스 저장 건너뜀: ${extractedSource}`);
+      if (!sourceId) {
+        console.log(`[DEBUG] 비타겟 언론사로 뉴스 저장 건너뜀`);
         return null;
       }
 
