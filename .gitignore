@@ -95,4 +95,60 @@ secrets/
 backend/ai-service/venv/
 
 # === Claude Code Memory File ===
-CLAUDE.mdnode_modules/
+CLAUDE.md
+
+# === Crawler Services ===
+backend/crawler/rss-crawler/node_modules/
+backend/crawler/rss-crawler/dist/
+backend/crawler/rss-crawler/build/
+backend/crawler/rss-crawler/.env
+backend/crawler/rss-crawler/.env.local
+backend/crawler/rss-crawler/.env.development.local
+backend/crawler/rss-crawler/.env.test.local
+backend/crawler/rss-crawler/.env.production.local
+backend/crawler/rss-crawler/logs/
+backend/crawler/rss-crawler/tmp/
+backend/crawler/rss-crawler/temp/
+backend/crawler/rss-crawler/coverage/
+backend/crawler/rss-crawler/*.log
+backend/crawler/rss-crawler/*.tsbuildinfo
+backend/crawler/rss-crawler/src/services/*.backup
+
+backend/crawler/api-crawler/node_modules/
+backend/crawler/api-crawler/dist/
+backend/crawler/api-crawler/build/
+backend/crawler/api-crawler/.env
+backend/crawler/api-crawler/.env.local
+backend/crawler/api-crawler/.env.development.local
+backend/crawler/api-crawler/.env.test.local
+backend/crawler/api-crawler/.env.production.local
+backend/crawler/api-crawler/logs/
+backend/crawler/api-crawler/tmp/
+backend/crawler/api-crawler/temp/
+backend/crawler/api-crawler/coverage/
+backend/crawler/api-crawler/*.log
+backend/crawler/api-crawler/*.tsbuildinfo
+
+# === AI Services ===
+backend/ai/summarize-ai/node_modules/
+backend/ai/summarize-ai/dist/
+backend/ai/summarize-ai/build/
+backend/ai/summarize-ai/.env
+backend/ai/summarize-ai/.env.local
+backend/ai/summarize-ai/.env.development.local
+backend/ai/summarize-ai/.env.test.local
+backend/ai/summarize-ai/.env.production.local
+backend/ai/summarize-ai/logs/
+backend/ai/summarize-ai/tmp/
+backend/ai/summarize-ai/temp/
+backend/ai/summarize-ai/coverage/
+backend/ai/summarize-ai/*.log
+backend/ai/summarize-ai/*.tsbuildinfo
+
+# === Backup files ===
+*.backup
+*.bak
+*~
+
+# === Korean filename documents (temporary) ===
+"docs/AI_*"

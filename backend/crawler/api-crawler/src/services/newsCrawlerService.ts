@@ -56,15 +56,71 @@ class NewsCrawlerService {
       const urlObj = new URL(url);
       const domain = urlObj.hostname.toLowerCase();
 
+      // 서브도메인 포함 패턴 체크
+      // 동아일보 (sports.donga.com, news.donga.com 등)
+      if (domain.endsWith('.donga.com') || domain === 'donga.com') {
+        return '동아일보';
+      }
+      // 조선일보 (biz.chosun.com, sports.chosun.com 등)
+      if (domain.endsWith('.chosun.com') || domain === 'chosun.com') {
+        return '조선일보';
+      }
+      // 한겨레
+      if (domain.endsWith('.hani.co.kr') || domain === 'hani.co.kr') {
+        return '한겨레';
+      }
+      // 경향신문 (sports.khan.co.kr, biz.khan.co.kr 등)
+      if (domain.endsWith('.khan.co.kr') || domain === 'khan.co.kr') {
+        return '경향신문';
+      }
+      // 중앙일보 (news.joins.com 등)
+      if (domain.endsWith('.joins.com') || domain === 'joins.com' ||
+          domain.endsWith('.joongang.co.kr') || domain === 'joongang.co.kr') {
+        return '중앙일보';
+      }
+      // 연합뉴스
+      if (domain.endsWith('.yna.co.kr') || domain === 'yna.co.kr' ||
+          domain.endsWith('.yonhapnews.co.kr') || domain === 'yonhapnews.co.kr') {
+        return '연합뉴스';
+      }
+      // 매일경제 (stock.mk.co.kr, news.mk.co.kr 등)
+      if (domain.endsWith('.mk.co.kr') || domain === 'mk.co.kr') {
+        return '매일경제';
+      }
+      // 한국경제 (news.hankyung.com, markets.hankyung.com 등)
+      if (domain.endsWith('.hankyung.com') || domain === 'hankyung.com') {
+        return '한국경제';
+      }
+      // 머니투데이 (news.mt.co.kr, stock.mt.co.kr 등)
+      if (domain.endsWith('.mt.co.kr') || domain === 'mt.co.kr') {
+        return '머니투데이';
+      }
+      // YTN (science.ytn.co.kr 등)
+      if (domain.endsWith('.ytn.co.kr') || domain === 'ytn.co.kr') {
+        return 'YTN';
+      }
+      // JTBC (news.jtbc.co.kr 등)
+      if (domain.endsWith('.jtbc.co.kr') || domain === 'jtbc.co.kr' ||
+          domain.endsWith('.jtbc.joins.com') || domain === 'jtbc.joins.com') {
+        return 'JTBC';
+      }
+      // 문화일보
+      if (domain.endsWith('.munhwa.com') || domain === 'munhwa.com') {
+        return '문화일보';
+      }
+      // 세계일보
+      if (domain.endsWith('.segye.com') || domain === 'segye.com') {
+        return '세계일보';
+      }
+      // 한국일보
+      if (domain.endsWith('.hankookilbo.com') || domain === 'hankookilbo.com') {
+        return '한국일보';
+      }
+
       // 도메인 기반 언론사 매핑
       const domainToMedia: { [key: string]: string } = {
         'yna.co.kr': '연합뉴스',
         'yonhapnews.co.kr': '연합뉴스',
-        'chosun.com': '조선일보',
-        'joongang.co.kr': '중앙일보',
-        'donga.com': '동아일보',
-        'hani.co.kr': '한겨레',
-        'khan.co.kr': '경향신문',
         'hankookilbo.com': '한국일보',
         'sbs.co.kr': 'SBS',
         'kbs.co.kr': 'KBS',
@@ -697,26 +753,28 @@ class NewsCrawlerService {
         'YTN': 13, 'JTBC': 14
       };
 
-      // 제목에서 언론사 이름 추출 (제목 끝에 있는 언론사명)
-      let extractedSource = '';
-      if (parsedNews.mediaSource) {
+      // URL과 제목에서 언론사 추출 (RSS 크롤러와 동일한 방식)
+      let extractedSource = this.extractSourceFromURL(originalUrl) || '';
+
+      if (!extractedSource && parsedNews.mediaSource) {
         extractedSource = parsedNews.mediaSource;
-      } else {
+      }
+
+      if (!extractedSource) {
         // 제목에서 언론사 추출 (예: "뉴스 제목 - 조선일보" 형태)
-        const titleParts = parsedNews.title.split(/\s+/);
-        const lastPart = titleParts[titleParts.length - 1];
-        if (sourceIdMap[lastPart]) {
-          extractedSource = lastPart;
+        const titleMatch = parsedNews.title.match(/\-\s*([가-힣]+(?:신문|일보|경제|투데이|뉴스|방송|TV)?)\s*$/);
+        if (titleMatch) {
+          extractedSource = titleMatch[1];
         }
       }
 
       // 추출된 언론사명으로 sourceId 결정
       const sourceId = sourceIdMap[extractedSource] || 1; // 기본값: 연합뉴스
 
-      console.log(`[DEBUG] 언론사 매핑: "${extractedSource}" -> sourceId: ${sourceId}`);
+      console.log(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId}`);
 
-      // 타겟 언론사가 아닌 경우 저장하지 않음
-      if (!sourceIdMap[extractedSource]) {
+      // 타겟 언론사가 아닌 경우 저장하지 않음 (추출된 언론사가 있을 때만)
+      if (extractedSource && !sourceIdMap[extractedSource]) {
         console.log(`[DEBUG] 비타겟 언론사로 뉴스 저장 건너뜀: ${extractedSource}`);
         return null;
       }
@@ -815,6 +873,116 @@ class NewsCrawlerService {
 
   getSupportedCategories(): string[] {
     return this.categories.map(cat => cat.name);
+  }
+
+  // URL에서 언론사 추출 (RSS 크롤러와 동일한 로직)
+  private extractSourceFromURL(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.toLowerCase();
+
+      // 서브도메인 포함 패턴 체크
+      // 동아일보 (sports.donga.com, news.donga.com 등)
+      if (domain.endsWith('.donga.com') || domain === 'donga.com') {
+        return '동아일보';
+      }
+      // 조선일보 (biz.chosun.com, sports.chosun.com 등)
+      if (domain.endsWith('.chosun.com') || domain === 'chosun.com') {
+        return '조선일보';
+      }
+      // 한겨레
+      if (domain.endsWith('.hani.co.kr') || domain === 'hani.co.kr') {
+        return '한겨레';
+      }
+      // 경향신문 (sports.khan.co.kr, biz.khan.co.kr 등)
+      if (domain.endsWith('.khan.co.kr') || domain === 'khan.co.kr') {
+        return '경향신문';
+      }
+      // 중앙일보 (news.joins.com 등)
+      if (domain.endsWith('.joins.com') || domain === 'joins.com' ||
+          domain.endsWith('.joongang.co.kr') || domain === 'joongang.co.kr') {
+        return '중앙일보';
+      }
+      // 연합뉴스
+      if (domain.endsWith('.yna.co.kr') || domain === 'yna.co.kr' ||
+          domain.endsWith('.yonhapnews.co.kr') || domain === 'yonhapnews.co.kr') {
+        return '연합뉴스';
+      }
+      // 매일경제 (stock.mk.co.kr, news.mk.co.kr 등)
+      if (domain.endsWith('.mk.co.kr') || domain === 'mk.co.kr') {
+        return '매일경제';
+      }
+      // 한국경제 (news.hankyung.com, markets.hankyung.com 등)
+      if (domain.endsWith('.hankyung.com') || domain === 'hankyung.com') {
+        return '한국경제';
+      }
+      // 머니투데이 (news.mt.co.kr, stock.mt.co.kr 등)
+      if (domain.endsWith('.mt.co.kr') || domain === 'mt.co.kr') {
+        return '머니투데이';
+      }
+      // YTN (science.ytn.co.kr 등)
+      if (domain.endsWith('.ytn.co.kr') || domain === 'ytn.co.kr') {
+        return 'YTN';
+      }
+      // JTBC (news.jtbc.co.kr 등)
+      if (domain.endsWith('.jtbc.co.kr') || domain === 'jtbc.co.kr' ||
+          domain.endsWith('.jtbc.joins.com') || domain === 'jtbc.joins.com') {
+        return 'JTBC';
+      }
+      // 문화일보
+      if (domain.endsWith('.munhwa.com') || domain === 'munhwa.com') {
+        return '문화일보';
+      }
+      // 세계일보
+      if (domain.endsWith('.segye.com') || domain === 'segye.com') {
+        return '세계일보';
+      }
+      // 한국일보
+      if (domain.endsWith('.hankookilbo.com') || domain === 'hankookilbo.com') {
+        return '한국일보';
+      }
+
+      // 도메인 기반 언론사 매핑
+      const domainToSource: { [key: string]: string } = {
+        'mk.co.kr': '매일경제',
+        'star.mt.co.kr': '머니투데이',
+        'stardailynews.co.kr': '스타투데이',
+        'yna.co.kr': '연합뉴스',
+        'yonhapnews.co.kr': '연합뉴스',
+        'hankyung.com': '한국경제',
+        'mt.co.kr': '머니투데이',
+        'kmib.co.kr': '국민일보',
+        'munhwa.com': '문화일보',
+        'segye.com': '세계일보',
+        'hankookilbo.com': '한국일보',
+        'ytn.co.kr': 'YTN',
+        'jtbc.co.kr': 'JTBC'
+      };
+
+      // 정확한 도메인 매치
+      if (domainToSource[domain]) {
+        return domainToSource[domain];
+      }
+
+      // 서브도메인 제거하고 매치 시도
+      const mainDomain = domain.split('.').slice(-2).join('.');
+      if (domainToSource[mainDomain]) {
+        return domainToSource[mainDomain];
+      }
+
+      // 부분 매치 시도
+      for (const [key, value] of Object.entries(domainToSource)) {
+        if (domain.includes(key.split('.')[0])) {
+          return value;
+        }
+      }
+
+      console.log(`[API DEBUG] 알 수 없는 도메인: ${domain}`);
+      return '';
+    } catch (error) {
+      console.log(`[API DEBUG] URL 파싱 오류: ${url}`);
+      return '';
+    }
   }
 }
 

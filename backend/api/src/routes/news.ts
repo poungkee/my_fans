@@ -99,6 +99,8 @@ router.get("/feed", async (req: Request, res: Response) => {
     if (sort === "popular") {
       query = query.orderBy("stats.viewCount", "DESC")
         .addOrderBy("stats.likeCount", "DESC");
+    } else if (sort === "created_at") {
+      query = query.orderBy("article.createdAt", "DESC");
     } else {
       query = query.orderBy("article.pubDate", "DESC");
     }
