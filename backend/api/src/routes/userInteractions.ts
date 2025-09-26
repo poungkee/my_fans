@@ -517,4 +517,49 @@ router.post('/recommendation-feedback/:newsId', authenticateToken, async (req: A
   }
 });
 
+// 사용자의 좋아요/싫어요 목록 조회
+router.get('/reactions', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const userActionRepo = AppDataSource.getRepository(UserAction);
+    const reactions = await userActionRepo.createQueryBuilder('action')
+      .leftJoinAndSelect('action.article', 'article')
+      .leftJoinAndSelect('article.source', 'source')
+      .leftJoinAndSelect('article.category', 'category')
+      .where('action.userId = :userId', { userId })
+      .andWhere('action.actionType IN (:...types)', { types: ['LIKE', 'DISLIKE'] })
+      .orderBy('action.createdAt', 'DESC')
+      .getMany();
+
+    const reactionList = reactions.map(reaction => ({
+      id: reaction.id,
+      type: reaction.actionType,
+      createdAt: reaction.createdAt,
+      article: {
+        id: reaction.article.id,
+        title: reaction.article.title,
+        url: reaction.article.url,
+        imageUrl: reaction.article.imageUrl,
+        source: reaction.article.source?.name || '알 수 없음',
+        category: reaction.article.category?.name || '기타'
+      }
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        reactions: reactionList,
+        total: reactionList.length
+      }
+    });
+  } catch (error) {
+    console.error('사용자 반응 조회 에러:', error);
+    res.status(500).json({
+      success: false,
+      error: '반응 목록을 가져오는 중 오류가 발생했습니다.'
+    });
+  }
+});
+
 export default router;

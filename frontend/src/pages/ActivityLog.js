@@ -9,9 +9,10 @@ const ActivityLog = () => {
   const [activities, setActivities] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [comments, setComments] = useState([]);
+  const [reactions, setReactions] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, subscription, read, bookmark, comment, like, dislike
+  const [filter, setFilter] = useState('all'); // all, subscription, read, bookmark, comment, reactions
   const [isEditMode, setIsEditMode] = useState(false);
   const [editFormData, setEditFormData] = useState({
     preferredCategories: [],
@@ -42,6 +43,8 @@ const ActivityLog = () => {
       fetchSubscriptions();
     } else if (filter === 'comment') {
       fetchComments();
+    } else if (filter === 'reactions') {
+      fetchReactions();
     }
   }, [filter]);
 
@@ -124,6 +127,38 @@ const ActivityLog = () => {
     } catch (error) {
       console.error('댓글 목록 조회 실패:', error);
       setComments([]);
+    }
+  };
+
+  const fetchReactions = async () => {
+    try {
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      if (!token || isTokenExpired(token)) {
+        setReactions([]);
+        return;
+      }
+
+      const response = await fetch('/api/user/reactions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setReactions(data.data.reactions || []);
+      } else {
+        console.error('반응 목록 조회 실패:', data.error);
+        setReactions([]);
+      }
+    } catch (error) {
+      console.error('반응 목록 조회 실패:', error);
+      setReactions([]);
     }
   };
 
@@ -488,20 +523,12 @@ const ActivityLog = () => {
             💬 댓글
           </button>
           <button
-            className={filter === 'like' ? 'active' : ''}
+            className={filter === 'reactions' ? 'active' : ''}
             onClick={() => {
-              try { setFilter('like'); } catch(e) { console.warn('Filter error:', e); }
+              try { setFilter('reactions'); } catch(e) { console.warn('Filter error:', e); }
             }}
           >
-            ❤️ 좋아요
-          </button>
-          <button
-            className={filter === 'dislike' ? 'active' : ''}
-            onClick={() => {
-              try { setFilter('dislike'); } catch(e) { console.warn('Filter error:', e); }
-            }}
-          >
-            👎 싫어요
+            👍 반응
           </button>
         </div>
 
@@ -758,6 +785,64 @@ const ActivityLog = () => {
                   <div className="empty-icon">💬</div>
                   <h4>작성한 댓글이 없습니다</h4>
                   <p>기사에 댓글을 작성해보세요.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : filter === 'reactions' ? (
+          <div className="reactions-content">
+            <div className="reactions-header">
+              <h3>👍 내가 남긴 반응</h3>
+              <p>반응을 남긴 기사를 클릭하면 해당 기사로 이동합니다</p>
+            </div>
+
+            {reactions.length > 0 ? (
+              <div className="reactions-list">
+                {reactions.map(reaction => (
+                  <div
+                    key={reaction.id}
+                    className="reaction-card"
+                    onClick={() => navigate(`/news/${reaction.article.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="reaction-content">
+                      <div className={`reaction-type ${reaction.type === 'LIKE' ? 'like' : 'dislike'}`}>
+                        {reaction.type === 'LIKE' ? '❤️ 좋아요' : '👎 싫어요'}
+                      </div>
+                      <div className="reaction-meta">
+                        <div className="reaction-article-info">
+                          <strong>{reaction.article.title}</strong>
+                          <div className="reaction-date-section">
+                            <span className="date-label">반응일시</span>
+                            <span className="reaction-date">
+                              {(() => {
+                                const date = new Date(reaction.createdAt);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                const seconds = String(date.getSeconds()).padStart(2, '0');
+                                return `${month}.${day} ${hours}:${minutes}:${seconds}`;
+                              })()}
+                            </span>
+                          </div>
+                          <div className="reaction-source-category">
+                            <span className="reaction-source">{reaction.article.source}</span>
+                            <span className="reaction-category">{reaction.article.category}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-reactions">
+                <div className="empty-state">
+                  <div className="empty-icon">👍</div>
+                  <h4>남긴 반응이 없습니다</h4>
+                  <p>기사에 좋아요나 싫어요를 남겨보세요.</p>
                 </div>
               </div>
             )}

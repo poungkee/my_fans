@@ -48,6 +48,7 @@ async function mapArticle(a: NewsArticle) {
     // 통계 정보
     view_count: stats?.viewCount || 0,
     like_count: stats?.likeCount || 0,
+    dislike_count: stats?.dislikeCount || 0,
     bookmark_count: stats?.bookmarkCount || 0,
 
     // 시간 정보

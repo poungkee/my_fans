@@ -61,6 +61,14 @@ function NewsDetailPage() {
 
         const data = await response.json();
         setArticle(data);
+
+        // 기사 데이터에서 초기 카운트 설정
+        if (data.like_count !== undefined) {
+          setLikeCount(data.like_count);
+        }
+        if (data.dislike_count !== undefined) {
+          setDislikeCount(data.dislike_count);
+        }
       } catch (err) {
         console.error('기사 로드 실패:', err);
         setError('기사를 불러올 수 없습니다.');
@@ -91,13 +99,7 @@ function NewsDetailPage() {
     const fetchUserReactions = async () => {
       try {
         if (!isLoggedIn) {
-          // 비로그인 사용자는 전체 통계만 가져오기
-          const response = await fetch(`${API_BASE}/api/${id}/stats`);
-          if (response.ok) {
-            const result = await response.json();
-            setLikeCount(result.data?.likeCount || 0);
-            setDislikeCount(result.data?.dislikeCount || 0);
-          }
+          // 비로그인 사용자는 사용자 상태만 초기화
           setIsLiked(false);
           setIsDisliked(false);
           return;
@@ -112,35 +114,28 @@ function NewsDetailPage() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log('🔥 사용자 반응 상태 로드:', result);
           if (result.success && result.data) {
-            console.log('🔥 초기 상태 설정:', result.data);
+            // 사용자 반응 상태만 업데이트
             setIsLiked(result.data.isLiked || false);
             setIsDisliked(result.data.isDisliked || false);
+
+            // 서버에서 최신 카운트도 업데이트
             setLikeCount(result.data.likeCount || 0);
             setDislikeCount(result.data.dislikeCount || 0);
           } else {
             // API 응답은 성공이지만 데이터 구조가 예상과 다름
-            console.warn('예상과 다른 API 응답:', result);
             setIsLiked(false);
             setIsDisliked(false);
-            setLikeCount(0);
-            setDislikeCount(0);
           }
         } else {
-          // API 오류 시 기본값 설정
-          console.error('반응 상태 API 오류:', response.status);
+          // API 오류 시 사용자 상태만 기본값 설정
           setIsLiked(false);
           setIsDisliked(false);
-          setLikeCount(0);
-          setDislikeCount(0);
         }
       } catch (error) {
         console.error('반응 상태 로드 실패:', error);
         setIsLiked(false);
         setIsDisliked(false);
-        setLikeCount(0);
-        setDislikeCount(0);
       }
     };
 
