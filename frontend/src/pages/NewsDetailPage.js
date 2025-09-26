@@ -72,6 +72,82 @@ function NewsDetailPage() {
     fetchArticle();
   }, [id, API_BASE]);
 
+  // 댓글 및 좋아요/싫어요 상태 로딩
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchComments = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/comments/article/${id}`);
+        if (response.ok) {
+          const result = await response.json();
+          setComments(result.data || []);
+        }
+      } catch (error) {
+        console.error('댓글 로드 실패:', error);
+      }
+    };
+
+    const fetchUserReactions = async () => {
+      try {
+        if (!isLoggedIn) {
+          // 비로그인 사용자는 전체 통계만 가져오기
+          const response = await fetch(`${API_BASE}/api/${id}/stats`);
+          if (response.ok) {
+            const result = await response.json();
+            setLikeCount(result.data?.likeCount || 0);
+            setDislikeCount(result.data?.dislikeCount || 0);
+          }
+          setIsLiked(false);
+          setIsDisliked(false);
+          return;
+        }
+
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/user/reactions/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('🔥 사용자 반응 상태 로드:', result);
+          if (result.success && result.data) {
+            console.log('🔥 초기 상태 설정:', result.data);
+            setIsLiked(result.data.isLiked || false);
+            setIsDisliked(result.data.isDisliked || false);
+            setLikeCount(result.data.likeCount || 0);
+            setDislikeCount(result.data.dislikeCount || 0);
+          } else {
+            // API 응답은 성공이지만 데이터 구조가 예상과 다름
+            console.warn('예상과 다른 API 응답:', result);
+            setIsLiked(false);
+            setIsDisliked(false);
+            setLikeCount(0);
+            setDislikeCount(0);
+          }
+        } else {
+          // API 오류 시 기본값 설정
+          console.error('반응 상태 API 오류:', response.status);
+          setIsLiked(false);
+          setIsDisliked(false);
+          setLikeCount(0);
+          setDislikeCount(0);
+        }
+      } catch (error) {
+        console.error('반응 상태 로드 실패:', error);
+        setIsLiked(false);
+        setIsDisliked(false);
+        setLikeCount(0);
+        setDislikeCount(0);
+      }
+    };
+
+    fetchComments();
+    fetchUserReactions();
+  }, [id, API_BASE, isLoggedIn]);
+
   const handleBookmark = async () => {
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -121,51 +197,105 @@ function NewsDetailPage() {
     }
   };
 
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!isLoggedIn) {
       alert('로그인이 필요한 서비스입니다.');
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
 
-    if (isLiked) {
-      // 좋아요 취소
-      setIsLiked(false);
-      setLikeCount(prev => prev - 1);
-    } else {
-      // 좋아요 추가
-      setIsLiked(true);
-      setLikeCount(prev => prev + 1);
-
-      // 싫어요가 눌려있다면 해제
-      if (isDisliked) {
-        setIsDisliked(false);
-        setDislikeCount(prev => prev - 1);
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
       }
+
+      // API 호출로 서버에서 상태 처리
+      const response = await fetch(`${API_BASE}/api/user/reaction/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'like'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // 서버 응답으로 UI 업데이트
+        setLikeCount(result.data.likeCount);
+        setDislikeCount(result.data.dislikeCount);
+
+        // 좋아요 상태 업데이트 (서버에서 토글 처리됨)
+        if (result.action === 'added') {
+          setIsLiked(true);
+          setIsDisliked(false); // 좋아요 시 싫어요 해제
+        } else if (result.action === 'removed') {
+          setIsLiked(false);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('좋아요 API 에러:', errorText);
+        alert('좋아요 처리 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('좋아요 처리 실패:', error);
+      alert('네트워크 오류가 발생했습니다.');
     }
   };
 
-  const handleDislike = () => {
+  const handleDislike = async () => {
     if (!isLoggedIn) {
       alert('로그인이 필요한 서비스입니다.');
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
 
-    if (isDisliked) {
-      // 싫어요 취소
-      setIsDisliked(false);
-      setDislikeCount(prev => prev - 1);
-    } else {
-      // 싫어요 추가
-      setIsDisliked(true);
-      setDislikeCount(prev => prev + 1);
-
-      // 좋아요가 눌려있다면 해제
-      if (isLiked) {
-        setIsLiked(false);
-        setLikeCount(prev => prev - 1);
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
       }
+
+      // API 호출로 서버에서 상태 처리
+      const response = await fetch(`${API_BASE}/api/user/reaction/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'dislike'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // 서버 응답으로 UI 업데이트
+        setLikeCount(result.data.likeCount);
+        setDislikeCount(result.data.dislikeCount);
+
+        // 싫어요 상태 업데이트 (서버에서 토글 처리됨)
+        if (result.action === 'added') {
+          setIsDisliked(true);
+          setIsLiked(false); // 싫어요 시 좋아요 해제
+        } else if (result.action === 'removed') {
+          setIsDisliked(false);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('싫어요 API 에러:', errorText);
+        alert('싫어요 처리 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('싫어요 처리 실패:', error);
+      alert('네트워크 오류가 발생했습니다.');
     }
   };
 
@@ -209,7 +339,9 @@ function NewsDetailPage() {
     }));
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
+    console.log('🔥 댓글 작성 시작 - isLoggedIn:', isLoggedIn);
+
     if (!isLoggedIn) {
       alert('로그인이 필요한 서비스입니다.');
       navigate('/login', { state: { from: location.pathname } });
@@ -218,43 +350,75 @@ function NewsDetailPage() {
 
     if (!newComment.trim()) return;
 
-    // 저장된 사용자 정보 가져오기
-    const userInfo = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-    const username = userInfo.username || '익명 사용자';
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      console.log('🔥 토큰 확인:', token ? 'EXISTS' : 'MISSING');
+      const response = await fetch(`${API_BASE}/api/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          articleId: id,
+          content: newComment.trim()
+        })
+      });
 
-    const comment = {
-      id: Date.now(),
-      author: username,
-      content: newComment,
-      timestamp: new Date().toLocaleString('ko-KR'),
-      likes: 0,
-      isLiked: false,
-      replies: []
-    };
+      console.log('🔥 API 응답 상태:', response.status);
 
-    setComments(prev => [...prev, comment]);
-    setNewComment('');
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🔥 댓글 작성 성공:', result);
+        setComments(prev => [...prev, result.data]);
+        setNewComment('');
+      } else {
+        const errorText = await response.text();
+        console.log('🔥 API 에러 응답:', errorText);
+        throw new Error('댓글 작성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('🔥 댓글 작성 실패:', error);
+      alert('댓글 작성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
-  const handleDeleteComment = (commentId, isReply = false, parentId = null) => {
-    if (window.confirm('댓글을 삭제하시겠습니까?')) {
-      setComments(prev => {
-        if (!isReply) {
-          // 메인 댓글 삭제
-          return prev.filter(comment => comment.id !== commentId);
-        } else {
-          // 답글 삭제
-          return prev.map(comment => {
-            if (comment.id === parentId) {
-              return {
-                ...comment,
-                replies: comment.replies.filter(reply => reply.id !== commentId)
-              };
-            }
-            return comment;
-          });
+  const handleDeleteComment = async (commentId, isReply = false, parentId = null) => {
+    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
+
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
       });
+
+      if (response.ok) {
+        setComments(prev => {
+          if (!isReply) {
+            // 메인 댓글 삭제
+            return prev.filter(comment => comment.id !== commentId);
+          } else {
+            // 답글 삭제
+            return prev.map(comment => {
+              if (comment.id === parentId) {
+                return {
+                  ...comment,
+                  replies: comment.replies.filter(reply => reply.id !== commentId)
+                };
+              }
+              return comment;
+            });
+          }
+        });
+      } else {
+        throw new Error('댓글 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      alert('댓글 삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -268,34 +432,45 @@ function NewsDetailPage() {
     setReplyText('');
   };
 
-  const handleAddReply = (parentId) => {
+  const handleAddReply = async (parentId) => {
     if (!replyText.trim()) return;
 
-    // 저장된 사용자 정보 가져오기
-    const userInfo = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-    const username = userInfo.username || '익명 사용자';
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/api/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          articleId: id,
+          content: replyText.trim(),
+          parentId: parentId
+        })
+      });
 
-    const reply = {
-      id: Date.now(),
-      author: username,
-      content: replyText,
-      timestamp: new Date().toLocaleString('ko-KR'),
-      likes: 0,
-      isLiked: false
-    };
+      if (response.ok) {
+        const result = await response.json();
+        setComments(prev => prev.map(comment => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), result.data]
+            };
+          }
+          return comment;
+        }));
 
-    setComments(prev => prev.map(comment => {
-      if (comment.id === parentId) {
-        return {
-          ...comment,
-          replies: [...(comment.replies || []), reply]
-        };
+        setReplyText('');
+        setReplyingTo(null);
+      } else {
+        throw new Error('답글 작성에 실패했습니다.');
       }
-      return comment;
-    }));
-
-    setReplyText('');
-    setReplyingTo(null);
+    } catch (error) {
+      console.error('답글 작성 실패:', error);
+      alert('답글 작성에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleCancelReply = () => {

@@ -12,3 +12,4 @@ export { AIRecommendation } from './AIRecommendation';
 export { BiasAnalysis } from './BiasAnalysis';
 export { UserPreference } from './UserPreference';
 export { MarketSummary } from './MarketSummary';
+export { Comment } from './Comment';

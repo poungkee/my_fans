@@ -7,6 +7,7 @@ import { Bookmark } from '../entities/Bookmark';
 import { UserAction, ActionType } from '../entities/UserAction';
 import { ArticleStat } from '../entities/ArticleStat';
 import { AIRecommendation } from '../entities/AIRecommendation';
+import { Comment } from '../entities/Comment';
 
 const router = Router();
 
@@ -108,74 +109,152 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
 
 // 좋아요/싫어요 처리
 router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
   try {
     const userId = req.user!.userId;
     const newsId = parseInt(req.params.newsId);
     const { type } = req.body; // 'like', 'dislike', 'remove'
 
-    const userActionRepo = AppDataSource.getRepository(UserAction);
+    console.log(`🔥 반응 처리 요청 - userId: ${userId}, newsId: ${newsId}, type: ${type}`);
+
+    const userActionRepo = queryRunner.manager.getRepository(UserAction);
+
+    // 현재 사용자의 반응 상태 조회
+    const existingLike = await userActionRepo.findOne({
+      where: { userId, articleId: newsId, actionType: ActionType.LIKE }
+    });
+    const existingDislike = await userActionRepo.findOne({
+      where: { userId, articleId: newsId, actionType: ActionType.DISLIKE }
+    });
 
     if (type === 'like') {
       // 기존 싫어요 제거
-      await userActionRepo.delete({ userId, articleId: newsId, actionType: ActionType.DISLIKE });
+      if (existingDislike) {
+        await userActionRepo.remove(existingDislike);
+      }
 
-      // 좋아요 추가
-      const likeAction = userActionRepo.create({
-        userId,
-        articleId: newsId,
-        actionType: ActionType.LIKE
-      });
-      await userActionRepo.save(likeAction);
+      // 이미 좋아요가 있으면 제거, 없으면 추가
+      if (existingLike) {
+        await userActionRepo.remove(existingLike);
+        await queryRunner.commitTransaction();
 
-      res.json({
-        success: true,
-        message: '좋아요가 추가되었습니다.'
-      });
+        // 업데이트된 통계 조회
+        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
+
+        res.json({
+          success: true,
+          message: '좋아요가 취소되었습니다.',
+          action: 'removed',
+          data: {
+            likeCount: stats?.likeCount || 0,
+            dislikeCount: stats?.dislikeCount || 0
+          }
+        });
+      } else {
+        const likeAction = userActionRepo.create({
+          userId,
+          articleId: newsId,
+          actionType: ActionType.LIKE
+        });
+        await userActionRepo.save(likeAction);
+        await queryRunner.commitTransaction();
+
+        // 업데이트된 통계 조회
+        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
+
+        res.json({
+          success: true,
+          message: '좋아요가 추가되었습니다.',
+          action: 'added',
+          data: {
+            likeCount: stats?.likeCount || 0,
+            dislikeCount: stats?.dislikeCount || 0
+          }
+        });
+      }
     } else if (type === 'dislike') {
       // 기존 좋아요 제거
-      await userActionRepo.delete({ userId, articleId: newsId, actionType: ActionType.LIKE });
+      if (existingLike) {
+        await userActionRepo.remove(existingLike);
+      }
 
-      // 싫어요 추가
-      const dislikeAction = userActionRepo.create({
-        userId,
-        articleId: newsId,
-        actionType: ActionType.DISLIKE
-      });
-      await userActionRepo.save(dislikeAction);
+      // 이미 싫어요가 있으면 제거, 없으면 추가
+      if (existingDislike) {
+        await userActionRepo.remove(existingDislike);
+        await queryRunner.commitTransaction();
 
-      res.json({
-        success: true,
-        message: '싫어요가 추가되었습니다.'
-      });
+        // 업데이트된 통계 조회
+        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
+
+        res.json({
+          success: true,
+          message: '싫어요가 취소되었습니다.',
+          action: 'removed',
+          data: {
+            likeCount: stats?.likeCount || 0,
+            dislikeCount: stats?.dislikeCount || 0
+          }
+        });
+      } else {
+        const dislikeAction = userActionRepo.create({
+          userId,
+          articleId: newsId,
+          actionType: ActionType.DISLIKE
+        });
+        await userActionRepo.save(dislikeAction);
+        await queryRunner.commitTransaction();
+
+        // 업데이트된 통계 조회
+        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
+
+        res.json({
+          success: true,
+          message: '싫어요가 추가되었습니다.',
+          action: 'added',
+          data: {
+            likeCount: stats?.likeCount || 0,
+            dislikeCount: stats?.dislikeCount || 0
+          }
+        });
+      }
     } else if (type === 'remove') {
-      // 좋아요/싫어요 모두 제거
-      await userActionRepo.delete({
-        userId,
-        articleId: newsId,
-        actionType: ActionType.LIKE
-      });
-      await userActionRepo.delete({
-        userId,
-        articleId: newsId,
-        actionType: ActionType.DISLIKE
-      });
+      // 모든 반응 제거
+      if (existingLike) {
+        await userActionRepo.remove(existingLike);
+      }
+      if (existingDislike) {
+        await userActionRepo.remove(existingDislike);
+      }
 
+      await queryRunner.commitTransaction();
       res.json({
         success: true,
-        message: '반응이 제거되었습니다.'
+        message: '반응이 제거되었습니다.',
+        action: 'removed'
       });
     } else {
+      await queryRunner.rollbackTransaction();
       res.status(400).json({
         success: false,
         error: '잘못된 반응 타입입니다.'
       });
     }
   } catch (error) {
+    await queryRunner.rollbackTransaction();
     console.error('반응 처리 에러:', error);
     res.status(500).json({
       success: false,
       error: '반응 처리 중 오류가 발생했습니다.'
     });
+  } finally {
+    await queryRunner.release();
   }
 });
 
@@ -306,6 +385,95 @@ router.get('/recommendations', authenticateToken, async (req: AuthenticatedReque
     res.status(500).json({
       success: false,
       error: '추천 목록을 가져오는 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 특정 기사에 대한 사용자 반응 상태 조회
+router.get('/reactions/:newsId', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const newsId = parseInt(req.params.newsId);
+
+    const userActionRepo = AppDataSource.getRepository(UserAction);
+    const articleStatRepo = AppDataSource.getRepository(ArticleStat);
+
+    // 현재 사용자의 반응 상태 조회
+    const userLike = await userActionRepo.findOne({
+      where: { userId, articleId: newsId, actionType: ActionType.LIKE }
+    });
+    const userDislike = await userActionRepo.findOne({
+      where: { userId, articleId: newsId, actionType: ActionType.DISLIKE }
+    });
+
+    // 전체 좋아요/싫어요 수 조회
+    const articleStats = await articleStatRepo.findOne({
+      where: { articleId: newsId }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        isLiked: !!userLike,
+        isDisliked: !!userDislike,
+        likeCount: articleStats?.likeCount || 0,
+        dislikeCount: articleStats?.dislikeCount || 0
+      }
+    });
+  } catch (error) {
+    console.error('반응 상태 조회 에러:', error);
+    res.status(500).json({
+      success: false,
+      error: '반응 상태를 조회하는 중 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 사용자 댓글 목록 조회
+router.get('/comments', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const commentRepo = AppDataSource.getRepository(Comment);
+
+    const comments = await commentRepo.createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.article', 'article')
+      .leftJoinAndSelect('article.source', 'source')
+      .leftJoinAndSelect('article.category', 'category')
+      .where('comment.userId = :userId', { userId })
+      .orderBy('comment.createdAt', 'DESC')
+      .limit(limit)
+      .offset(offset)
+      .getMany();
+
+    const commentList = comments.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      article: {
+        id: comment.article.id,
+        title: comment.article.title,
+        url: comment.article.url,
+        source: comment.article.source?.name,
+        category: comment.article.category?.name
+      },
+      likeCount: comment.likeCount
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        comments: commentList,
+        total: commentList.length
+      }
+    });
+  } catch (error) {
+    console.error('사용자 댓글 조회 에러:', error);
+    res.status(500).json({
+      success: false,
+      error: '댓글 목록을 가져오는 중 오류가 발생했습니다.'
     });
   }
 });

@@ -8,6 +8,7 @@ import './ActivityLog.css';
 const ActivityLog = () => {
   const [activities, setActivities] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [comments, setComments] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, subscription, read, bookmark, comment, like, dislike
@@ -39,6 +40,8 @@ const ActivityLog = () => {
     fetchCommonData();
     if (filter === 'subscription') {
       fetchSubscriptions();
+    } else if (filter === 'comment') {
+      fetchComments();
     }
   }, [filter]);
 
@@ -89,6 +92,38 @@ const ActivityLog = () => {
     } catch (error) {
       console.error('구독 목록 조회 실패:', error);
       setSubscriptions([]);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      if (!token || isTokenExpired(token)) {
+        setComments([]);
+        return;
+      }
+
+      const response = await fetch('/api/user/comments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setComments(data.data.comments || []);
+      } else {
+        console.error('댓글 목록 조회 실패:', data.error);
+        setComments([]);
+      }
+    } catch (error) {
+      console.error('댓글 목록 조회 실패:', error);
+      setComments([]);
     }
   };
 
@@ -664,6 +699,68 @@ const ActivityLog = () => {
               </div>
               <AgencySection />
             </div>
+          </div>
+        ) : filter === 'comment' ? (
+          <div className="comments-content">
+            <div className="comments-header">
+              <h3>💬 내가 작성한 댓글</h3>
+              <p>작성한 댓글을 클릭하면 해당 기사로 이동합니다</p>
+            </div>
+
+            {comments.length > 0 ? (
+              <div className="comments-list">
+                {comments.map(comment => (
+                  <div
+                    key={comment.id}
+                    className="comment-card"
+                    onClick={() => navigate(`/news/${comment.article.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="comment-content">
+                      <div className="comment-text">{comment.content}</div>
+                      <div className="comment-meta">
+                        <div className="comment-article-info">
+                          <strong>{comment.article.title}</strong>
+                          <div className="comment-date-section">
+                            <span className="date-label">작성일시</span>
+                            <span className="comment-date">
+                              {(() => {
+                                const date = new Date(comment.createdAt);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                const seconds = String(date.getSeconds()).padStart(2, '0');
+                                return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+                              })()}
+                            </span>
+                          </div>
+                          <div className="comment-tags">
+                            <span className="comment-source">{comment.article.source}</span>
+                            <span className="comment-category">{comment.article.category}</span>
+                          </div>
+                        </div>
+                        <div className="comment-stats">
+                          <div className="comment-likes-info">
+                            <span className="likes-label">댓글 좋아요</span>
+                            <span className="likes-count">{comment.likeCount}개</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-comments">
+                <div className="empty-state">
+                  <div className="empty-icon">💬</div>
+                  <h4>작성한 댓글이 없습니다</h4>
+                  <p>기사에 댓글을 작성해보세요.</p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="activity-list">

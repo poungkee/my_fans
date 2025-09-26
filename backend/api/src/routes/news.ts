@@ -291,4 +291,37 @@ router.get("/news/:id", async (req: Request, res: Response) => {
   }
 });
 
+// 특정 기사의 통계 정보만 조회
+router.get("/:id/stats", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "유효하지 않은 기사 ID입니다."
+      });
+    }
+
+    const statRepo = AppDataSource.getRepository(ArticleStat);
+    const stats = await statRepo.findOne({ where: { articleId: id } });
+
+    res.json({
+      success: true,
+      data: {
+        likeCount: stats?.likeCount || 0,
+        dislikeCount: stats?.dislikeCount || 0,
+        viewCount: stats?.viewCount || 0,
+        bookmarkCount: stats?.bookmarkCount || 0
+      }
+    });
+  } catch (error) {
+    console.error("기사 통계 조회 실패:", error);
+    res.status(500).json({
+      success: false,
+      error: "기사 통계를 조회하는 중 오류가 발생했습니다."
+    });
+  }
+});
+
 export default router;

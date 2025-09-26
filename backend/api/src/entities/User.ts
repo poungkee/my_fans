@@ -3,6 +3,7 @@ import { UserAction } from './UserAction';
 import { Bookmark } from './Bookmark';
 import { AIRecommendation } from './AIRecommendation';
 import { UserPreference } from './UserPreference';
+import { Comment } from './Comment';
 
 @Entity('users')
 export class User {
@@ -60,4 +61,7 @@ export class User {
 
     @OneToOne(() => UserPreference, (preference) => preference.user)
     preference: UserPreference;
+
+    @OneToMany(() => Comment, (comment) => comment.user)
+    comments: Comment[];
 }

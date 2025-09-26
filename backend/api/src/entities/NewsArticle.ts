@@ -7,6 +7,7 @@ import { Bookmark } from './Bookmark';
 import { AIRecommendation } from './AIRecommendation';
 import { BiasAnalysis } from './BiasAnalysis';
 import { ArticleStat } from './ArticleStat';
+import { Comment } from './Comment';
 
 @Entity('news_articles')
 export class NewsArticle {
@@ -75,4 +76,7 @@ export class NewsArticle {
 
     @OneToMany(() => ArticleStat, (stat) => stat.article)
     stats: ArticleStat[];
+
+    @OneToMany(() => Comment, (comment) => comment.article)
+    comments: Comment[];
 }

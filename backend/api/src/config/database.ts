@@ -12,14 +12,14 @@ import {
   AIRecommendation,
   BiasAnalysis,
   UserPreference,
-  MarketSummary
+  MarketSummary,
+  Comment
 } from '../entities';
 
 const isTrue = (value: string | undefined) => value === '1' || value?.toLowerCase() === 'true';
 
 const shouldSyncSchema = () => {
-  if (process.env.TYPEORM_SYNC) return isTrue(process.env.TYPEORM_SYNC);
-  // 기본값은 false. 운영/개발 모두에서 기존 뷰나 외부 생성 객체를 보호한다.
+  // 완전히 비활성화 - 데이터베이스 스키마 동기화 금지
   return false;
 };
 
@@ -50,7 +50,8 @@ export const AppDataSource = new DataSource({
     AIRecommendation,
     BiasAnalysis,
     UserPreference,
-    MarketSummary
+    MarketSummary,
+    Comment
   ],
   migrations: ['src/database/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts']
