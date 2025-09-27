@@ -185,6 +185,292 @@
   border-color: #dc3545;
 }
 
+/* 북마크 버튼 스타일 */
+.icon-button.bookmark {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #dee2e6;
+  color: #6c757d;
+  font-weight: bold;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-size: 16px;
+}
+
+.icon-button.bookmark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.icon-button.bookmark:hover {
+  transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+  border-color: #007bff;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+.icon-button.bookmark:hover::before {
+  left: 100%;
+}
+
+/* 북마크됨 상태 - 골든 테마 */
+.icon-button.bookmark.bookmarked {
+  background: linear-gradient(135deg, #fff59d 0%, #ffcc02 50%, #ff9800 100%);
+  border-color: #f57c00;
+  color: #e65100;
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+  transform: scale(1.02);
+}
+
+.icon-button.bookmark.bookmarked::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+}
+
+.icon-button.bookmark.bookmarked:hover {
+  background: linear-gradient(135deg, #fff176 0%, #ffb300 50%, #f57c00 100%);
+  transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.5);
+  border-color: #ef6c00;
+}
+
+.icon-button.bookmark.bookmarked:hover::before {
+  left: 100%;
+}
+
+/* 북마크 상태 변화 강조 효과 */
+.icon-button.bookmark.bookmarked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: #4caf50;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: successPing 0.6s ease-out;
+}
+
+@keyframes successPing {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(5);
+    opacity: 0;
+  }
+}
+
+/* 북마크 버튼 클릭 애니메이션 */
+.icon-button.bookmark:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* 북마크 상태 변화 애니메이션 */
+@keyframes bookmarkPulse {
+  0% {
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+  }
+  25% {
+    transform: scale(1.15) rotate(-5deg);
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.6);
+  }
+  50% {
+    transform: scale(1.25) rotate(0deg);
+    box-shadow: 0 10px 30px rgba(255, 152, 0, 0.8);
+  }
+  75% {
+    transform: scale(1.15) rotate(5deg);
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.6);
+  }
+  100% {
+    transform: scale(1.02) rotate(0deg);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+  }
+}
+
+.icon-button.bookmark.animate {
+  animation: bookmarkPulse 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 북마크 추가 시 특별한 효과 */
+@keyframes bookmarkAdded {
+  0% {
+    transform: scale(1);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+  25% {
+    transform: scale(1.1) rotate(-3deg);
+    background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+    background: linear-gradient(135deg, #fff59d 0%, #ffcc02 50%, #ff9800 100%);
+  }
+  75% {
+    transform: scale(1.1) rotate(3deg);
+    background: linear-gradient(135deg, #fff59d 0%, #ffcc02 50%, #ff9800 100%);
+  }
+  100% {
+    transform: scale(1.02);
+    background: linear-gradient(135deg, #fff59d 0%, #ffcc02 50%, #ff9800 100%);
+  }
+}
+
+.icon-button.bookmark.animate.bookmarked {
+  animation: bookmarkAdded 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 북마크 제거 시 애니메이션 */
+@keyframes bookmarkRemoved {
+  0% {
+    transform: scale(1.02);
+    background: linear-gradient(135deg, #fff59d 0%, #ffcc02 50%, #ff9800 100%);
+  }
+  25% {
+    transform: scale(0.9) rotate(-3deg);
+    background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+  }
+  50% {
+    transform: scale(0.8) rotate(0deg);
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  }
+  75% {
+    transform: scale(0.9) rotate(3deg);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+  100% {
+    transform: scale(1);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+}
+
+.icon-button.bookmark.animate:not(.bookmarked) {
+  animation: bookmarkRemoved 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 북마크 아이콘 스타일 */
+.bookmark-icon {
+  display: inline-block;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 2;
+}
+
+/* 북마크 상태별 아이콘 애니메이션 */
+.icon-button.bookmark:not(.bookmarked) .bookmark-icon {
+  filter: grayscale(30%);
+  opacity: 0.8;
+}
+
+.icon-button.bookmark.bookmarked .bookmark-icon {
+  filter: none;
+  opacity: 1;
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+  animation: iconGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes iconGlow {
+  0% {
+    text-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+    transform: scale(1);
+  }
+  100% {
+    text-shadow: 0 0 12px rgba(255, 193, 7, 0.9), 0 0 20px rgba(255, 152, 0, 0.3);
+    transform: scale(1.05);
+  }
+}
+
+/* 아이콘 변화 애니메이션 */
+.icon-button.bookmark.animate .bookmark-icon {
+  animation: iconChange 0.6s ease-in-out;
+}
+
+@keyframes iconChange {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.3) rotate(-10deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 0.5;
+  }
+  75% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* 호버 시 아이콘 효과 */
+.icon-button.bookmark:hover .bookmark-icon {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.icon-button.bookmark.bookmarked:hover .bookmark-icon {
+  text-shadow: 0 0 15px rgba(255, 193, 7, 0.8), 0 0 25px rgba(255, 152, 0, 0.4);
+}
+
+/* 북마크 로딩 상태 */
+.icon-button.bookmark.loading {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-color: #2196f3;
+  color: #1976d2;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.icon-button.bookmark.loading:hover {
+  transform: none;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+}
+
+/* 로딩 스피너 애니메이션 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.icon-button.bookmark.loading {
+  position: relative;
+}
+
+.icon-button.bookmark.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 1;
+}
+
 .icon-button.subscribe,
 .icon-button.share {
   min-width: 40px;

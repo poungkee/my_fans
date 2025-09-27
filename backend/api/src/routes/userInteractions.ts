@@ -65,6 +65,18 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
     const statRepo = AppDataSource.getRepository(ArticleStat);
 
     if (action === 'add') {
+      // 이미 북마크가 있는지 확인
+      const existingBookmark = await bookmarkRepo.findOne({
+        where: { userId, newsId }
+      });
+
+      if (existingBookmark) {
+        return res.json({
+          success: true,
+          message: '기사가 북마크에 추가되었습니다.'
+        });
+      }
+
       // 북마크 추가
       const bookmark = bookmarkRepo.create({
         userId,
@@ -73,16 +85,21 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
       await bookmarkRepo.save(bookmark);
 
       // UserAction에도 기록 (트리거가 자동으로 처리하지만 명시적으로도 가능)
-      const userAction = userActionRepo.create({
-        userId,
-        articleId: newsId,
-        actionType: ActionType.BOOKMARK
-      });
-      await userActionRepo.save(userAction);
+      try {
+        const userAction = userActionRepo.create({
+          userId,
+          articleId: newsId,
+          actionType: ActionType.BOOKMARK
+        });
+        await userActionRepo.save(userAction);
+      } catch (actionError) {
+        // UserAction 저장 실패는 무시 (북마크는 이미 성공)
+        console.warn('UserAction 저장 실패:', actionError);
+      }
 
       res.json({
         success: true,
-        message: '북마크가 추가되었습니다.'
+        message: '기사가 북마크에 추가되었습니다.'
       });
     } else if (action === 'remove') {
       // 북마크 제거
@@ -98,8 +115,17 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
         error: '잘못된 액션입니다.'
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('북마크 처리 에러:', error);
+
+    // 중복 키 에러 처리 (PostgreSQL)
+    if (error.code === '23505') {
+      return res.json({
+        success: true,
+        message: '기사가 북마크에 추가되었습니다.'
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: '북마크 처리 중 오류가 발생했습니다.'
@@ -118,17 +144,19 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
     const newsId = parseInt(req.params.newsId);
     const { type } = req.body; // 'like', 'dislike', 'remove'
 
-    console.log(`🔥 반응 처리 요청 - userId: ${userId}, newsId: ${newsId}, type: ${type}`);
+    console.log(`🔥 반응 처리 요청 시작 - userId: ${userId}, newsId: ${newsId}, type: ${type}`);
 
     const userActionRepo = queryRunner.manager.getRepository(UserAction);
 
     // 현재 사용자의 반응 상태 조회
+    console.log(`🔥 반응 상태 조회 시작 - userId: ${userId}, newsId: ${newsId}`);
     const existingLike = await userActionRepo.findOne({
       where: { userId, articleId: newsId, actionType: ActionType.LIKE }
     });
     const existingDislike = await userActionRepo.findOne({
       where: { userId, articleId: newsId, actionType: ActionType.DISLIKE }
     });
+    console.log(`🔥 기존 반응 상태 - 좋아요: ${!!existingLike}, 싫어요: ${!!existingDislike}`);
 
     if (type === 'like') {
       // 기존 싫어요 제거
@@ -141,8 +169,8 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.remove(existingLike);
         await queryRunner.commitTransaction();
 
-        // 업데이트된 통계 조회
-        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
+        const articleStatRepo = AppDataSource.getRepository(ArticleStat);
         const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
 
         res.json({
@@ -163,8 +191,8 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.save(likeAction);
         await queryRunner.commitTransaction();
 
-        // 업데이트된 통계 조회
-        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
+        const articleStatRepo = AppDataSource.getRepository(ArticleStat);
         const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
 
         res.json({
@@ -188,8 +216,8 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.remove(existingDislike);
         await queryRunner.commitTransaction();
 
-        // 업데이트된 통계 조회
-        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
+        const articleStatRepo = AppDataSource.getRepository(ArticleStat);
         const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
 
         res.json({
@@ -210,8 +238,8 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.save(dislikeAction);
         await queryRunner.commitTransaction();
 
-        // 업데이트된 통계 조회
-        const articleStatRepo = queryRunner.manager.getRepository(ArticleStat);
+        // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
+        const articleStatRepo = AppDataSource.getRepository(ArticleStat);
         const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
 
         res.json({
@@ -440,8 +468,6 @@ router.get('/comments', authenticateToken, async (req: AuthenticatedRequest, res
 
     const comments = await commentRepo.createQueryBuilder('comment')
       .leftJoinAndSelect('comment.article', 'article')
-      .leftJoinAndSelect('article.source', 'source')
-      .leftJoinAndSelect('article.category', 'category')
       .where('comment.userId = :userId', { userId })
       .orderBy('comment.createdAt', 'DESC')
       .limit(limit)
@@ -456,8 +482,8 @@ router.get('/comments', authenticateToken, async (req: AuthenticatedRequest, res
         id: comment.article.id,
         title: comment.article.title,
         url: comment.article.url,
-        source: comment.article.source?.name,
-        category: comment.article.category?.name
+        source: comment.article.source,
+        category: comment.article.category
       },
       likeCount: comment.likeCount
     }));

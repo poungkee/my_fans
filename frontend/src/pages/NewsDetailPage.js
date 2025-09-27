@@ -17,6 +17,7 @@ function NewsDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('comments');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
@@ -30,7 +31,18 @@ function NewsDetailPage() {
   useEffect(() => {
     const checkLoginStatus = () => {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const user = localStorage.getItem('user') || sessionStorage.getItem('user');
       setIsLoggedIn(!!token);
+
+      if (user) {
+        try {
+          setCurrentUser(JSON.parse(user));
+        } catch (error) {
+          setCurrentUser(null);
+        }
+      } else {
+        setCurrentUser(null);
+      }
     };
 
     checkLoginStatus();
@@ -80,7 +92,7 @@ function NewsDetailPage() {
     fetchArticle();
   }, [id, API_BASE]);
 
-  // 댓글 및 좋아요/싫어요 상태 로딩
+  // 댓글, 좋아요/싫어요 상태, 구독 상태, 북마크 상태 로딩
   useEffect(() => {
     if (!id) return;
 
@@ -139,45 +151,232 @@ function NewsDetailPage() {
       }
     };
 
+    const fetchBookmarkStatus = async () => {
+      try {
+        if (!isLoggedIn) {
+          setIsBookmarked(false);
+          return;
+        }
+
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/news/${id}/bookmark-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setIsBookmarked(result.isBookmarked || false);
+        } else {
+          setIsBookmarked(false);
+        }
+      } catch (error) {
+        console.error('북마크 상태 로드 실패:', error);
+        setIsBookmarked(false);
+      }
+    };
+
+    const fetchSubscriptionStatus = async () => {
+      try {
+        if (!isLoggedIn || !article?.source) {
+          setIsSubscribed(false);
+          return;
+        }
+
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/user/status/${encodeURIComponent(article.source)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok) {
+            setIsSubscribed(result.isSubscribed || false);
+          } else {
+            setIsSubscribed(false);
+          }
+        } else {
+          setIsSubscribed(false);
+        }
+      } catch (error) {
+        console.error('구독 상태 로드 실패:', error);
+        setIsSubscribed(false);
+      }
+    };
+
     fetchComments();
     fetchUserReactions();
-  }, [id, API_BASE, isLoggedIn]);
+    fetchBookmarkStatus();
+    fetchSubscriptionStatus();
+  }, [id, API_BASE, isLoggedIn, article?.source]);
 
   const handleBookmark = async () => {
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        alert('로그인이 필요합니다.');
-        return;
-      }
-
-      const response = await fetch(`${API_BASE}/api/user/bookmark/${id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          action: isBookmarked ? 'remove' : 'add'
-        })
-      });
-
-      if (response.ok) {
-        setIsBookmarked(!isBookmarked);
-      }
-    } catch (err) {
-      console.error('북마크 처리 실패:', err);
-    }
-  };
-
-  const handleSubscribe = () => {
     if (!isLoggedIn) {
       alert('로그인이 필요한 서비스입니다.');
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
-    setIsSubscribed(!isSubscribed);
-    // TODO: 구독 API 연동
+
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+      // 애니메이션 효과 추가
+      const bookmarkButton = document.querySelector('.icon-button.bookmark');
+      if (bookmarkButton) {
+        bookmarkButton.classList.add('animate');
+        setTimeout(() => {
+          bookmarkButton.classList.remove('animate');
+        }, 800);
+      }
+
+      if (isBookmarked) {
+        // 북마크 해제
+        const response = await fetch(`${API_BASE}/api/user/bookmark/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'remove'
+          })
+        });
+
+        console.log('북마크 해제 응답 상태:', response.status);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('북마크 해제 응답 데이터:', result);
+          if (result.success) {
+            setIsBookmarked(false);
+            alert(result.message || '북마크가 해제되었습니다.');
+          } else {
+            alert(result.error || '북마크 해제에 실패했습니다.');
+          }
+        } else {
+          let errorMessage = '북마크 해제에 실패했습니다.';
+          try {
+            const errorData = await response.json();
+            console.log('북마크 해제 에러 데이터:', errorData);
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            console.error('Error parsing JSON:', e);
+          }
+          alert(errorMessage);
+        }
+      } else {
+        // 북마크 추가
+        const response = await fetch(`${API_BASE}/api/user/bookmark/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'add'
+          })
+        });
+
+        console.log('북마크 추가 응답 상태:', response.status);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('북마크 추가 응답 데이터:', result);
+          if (result.success) {
+            setIsBookmarked(true);
+            alert(result.message || '북마크가 완료되었습니다.');
+          } else {
+            alert(result.error || '북마크에 실패했습니다.');
+          }
+        } else {
+          let errorMessage = '북마크에 실패했습니다.';
+          try {
+            const errorData = await response.json();
+            console.log('북마크 추가 에러 데이터:', errorData);
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            console.error('Error parsing JSON:', e);
+          }
+          alert(errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error('북마크 처리 실패:', error);
+      alert('네트워크 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSubscribe = async () => {
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+
+    if (!article?.source) {
+      alert('언론사 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+      if (isSubscribed) {
+        // 구독 취소
+        const response = await fetch(`${API_BASE}/api/user/unsubscribe`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            sourceName: article.source
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok) {
+            setIsSubscribed(false);
+            alert(result.message || '구독이 취소되었습니다.');
+          } else {
+            alert(result.error || '구독 취소에 실패했습니다.');
+          }
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || '구독 취소에 실패했습니다.');
+        }
+      } else {
+        // 구독하기
+        const response = await fetch(`${API_BASE}/api/user/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            sourceName: article.source
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok) {
+            setIsSubscribed(true);
+            alert(result.message || '구독이 완료되었습니다.');
+          } else {
+            alert(result.error || '구독에 실패했습니다.');
+          }
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || '구독에 실패했습니다.');
+        }
+      }
+    } catch (error) {
+      console.error('구독 처리 실패:', error);
+      alert('네트워크 오류가 발생했습니다.');
+    }
   };
 
   const handleShare = () => {
@@ -198,6 +397,8 @@ function NewsDetailPage() {
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
+
+    console.log('🔥 좋아요 버튼 클릭 - 현재 상태:', { isLiked, isDisliked, likeCount, dislikeCount });
 
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -220,22 +421,30 @@ function NewsDetailPage() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('🔥 좋아요 API 응답:', result);
 
-        // 서버 응답으로 UI 업데이트
-        setLikeCount(result.data.likeCount);
-        setDislikeCount(result.data.dislikeCount);
+        if (result.success) {
+          // 서버 응답으로 UI 업데이트
+          setLikeCount(result.data.likeCount);
+          setDislikeCount(result.data.dislikeCount);
 
-        // 좋아요 상태 업데이트 (서버에서 토글 처리됨)
-        if (result.action === 'added') {
-          setIsLiked(true);
-          setIsDisliked(false); // 좋아요 시 싫어요 해제
-        } else if (result.action === 'removed') {
-          setIsLiked(false);
+          // 좋아요 상태 업데이트 (서버에서 토글 처리됨)
+          if (result.action === 'added') {
+            console.log('🔥 좋아요 추가됨');
+            setIsLiked(true);
+            setIsDisliked(false); // 좋아요 시 싫어요 해제
+          } else if (result.action === 'removed') {
+            console.log('🔥 좋아요 제거됨');
+            setIsLiked(false);
+          }
+        } else {
+          console.error('좋아요 API 응답 에러:', result.error);
+          alert(result.error || '좋아요 처리 중 오류가 발생했습니다.');
         }
       } else {
-        const errorText = await response.text();
-        console.error('좋아요 API 에러:', errorText);
-        alert('좋아요 처리 중 오류가 발생했습니다.');
+        const errorData = await response.json();
+        console.error('좋아요 API 에러:', errorData);
+        alert(errorData.error || '좋아요 처리 중 오류가 발생했습니다.');
       }
     } catch (error) {
       console.error('좋아요 처리 실패:', error);
@@ -249,6 +458,8 @@ function NewsDetailPage() {
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
+
+    console.log('🔥 싫어요 버튼 클릭 - 현재 상태:', { isLiked, isDisliked, likeCount, dislikeCount });
 
     try {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -271,22 +482,30 @@ function NewsDetailPage() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('🔥 싫어요 API 응답:', result);
 
-        // 서버 응답으로 UI 업데이트
-        setLikeCount(result.data.likeCount);
-        setDislikeCount(result.data.dislikeCount);
+        if (result.success) {
+          // 서버 응답으로 UI 업데이트
+          setLikeCount(result.data.likeCount);
+          setDislikeCount(result.data.dislikeCount);
 
-        // 싫어요 상태 업데이트 (서버에서 토글 처리됨)
-        if (result.action === 'added') {
-          setIsDisliked(true);
-          setIsLiked(false); // 싫어요 시 좋아요 해제
-        } else if (result.action === 'removed') {
-          setIsDisliked(false);
+          // 싫어요 상태 업데이트 (서버에서 토글 처리됨)
+          if (result.action === 'added') {
+            console.log('🔥 싫어요 추가됨');
+            setIsDisliked(true);
+            setIsLiked(false); // 싫어요 시 좋아요 해제
+          } else if (result.action === 'removed') {
+            console.log('🔥 싫어요 제거됨');
+            setIsDisliked(false);
+          }
+        } else {
+          console.error('싫어요 API 응답 에러:', result.error);
+          alert(result.error || '싫어요 처리 중 오류가 발생했습니다.');
         }
       } else {
-        const errorText = await response.text();
-        console.error('싫어요 API 에러:', errorText);
-        alert('싫어요 처리 중 오류가 발생했습니다.');
+        const errorData = await response.json();
+        console.error('싫어요 API 에러:', errorData);
+        alert(errorData.error || '싫어요 처리 중 오류가 발생했습니다.');
       }
     } catch (error) {
       console.error('싫어요 처리 실패:', error);
@@ -575,10 +794,20 @@ function NewsDetailPage() {
               <button
                 className={`icon-button subscribe ${isSubscribed ? 'subscribed' : ''}`}
                 onClick={handleSubscribe}
-                title={!isLoggedIn ? '로그인이 필요합니다' : (isSubscribed ? '구독중' : '구독하기')}
+                title={!isLoggedIn ? '로그인이 필요합니다' : (isSubscribed ? `${article?.source} 구독 취소` : `${article?.source} 구독하기`)}
                 disabled={!isLoggedIn}
               >
-                📧
+                {isSubscribed ? '📧✓' : '📧'}
+              </button>
+              <button
+                className={`icon-button bookmark ${isBookmarked ? 'bookmarked' : ''}`}
+                onClick={handleBookmark}
+                title={!isLoggedIn ? '로그인이 필요합니다' : (isBookmarked ? '북마크 해제' : '북마크 추가')}
+                disabled={!isLoggedIn}
+              >
+                <span className="bookmark-icon">
+                  {isBookmarked ? '🔖' : '🔗'}
+                </span>
               </button>
               <button className="icon-button share" onClick={handleShare} title="공유">
                 📤
@@ -586,7 +815,7 @@ function NewsDetailPage() {
               <button
                 className={`icon-button like ${isLiked ? 'active' : ''}`}
                 onClick={handleLike}
-                title={!isLoggedIn ? '로그인이 필요합니다' : '좋아요'}
+                title={!isLoggedIn ? '로그인이 필요합니다' : (isLiked ? '좋아요 취소' : '좋아요')}
                 disabled={!isLoggedIn}
               >
                 👍 {likeCount}
@@ -594,7 +823,7 @@ function NewsDetailPage() {
               <button
                 className={`icon-button dislike ${isDisliked ? 'active' : ''}`}
                 onClick={handleDislike}
-                title={!isLoggedIn ? '로그인이 필요합니다' : '싫어요'}
+                title={!isLoggedIn ? '로그인이 필요합니다' : (isDisliked ? '싫어요 취소' : '싫어요')}
                 disabled={!isLoggedIn}
               >
                 👎 {dislikeCount}
@@ -702,12 +931,14 @@ function NewsDetailPage() {
                           >
                             답글
                           </button>
-                          <button
-                            className="delete-button"
-                            onClick={() => handleDeleteComment(comment.id)}
-                          >
-                            삭제
-                          </button>
+                          {currentUser && currentUser.username === comment.author && (
+                            <button
+                              className="delete-button"
+                              onClick={() => handleDeleteComment(comment.id)}
+                            >
+                              삭제
+                            </button>
+                          )}
                         </div>
 
                         {/* 답글 작성 폼 */}
@@ -753,12 +984,14 @@ function NewsDetailPage() {
                                   >
                                     👍 {reply.likes}
                                   </button>
-                                  <button
-                                    className="delete-button"
-                                    onClick={() => handleDeleteComment(reply.id, true, comment.id)}
-                                  >
-                                    삭제
-                                  </button>
+                                  {currentUser && currentUser.username === reply.author && (
+                                    <button
+                                      className="delete-button"
+                                      onClick={() => handleDeleteComment(reply.id, true, comment.id)}
+                                    >
+                                      삭제
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             ))}

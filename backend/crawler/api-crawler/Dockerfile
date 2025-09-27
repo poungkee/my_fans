@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# curl 설치 (헬스체크용)
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치

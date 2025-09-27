@@ -348,6 +348,178 @@
   color: #9ca3af;
 }
 
+/* 댓글 관련 스타일 */
+.comment-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.comment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.comment-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #1f2937;
+  margin-right: 10px;
+}
+
+.delete-comment-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.delete-comment-btn:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+.comment-click-area {
+  border-top: 1px solid #f3f4f6;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.click-hint {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.comment-click-area:hover .click-hint {
+  color: #3b82f6;
+}
+
+/* 구독 관련 스타일 */
+.subscription-stats {
+  margin-top: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.subscription-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.subscription-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.subscription-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #3b82f6;
+}
+
+.subscription-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.subscription-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.subscription-badge {
+  background: #dcfdf7;
+  color: #065f46;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.subscription-details {
+  margin-bottom: 12px;
+}
+
+.subscription-link {
+  display: inline-block;
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+  margin-right: 16px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #eff6ff;
+  transition: background-color 0.2s ease;
+}
+
+.subscription-link:hover {
+  background: #dbeafe;
+  text-decoration: none;
+}
+
+.subscription-action-link {
+  display: inline-block;
+  color: #059669;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  transition: background-color 0.2s ease;
+}
+
+.subscription-action-link:hover {
+  background: #d1fae5;
+}
+
+.subscription-meta {
+  font-size: 12px;
+  color: #6b7280;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+}
+
+.unsubscribe-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.unsubscribe-btn:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
 .loading {
   text-align: center;
   padding: 60px 20px;
@@ -1497,5 +1669,342 @@
 
   .reaction-date-section {
     padding: 10px 12px;
+  }
+}
+
+/* ==============================
+   북마크 탭 스타일
+   ============================== */
+
+.bookmarks-content {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.bookmarks-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.bookmarks-header h3 {
+  font-size: 24px;
+  color: #1f2937;
+  margin-bottom: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.bookmarks-header p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.bookmarks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bookmark-card {
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+  border: 2px solid #ffd54f;
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.1);
+}
+
+.bookmark-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ff8f00, #ffd54f, #ffb300);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.bookmark-card:hover {
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border-color: #ff8f00;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(255, 143, 0, 0.2);
+}
+
+.bookmark-card:hover::after {
+  content: "📖 기사 읽기";
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: linear-gradient(135deg, #ff8f00, #ffb300);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.bookmark-content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.bookmark-icon {
+  font-size: 28px;
+  color: #ff8f00;
+  animation: bookmarkGlow 3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes bookmarkGlow {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(255, 143, 0, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 16px rgba(255, 143, 0, 0.8);
+  }
+}
+
+.bookmark-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookmark-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bookmark-summary {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #ff8f00;
+}
+
+.bookmark-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.bookmark-source-category {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bookmark-source {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  color: #1565c0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #90caf9;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+}
+
+.bookmark-category {
+  background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+  color: #2e7d32;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #a5d6a7;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.bookmark-date-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #ffd54f;
+  border-radius: 12px;
+  padding: 12px 16px;
+  gap: 4px;
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.15);
+}
+
+.bookmark-date-section .date-label {
+  font-size: 10px;
+  color: #e65100;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.bookmark-date {
+  font-size: 13px;
+  color: #bf360c;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  font-weight: 600;
+}
+
+.no-bookmarks {
+  text-align: center;
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border-radius: 16px;
+  border: 2px dashed #ffd54f;
+}
+
+.no-bookmarks .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.no-bookmarks .empty-icon {
+  font-size: 64px;
+  opacity: 0.6;
+  color: #ff8f00;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.no-bookmarks .empty-state h4 {
+  font-size: 24px;
+  color: #e65100;
+  margin: 0;
+  font-weight: 700;
+}
+
+.no-bookmarks .empty-state p {
+  color: #bf360c;
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.6;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* 북마크 카드 반응형 디자인 */
+@media (max-width: 768px) {
+  .bookmarks-content {
+    padding: 20px 15px;
+  }
+
+  .bookmarks-header h3 {
+    font-size: 20px;
+  }
+
+  .bookmark-card {
+    padding: 20px;
+  }
+
+  .bookmark-card:hover::after {
+    display: none;
+  }
+
+  .bookmark-content {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bookmark-icon {
+    font-size: 24px;
+    align-self: flex-start;
+  }
+
+  .bookmark-title {
+    font-size: 16px;
+  }
+
+  .bookmark-summary {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .bookmark-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .bookmark-date-section {
+    align-items: flex-start;
+    padding: 10px 12px;
+  }
+
+  .bookmark-source,
+  .bookmark-category {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .no-bookmarks {
+    padding: 60px 20px;
+  }
+
+  .no-bookmarks .empty-icon {
+    font-size: 48px;
+  }
+
+  .no-bookmarks .empty-state h4 {
+    font-size: 20px;
+  }
+
+  .no-bookmarks .empty-state p {
+    font-size: 14px;
   }
 }

@@ -4,6 +4,7 @@ import { NewsArticle } from "../entities/NewsArticle";
 import { Category } from "../entities/Category";
 import { Source } from "../entities/Source";
 import { ArticleStat } from "../entities/ArticleStat";
+import { Bookmark } from "../entities/Bookmark";
 import { ILike, In } from "typeorm";
 
 const router = Router();
@@ -291,6 +292,40 @@ router.get("/news/:id", async (req: Request, res: Response) => {
   } catch (e: any) {
     console.error("DETAIL_ERROR:", e);
     res.status(500).json({ error: e?.message || "DETAIL_FAILED" });
+  }
+});
+
+/**
+ * GET /api/news/:id/bookmark-status
+ * 뉴스 북마크 상태 조회 (로그인한 사용자용)
+ */
+router.get("/news/:id/bookmark-status", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.json({ isBookmarked: false });
+    }
+
+    // JWT 토큰 검증
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const bookmarkRepo = AppDataSource.getRepository(Bookmark);
+
+    const id = Number(req.params.id);
+    const bookmark = await bookmarkRepo.findOne({
+      where: { userId, newsId: id }
+    });
+
+    res.json({
+      isBookmarked: !!bookmark,
+      bookmarkId: bookmark?.id || null
+    });
+  } catch (e: any) {
+    res.json({ isBookmarked: false });
   }
 });
 

@@ -8,22 +8,22 @@ export const RSS_FEEDS: RSSFeed[] = [
   {
     sourceName: '경향신문',
     feedUrl: 'https://www.khan.co.kr/rss/rssdata/total_news.xml',
-    sourceId: 8
+    sourceId: 32
   },
   {
     sourceName: '동아일보',
     feedUrl: 'https://rss.donga.com/total.xml',
-    sourceId: 2
+    sourceId: 20
   },
   {
     sourceName: '한겨레',
     feedUrl: 'https://www.hani.co.kr/rss/',
-    sourceId: 7
+    sourceId: 28
   },
   {
     sourceName: '조선일보',
     feedUrl: 'https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml',
-    sourceId: 5
+    sourceId: 23
   }
 ];
 

@@ -18,24 +18,42 @@ router.get('/subscriptions', authenticateToken, async (req: AuthenticatedRequest
             return res.json({ ok: true, subscriptions: [] });
         }
 
-        // preferredSources에서 구독된 source ID들 추출
-        const subscribedSourceIds = userPreference.preferredSources as number[];
+        // preferredSources에서 구독된 언론사 정보 추출 (ID 또는 한글 이름)
+        const subscribedSources = userPreference.preferredSources as (number | string)[];
 
-        if (!Array.isArray(subscribedSourceIds) || subscribedSourceIds.length === 0) {
+        if (!Array.isArray(subscribedSources) || subscribedSources.length === 0) {
             return res.json({ ok: true, subscriptions: [] });
         }
 
         // 구독된 언론사 정보 가져오기
-        const sources = await AppDataSource.getRepository(Source)
-            .findByIds(subscribedSourceIds);
+        const sources = [];
+
+        for (const source of subscribedSources) {
+            let sourceEntity;
+
+            if (typeof source === 'number') {
+                // ID로 검색
+                sourceEntity = await AppDataSource.getRepository(Source)
+                    .findOne({ where: { id: source } });
+            } else if (typeof source === 'string') {
+                // 한글 이름으로 검색
+                sourceEntity = await AppDataSource.getRepository(Source)
+                    .findOne({ where: { name: source } });
+            }
+
+            if (sourceEntity) {
+                sources.push(sourceEntity);
+            }
+        }
 
         res.json({
             ok: true,
             subscriptions: sources.map(source => ({
                 id: source.id,
                 name: source.name,
-                url: source.url,
-                logoUrl: source.logoUrl
+                url: source.url || `https://www.${source.name}.com`, // 기본 URL 제공
+                logoUrl: source.logoUrl,
+                created_at: userPreference.updatedAt // 구독 정보 업데이트 시간
             }))
         });
 
@@ -73,16 +91,16 @@ router.post('/subscribe', authenticateToken, async (req: AuthenticatedRequest, r
             userPreference.preferredSources = [];
         }
 
-        // 현재 구독 목록 가져오기
-        let subscribedSources = userPreference.preferredSources as number[] || [];
+        // 현재 구독 목록 가져오기 (한글 이름 배열로 관리)
+        let subscribedSources = userPreference.preferredSources as string[] || [];
 
-        // 이미 구독된 경우 체크
-        if (subscribedSources.includes(source.id)) {
+        // 이미 구독된 경우 체크 (한글 이름으로)
+        if (subscribedSources.includes(source.name)) {
             return res.json({ ok: true, message: '이미 구독 중인 언론사입니다.' });
         }
 
-        // 구독 추가
-        subscribedSources.push(source.id);
+        // 구독 추가 (한글 이름으로)
+        subscribedSources.push(source.name);
         userPreference.preferredSources = subscribedSources;
 
         await AppDataSource.getRepository(UserPreference).save(userPreference);
@@ -130,9 +148,16 @@ router.delete('/unsubscribe', authenticateToken, async (req: AuthenticatedReques
             return res.status(404).json({ ok: false, error: '구독 정보를 찾을 수 없습니다.' });
         }
 
-        // 현재 구독 목록에서 제거
-        let subscribedSources = userPreference.preferredSources as number[] || [];
-        subscribedSources = subscribedSources.filter(id => id !== source.id);
+        // 현재 구독 목록에서 제거 (ID 또는 한글 이름으로)
+        let subscribedSources = userPreference.preferredSources as (number | string)[] || [];
+        subscribedSources = subscribedSources.filter(item => {
+            if (typeof item === 'number') {
+                return item !== source.id;
+            } else if (typeof item === 'string') {
+                return item !== source.name;
+            }
+            return true;
+        });
 
         userPreference.preferredSources = subscribedSources;
 
@@ -170,8 +195,8 @@ router.get('/status/:sourceName', authenticateToken, async (req: AuthenticatedRe
         let isSubscribed = false;
 
         if (userPreference && userPreference.preferredSources) {
-            const subscribedSources = userPreference.preferredSources as number[] || [];
-            isSubscribed = subscribedSources.includes(source.id);
+            const subscribedSources = userPreference.preferredSources as string[] || [];
+            isSubscribed = subscribedSources.includes(source.name);
         }
 
         res.json({

@@ -484,7 +484,7 @@ export class AuthService {
       const preferences = result[0];
 
       // JSON 필드들을 안전하게 파싱
-      return {
+      const parsedPreferences = {
         ...preferences,
         preferred_categories: preferences.preferred_categories ?
           (typeof preferences.preferred_categories === 'string' ?
@@ -499,6 +499,29 @@ export class AuthService {
           (typeof preferences.preferred_time_slots === 'string' ?
             JSON.parse(preferences.preferred_time_slots) : preferences.preferred_time_slots) : []
       };
+
+      // preferred_sources에서 숫자 ID를 한글 이름으로 변환
+      if (parsedPreferences.preferred_sources && Array.isArray(parsedPreferences.preferred_sources)) {
+        const sourceNames = [];
+
+        for (const source of parsedPreferences.preferred_sources) {
+          if (typeof source === 'number') {
+            // 숫자 ID인 경우 한글 이름으로 변환
+            const sourceQuery = `SELECT name FROM sources WHERE id = $1`;
+            const sourceResult = await AppDataSource.query(sourceQuery, [source]);
+            if (sourceResult.length > 0) {
+              sourceNames.push(sourceResult[0].name);
+            }
+          } else if (typeof source === 'string') {
+            // 이미 문자열인 경우 그대로 유지
+            sourceNames.push(source);
+          }
+        }
+
+        parsedPreferences.preferred_sources = sourceNames;
+      }
+
+      return parsedPreferences;
     } catch (error) {
       console.error('Error getting user preferences:', error);
       return null;

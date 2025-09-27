@@ -10,6 +10,7 @@ const ActivityLog = () => {
   const [subscriptions, setSubscriptions] = useState([]);
   const [comments, setComments] = useState([]);
   const [reactions, setReactions] = useState([]);
+  const [bookmarks, setBookmarks] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, subscription, read, bookmark, comment, reactions
@@ -45,6 +46,8 @@ const ActivityLog = () => {
       fetchComments();
     } else if (filter === 'reactions') {
       fetchReactions();
+    } else if (filter === 'bookmark') {
+      fetchBookmarks();
     }
   }, [filter]);
 
@@ -130,6 +133,41 @@ const ActivityLog = () => {
     }
   };
 
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
+
+    try {
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('댓글이 삭제되었습니다.');
+        // 댓글 목록 새로고침
+        fetchComments();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || '댓글 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      alert('댓글 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   const fetchReactions = async () => {
     try {
       let token = localStorage.getItem('token');
@@ -159,6 +197,38 @@ const ActivityLog = () => {
     } catch (error) {
       console.error('반응 목록 조회 실패:', error);
       setReactions([]);
+    }
+  };
+
+  const fetchBookmarks = async () => {
+    try {
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      if (!token || isTokenExpired(token)) {
+        setBookmarks([]);
+        return;
+      }
+
+      const response = await fetch('/api/user/bookmarks', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setBookmarks(data.data.bookmarks || []);
+      } else {
+        console.error('북마크 목록 조회 실패:', data.error);
+        setBookmarks([]);
+      }
+    } catch (error) {
+      console.error('북마크 목록 조회 실패:', error);
+      setBookmarks([]);
     }
   };
 
@@ -649,6 +719,11 @@ const ActivityLog = () => {
             <div className="subscription-header">
               <h3>📰 구독 관리</h3>
               <p>구독 중인 언론사를 확인하고 관리하세요</p>
+              <div className="subscription-stats">
+                <span className="subscription-count">
+                  총 {subscriptions.length}개의 언론사를 구독 중입니다
+                </span>
+              </div>
             </div>
 
             {subscriptions.length > 0 ? (
@@ -656,17 +731,28 @@ const ActivityLog = () => {
                 {subscriptions.map(subscription => (
                   <div key={subscription.id} className="subscription-card">
                     <div className="subscription-info">
-                      <div className="subscription-name">{subscription.name}</div>
-                      {subscription.url && (
-                        <a
-                          href={subscription.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="subscription-link"
-                        >
-                          🔗 웹사이트 방문
-                        </a>
-                      )}
+                      <div className="subscription-header-info">
+                        <div className="subscription-name">{subscription.name}</div>
+                        <div className="subscription-badge">구독 중</div>
+                      </div>
+                      <div className="subscription-details">
+                        {subscription.url && (
+                          <a
+                            href={subscription.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="subscription-link"
+                          >
+                            🔗 웹사이트 방문
+                          </a>
+                        )}
+                        <div className="subscription-actions-info">
+                          <span className="subscription-action-link"
+                                onClick={() => navigate(`/?source=${encodeURIComponent(subscription.name)}`)}>
+                            📰 {subscription.name} 뉴스 보기
+                          </span>
+                        </div>
+                      </div>
                       <div className="subscription-meta">
                         구독일: {subscription.created_at ? new Date(subscription.created_at).toLocaleDateString() : '정보 없음'}
                       </div>
@@ -737,14 +823,21 @@ const ActivityLog = () => {
             {comments.length > 0 ? (
               <div className="comments-list">
                 {comments.map(comment => (
-                  <div
-                    key={comment.id}
-                    className="comment-card"
-                    onClick={() => navigate(`/news/${comment.article.id}`)}
-                    style={{ cursor: 'pointer' }}
-                  >
+                  <div key={comment.id} className="comment-card">
                     <div className="comment-content">
-                      <div className="comment-text">{comment.content}</div>
+                      <div className="comment-header">
+                        <div className="comment-text">{comment.content}</div>
+                        <button
+                          className="delete-comment-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteComment(comment.id);
+                          }}
+                          title="댓글 삭제"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                       <div className="comment-meta">
                         <div className="comment-article-info">
                           <strong>{comment.article.title}</strong>
@@ -774,6 +867,13 @@ const ActivityLog = () => {
                             <span className="likes-count">{comment.likeCount}개</span>
                           </div>
                         </div>
+                      </div>
+                      <div
+                        className="comment-click-area"
+                        onClick={() => navigate(`/news/${comment.article.id}#comments`)}
+                        style={{ cursor: 'pointer', padding: '10px 0' }}
+                      >
+                        <span className="click-hint">💬 기사로 이동하여 댓글 보기</span>
                       </div>
                     </div>
                   </div>
@@ -843,6 +943,63 @@ const ActivityLog = () => {
                   <div className="empty-icon">👍</div>
                   <h4>남긴 반응이 없습니다</h4>
                   <p>기사에 좋아요나 싫어요를 남겨보세요.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : filter === 'bookmark' ? (
+          <div className="bookmarks-content">
+            <div className="bookmarks-header">
+              <h3>🔖 북마크한 기사</h3>
+              <p>북마크한 기사를 클릭하면 해당 기사로 이동합니다</p>
+            </div>
+
+            {bookmarks.length > 0 ? (
+              <div className="bookmarks-list">
+                {bookmarks.map(bookmark => (
+                  <div
+                    key={bookmark.id}
+                    className="bookmark-card"
+                    onClick={() => navigate(`/news/${bookmark.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="bookmark-content">
+                      <div className="bookmark-icon">🔖</div>
+                      <div className="bookmark-info">
+                        <div className="bookmark-title">{bookmark.title}</div>
+                        <div className="bookmark-summary">{bookmark.summary}</div>
+                        <div className="bookmark-meta">
+                          <div className="bookmark-source-category">
+                            <span className="bookmark-source">{bookmark.source}</span>
+                            <span className="bookmark-category">{bookmark.category}</span>
+                          </div>
+                          <div className="bookmark-date-section">
+                            <span className="date-label">북마크일시</span>
+                            <span className="bookmark-date">
+                              {(() => {
+                                const date = new Date(bookmark.bookmarkedAt);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                const seconds = String(date.getSeconds()).padStart(2, '0');
+                                return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-bookmarks">
+                <div className="empty-state">
+                  <div className="empty-icon">🔖</div>
+                  <h4>북마크한 기사가 없습니다</h4>
+                  <p>기사에서 북마크 버튼을 눌러 저장해보세요.</p>
                 </div>
               </div>
             )}
