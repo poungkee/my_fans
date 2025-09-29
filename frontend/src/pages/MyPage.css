@@ -1,8 +1,8 @@
 .mypage-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
 /* 가로 레이아웃 */
@@ -27,12 +27,11 @@
   align-items: center;
   flex: 0 0 300px;
   padding: 2.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 24px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(25px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  color: #1a202c;
   position: relative;
   overflow: hidden;
 }
@@ -43,19 +42,10 @@
   }
 }
 
-.profile-image-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left 0.8s ease;
-}
-
-.profile-image-section:hover::before {
-  left: 100%;
+.profile-image-section:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
 }
 
 .profile-image-container {
@@ -71,40 +61,40 @@
   height: 160px;
   border-radius: 50%;
   object-fit: cover;
-  border: 6px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 4px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
   background: #ffffff;
   position: relative;
 }
 
 .profile-image:hover {
-  transform: scale(1.05);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 1);
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  border-color: #3b82f6;
 }
 
 .profile-image-placeholder {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
-  border: 6px solid rgba(255, 255, 255, 0.9);
+  background: #f1f5f9;
+  border: 4px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 3.5rem;
-  color: #2d3748;
-  backdrop-filter: blur(15px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #64748b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
   font-weight: 600;
 }
 
 .profile-image-placeholder:hover {
-  transform: scale(1.05);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.9) 100%);
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  background: #e2e8f0;
+  border-color: #3b82f6;
 }
 
 .profile-image-controls {
@@ -150,29 +140,27 @@
 }
 
 .profile-image-btn.upload {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  background: #3b82f6;
   color: white;
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: transparent;
 }
 
 .profile-image-btn.upload:hover {
-  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 35px rgba(56, 161, 105, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
 }
 
 .profile-image-btn.delete {
-  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  background: #ef4444;
   color: white;
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: transparent;
 }
 
 .profile-image-btn.delete:hover {
-  background: linear-gradient(135deg, #c53030 0%, #9c2626 100%);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 35px rgba(197, 48, 48, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
 }
 
 .profile-image-btn.loading {
@@ -200,17 +188,16 @@
 }
 
 .profile-image-error {
-  color: #ffffff;
-  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  color: #dc2626;
+  background: #fef2f2;
   font-size: 0.95rem;
   font-weight: 600;
   text-align: center;
   margin-top: 1.5rem;
   padding: 1rem 1.5rem;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 25px rgba(229, 62, 62, 0.2);
-  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
 }
 
 .mypage-header {
@@ -222,29 +209,30 @@
 }
 
 .back-button {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #374151;
   padding: 12px 20px;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
   font-weight: 500;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .back-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .mypage-header h1 {
-  color: white;
+  color: #1f2937;
   font-size: 2.5rem;
   font-weight: 700;
   margin: 0;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.025em;
 }
 
 
@@ -257,31 +245,31 @@
 .loading, .error {
   text-align: center;
   padding: 60px 20px;
-  color: white;
+  color: #374151;
   font-size: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin: 20px;
 }
 
 /* 회원정보 섹션 */
 .user-info-section h2 {
-  color: white;
+  color: #1f2937;
   font-size: 1.8rem;
   margin-bottom: 25px;
   text-align: center;
   font-weight: 700;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.025em;
 }
 
 .user-info-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 25px;
+  background: #ffffff;
+  border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
 }
 
 .user-details {
@@ -291,17 +279,16 @@
 .user-name {
   font-size: 2.2rem;
   font-weight: 800;
-  color: #fbbf24 !important;
+  color: #1f2937 !important;
   margin-bottom: 8px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  letter-spacing: -0.025em;
 }
 
 .user-email {
   font-size: 1.1rem;
-  color: #e5e7eb !important;
+  color: #6b7280 !important;
   margin-bottom: 40px;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  font-weight: 500;
 }
 
 /* 4x2 그리드 레이아웃 */
@@ -332,12 +319,12 @@
 }
 
 .info-card {
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  border-radius: 18px;
-  padding: 25px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
   text-align: center;
   transition: all 0.3s ease;
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid #e2e8f0;
   position: relative;
   overflow: hidden;
 }
@@ -348,15 +335,15 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 18px 18px 0 0;
+  height: 3px;
+  background: #3b82f6;
+  border-radius: 12px 12px 0 0;
 }
 
 .info-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  background: #f8fafc;
 }
 
 .info-icon {
@@ -404,19 +391,20 @@
 }
 
 .preference-tag {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: #3b82f6;
   color: white;
-  padding: 10px 18px;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .preference-tag:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* 계정관리 섹션 */
@@ -425,32 +413,31 @@
 }
 
 .account-management-section h2 {
-  color: white;
+  color: #1f2937;
   font-size: 1.8rem;
   margin-bottom: 25px;
   text-align: center;
   font-weight: 700;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.025em;
 }
 
 .account-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
+  background: #ffffff;
+  border-radius: 12px;
   padding: 30px;
   margin-bottom: 25px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
   transition: all 0.3s ease;
 }
 
 .account-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .account-card.danger {
-  border-left: 6px solid #e53e3e;
+  border-left: 4px solid #ef4444;
 }
 
 .account-card h3 {
@@ -491,62 +478,67 @@
 }
 
 .logout-btn {
-  background: linear-gradient(135deg, #4299e1, #3182ce);
+  background: #3b82f6;
   color: white;
-  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .logout-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(66, 153, 225, 0.4);
+  transform: translateY(-1px);
+  background: #2563eb;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
 .verification-btn {
-  background: linear-gradient(135deg, #48bb78, #38a169);
+  background: #10b981;
   color: white;
-  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .verification-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+  transform: translateY(-1px);
+  background: #059669;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
 }
 
 .verification-btn.danger {
-  background: linear-gradient(135deg, #f56565, #e53e3e);
-  box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+  background: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .verification-btn.danger:hover {
-  box-shadow: 0 8px 25px rgba(245, 101, 101, 0.4);
+  background: #dc2626;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: #3b82f6;
   color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+  background: #2563eb;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
 .submit-btn.danger {
-  background: linear-gradient(135deg, #f56565, #e53e3e);
-  box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+  background: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .cancel-btn {
-  background: linear-gradient(135deg, #a0aec0, #718096);
+  background: #6b7280;
   color: white;
-  box-shadow: 0 4px 15px rgba(160, 174, 192, 0.3);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.2);
   margin-right: 15px;
 }
 
 .cancel-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(160, 174, 192, 0.4);
+  transform: translateY(-1px);
+  background: #4b5563;
+  box-shadow: 0 6px 20px rgba(107, 114, 128, 0.3);
 }
 
 /* 폼 스타일 */
@@ -568,20 +560,20 @@
 
 .form-group input {
   width: 100%;
-  padding: 15px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 16px;
   transition: all 0.3s ease;
-  background: #f7fafc;
+  background: #ffffff;
   box-sizing: border-box;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #3b82f6;
   background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-actions {
@@ -600,15 +592,15 @@
 }
 
 .error-message {
-  background: rgba(245, 101, 101, 0.1);
-  color: #e53e3e;
-  border: 1px solid rgba(245, 101, 101, 0.3);
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
 }
 
 .success-message {
-  background: rgba(72, 187, 120, 0.1);
-  color: #38a169;
-  border: 1px solid rgba(72, 187, 120, 0.3);
+  background: #f0fdf4;
+  color: #059669;
+  border: 1px solid #bbf7d0;
 }
 
 /* 반응형 디자인 */
