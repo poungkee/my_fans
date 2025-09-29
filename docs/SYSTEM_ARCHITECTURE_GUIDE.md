@@ -64,7 +64,7 @@
 |--------|------|----------|------|-----------|
 | `id` | BIGINT | PK, AUTO_INCREMENT | 북마크 ID | 1, 2, 3... |
 | `user_id` | BIGINT | FK, NOT NULL | 사용자 ID | 1, 2, 3... |
-| `news_id` | BIGINT | FK, NOT NULL | 기사 ID | 100, 101, 102... |
+| `article_id` | BIGINT | FK, NOT NULL | 기사 ID | 100, 101, 102... |
 | `created_at` | TIMESTAMPTZ | NOT NULL | 북마크 생성일 | "2025-01-15 15:20:00+09" |
 
 #### 5. `news_articles` - 뉴스 기사
@@ -87,8 +87,9 @@
 #### 6. `sources` - 언론사 정보
 | 컬럼명 | 타입 | 제약조건 | 설명 | 저장 예시 |
 |--------|------|----------|------|-----------|
-| `id` | BIGINT | PK, AUTO_INCREMENT | 언론사 ID | 1, 2, 3... |
+| `id` | BIGINT | PK | 언론사 ID (네이버 oid) | 1, 20, 21, 23, 25... |
 | `name` | VARCHAR(100) | UNIQUE, NOT NULL | 언론사명 | "연합뉴스", "조선일보", "한겨레" |
+| `url` | VARCHAR(500) | NULLABLE | 언론사 홈페이지 URL | "https://www.yna.co.kr" |
 | `logo_url` | VARCHAR(500) | NULLABLE | 로고 이미지 URL | "/logos/yonhap.png" |
 
 #### 7. `categories` - 카테고리
@@ -108,9 +109,11 @@
 #### 9. `news_keywords` - 뉴스-키워드 연결 (M:N)
 | 컬럼명 | 타입 | 제약조건 | 설명 | 저장 예시 |
 |--------|------|----------|------|-----------|
-| `news_id` | BIGINT | PK, FK | 기사 ID | 100, 101, 102... |
-| `keyword_id` | BIGINT | PK, FK | 키워드 ID | 1, 2, 3... |
-| `relevance` | DOUBLE | DEFAULT 1.0 | 연관도 점수 | 0.8, 1.0, 1.5 |
+| `id` | BIGINT | PK, AUTO_INCREMENT | 연결 ID | 1, 2, 3... |
+| `article_id` | BIGINT | FK | 기사 ID | 100, 101, 102... |
+| `keyword_id` | BIGINT | FK | 키워드 ID | 1, 2, 3... |
+| `relevance` | DECIMAL(3,2) | DEFAULT 1.0 | 연관도 점수 | 0.8, 1.0, 1.5 |
+| `created_at` | TIMESTAMPTZ | NOT NULL | 생성일 | "2025-01-15 10:00:00+09" |
 
 #### 10. `article_stats` - 기사 통계
 | 컬럼명 | 타입 | 제약조건 | 설명 | 저장 예시 |
@@ -148,9 +151,9 @@
 | `economic_bias` | DECIMAL(3,1) | NULLABLE | 경제적 편향 (-5.0~5.0) | -1.5, 1.8, 0.2 |
 | `social_bias` | DECIMAL(3,1) | NULLABLE | 사회적 편향 (-5.0~5.0) | 0.5, -3.2, 2.1 |
 | `confidence_level` | DECIMAL(3,2) | NULLABLE | 신뢰도 (0.0~1.0) | 0.85, 0.92, 0.76 |
-| `analysis_method` | VARCHAR(50) | NULLABLE | 분석 방법 | "ML_v1", "rule_based" |
+| `analysis_method` | VARCHAR(50) | NULLABLE | 분석 방법 | "ML_Logistic_Regression", "rule_based" |
 | `sample_size` | INT | NULLABLE | 샘플 크기 | 100, 500, 1000 |
-| `analysis_data` | JSONB | NULLABLE | 분석 상세 데이터 | {"sentiment": 0.2, "topics": [...]} |
+| `analysis_data` | JSONB | NULLABLE | 분석 상세 데이터 | {"sentiment": {...}, "sentence_types": {...}} |
 | `analyzed_at` | TIMESTAMPTZ | NOT NULL | 분석 일시 | "2025-01-15 11:00:00+09" |
 
 #### 13. `market_summary` - 시장 요약
@@ -252,9 +255,10 @@ GET  /api/user/status/:sourceName # 구독 상태 확인
 
 #### 🤖 AI 기능
 ```
-POST /api/ai/summarize      # 뉴스 요약 요청
+POST /api/ai/summarize      # 뉴스 요약 요청 (포트 8000 - summarize-ai)
 GET  /api/ai/recommendations # 개인화 추천
-POST /api/ai/bias-check     # 편향성 분석
+POST /api/ai/bias-check     # 편향성 분석 (포트 8002 - bias-analysis-ai)
+GET  /api/ai/analyze/:id    # 기사 편향성 분석 결과 조회
 ```
 
 #### 🔄 크롤러 관리
@@ -283,8 +287,53 @@ GET  /api/market/summary    # 시장 요약 (KOSPI, KOSDAQ 등)
 | `socialAuthService.ts` | 소셜 로그인 | kakaoLogin(), naverLogin() |
 | `userInteractionService.ts` | 사용자 상호작용 | recordAction(), getBookmarks() |
 | `subscriptionService.ts` | 구독 관리 | subscribe(), unsubscribe(), getSubscriptions() |
-| `aiService.ts` | AI 연동 | summarize(), getRecommendations() |
+| `aiService.ts` | AI 연동 | summarize(), getRecommendations(), analyzeBias() |
 | `marketDataService.ts` | 주식 데이터 | fetchMarketSummary() |
+
+### AI 서비스 구조
+
+#### 🤖 요약 AI 서비스 (Summarize AI)
+**디렉토리**: `backend/ai/summarize-ai/`
+**포트**: 8000
+**기술 스택**: Python + FastAPI + Gemini API
+**주요 기능**:
+- 뉴스 기사 자동 요약 생성
+- Gemini 1.5 Flash API 활용
+- 3-5문장 요약 생성
+
+#### 🎯 편향성 분석 AI 서비스 (Bias Analysis AI)
+**디렉토리**: `backend/ai/bias-analysis-ai/`
+**포트**: 8002
+**기술 스택**: Python + FastAPI + scikit-learn + KoNLPy
+**주요 기능**:
+- 문장 유형 분류 (사실형, 추론형, 예측형, 대화형)
+- 감성 분석 (긍정/중립/부정)
+- ML 모델: Logistic Regression (정확도 71.6%)
+- 학습 데이터: AI-Hub 문장 유형 판단 데이터셋 (148,467문장)
+
+**모델 파일**:
+- `models/bias_model.pkl` - 학습된 Logistic Regression 모델
+- `models/vectorizer.pkl` - TF-IDF 벡터라이저 (max_features=10000)
+- `models/metadata.json` - 모델 메타데이터
+
+**API 엔드포인트**:
+- `POST /analyze` - 기사 편향성 분석 요청
+- `GET /health` - 헬스체크
+
+**학습 정보**:
+- Training 데이터: 130,823문장
+- Validation 데이터: 17,644문장
+- 총 학습 데이터: 148,467문장
+- 라벨 분포:
+  - 사실형: 57,561 (38.8%)
+  - 대화형: 39,852 (26.8%)
+  - 추론형: 40,221 (27.1%)
+  - 예측형: 10,833 (7.3%)
+- 평가 결과 (F1-Score):
+  - 대화형: 0.88
+  - 사실형: 0.71
+  - 예측형: 0.72
+  - 추론형: 0.56
 
 ### 핵심 서비스 로직
 
@@ -405,6 +454,50 @@ NAVER_CLIENT_ID=your-naver-id
 
 ---
 
+## 🐳 Docker 컨테이너 구성
+
+### 컨테이너 목록 및 포트 매핑
+
+| 컨테이너명 | 서비스 | 포트 | 상태 | 역할 |
+|-----------|--------|------|------|------|
+| `fans_postgres` | PostgreSQL | 5432 | Healthy | 메인 데이터베이스 |
+| `fans_main_api` | Backend API | 3000 | Up | 메인 API 서버 |
+| `fans_frontend` | React | 3001 | Up | 웹 프론트엔드 |
+| `fans_rss_crawler` | RSS Crawler | 4002 | Healthy | RSS 피드 크롤러 |
+| `fans_api_crawler` | API Crawler | 4003 | Healthy | 네이버 API 크롤러 |
+| `fans_summarize_ai` | Summarize AI | 8000 | Healthy | 뉴스 요약 AI |
+| `fans_bias_analysis_ai` | Bias Analysis AI | 8002 | Healthy | 편향성 분석 AI |
+
+### Docker Compose 실행
+
+```bash
+# 전체 서비스 시작
+docker-compose up -d
+
+# 특정 서비스만 재시작
+docker-compose restart fans_bias_analysis_ai
+
+# 로그 확인
+docker-compose logs -f fans_bias_analysis_ai
+
+# 전체 중지
+docker-compose down
+
+# 볼륨까지 삭제
+docker-compose down -v
+```
+
+### 볼륨 마운트
+
+```yaml
+# 주요 볼륨 구성
+- postgres_data:/var/lib/postgresql/data  # DB 데이터 영속성
+- ./backend/api:/app                       # 핫 리로딩
+- ./backend/ai/bias-analysis-ai/models:/app/models  # ML 모델 공유
+```
+
+---
+
 ## 🚀 빠른 시작 가이드
 
 ### 1. 데이터베이스 접속
@@ -438,13 +531,32 @@ curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_
      -d '{"sourceName":"연합뉴스"}' http://localhost:3000/api/user/subscribe
 ```
 
-### 3. 주요 파일 수정 위치
-- **크롤링 로직**: `src/services/newsCrawlerService.ts`
-- **API 엔드포인트**: `src/routes/news.ts`
-- **구독 API**: `src/routes/subscription.ts`
-- **DB 스키마**: `src/entities/*.ts`
-- **프론트 연동**: `frontend/src/App.js`
+### 3. AI 서비스 테스트
+```bash
+# 편향성 분석 API 테스트
+curl -X POST http://localhost:8002/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"content":"정부는 오늘 새로운 경제정책을 발표했다."}'
+
+# 요약 API 테스트
+curl -X POST http://localhost:8000/summarize \
+  -H "Content-Type: application/json" \
+  -d '{"content":"뉴스 기사 전체 내용..."}'
+
+# 헬스체크
+curl http://localhost:8002/health
+curl http://localhost:8000/health
+```
+
+### 4. 주요 파일 수정 위치
+- **크롤링 로직**: `backend/crawler/rss-crawler/src/services/rssCrawlerService.ts`
+- **API 엔드포인트**: `backend/api/src/routes/news.ts`, `backend/api/src/routes/ai.ts`
+- **구독 API**: `backend/api/src/routes/subscription.ts`
+- **DB 스키마**: `backend/api/src/entities/*.ts`
+- **프론트 연동**: `frontend/src/App.js`, `frontend/src/pages/NewsDetailPage.js`
 - **활동로그 페이지**: `frontend/src/pages/ActivityLog.js`
+- **AI 모델 학습**: `backend/ai/bias-analysis-ai/train_model.py`
+- **AI 서비스**: `backend/ai/bias-analysis-ai/main.py`
 
 ---
 

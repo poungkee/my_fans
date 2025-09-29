@@ -37,27 +37,27 @@ Backend API Server (Port 3000)
 ### 새로운 구조
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    FANS 시스템 아키텍처                        │
+│                    FANS 시스템 아키텍처                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Frontend (Port 3001)                                      │
+│  Frontend (Port 3001)                                       │
 ├─────────────────────────────────────────────────────────────┤
-│  Backend API Server (Port 3000)                            │
-│  ├── Auth Service                                          │
-│  ├── News Feed Service                                     │
-│  ├── Market Summary Service                                │
-│  └── AI Integration Service                                │
+│  Backend API Server (Port 3000)                             │
+│  ├── Auth Service                                           │
+│  ├── News Feed Service                                      │
+│  ├── Market Summary Service                                 │
+│  └── AI Integration Service                                 │
 ├─────────────────────────────────────────────────────────────┤
-│  Crawler Service Cluster (Active-Active 2x2)              │
-│  ├── Group A (정치, 경제, 사회, 연예)                         │
-│  │   ├── Crawler A1 (Port 4001) - Primary                 │
-│  │   └── Crawler A2 (Port 4003) - Secondary               │
-│  └── Group B (생활/문화, IT/과학, 세계, 스포츠)                │
-│      ├── Crawler B1 (Port 4002) - Primary                 │
-│      └── Crawler B2 (Port 4004) - Secondary               │
+│  Crawler Service Cluster (Active-Active 2x2)                │
+│  ├── Group A (정치, 경제, 사회, 연예)                            │
+│  │   ├── Crawler A1 (Port 4001) - Primary                   │
+│  │   └── Crawler A2 (Port 4003) - Secondary                 │
+│  └── Group B (생활/문화, IT/과학, 세계, 스포츠)                   │
+│      ├── Crawler B1 (Port 4002) - Primary                   │
+│      └── Crawler B2 (Port 4004) - Secondary                 │
 ├─────────────────────────────────────────────────────────────┤
-│  AI Service (Port 8000)                                    │
+│  AI Service (Port 8000)                                     │
 ├─────────────────────────────────────────────────────────────┤
-│  PostgreSQL Database (Port 5432)                           │
+│  PostgreSQL Database (Port 5432)                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -448,10 +448,10 @@ const TEAM_A_CATEGORIES = [
 4.2 팀 B: 균형잡힌 4개 카테고리
 javascript
 const TEAM_B_CATEGORIES = [
-  'IT/과학',    // ID: 6 - 중간 업데이트 빈도
-  '세계',       // ID: 7 - 중간 업데이트 빈도
-  '스포츠',     // ID: 8 - 높은 업데이트 빈도
-  '연예'        // ID: 4 - 높은 업데이트 빈도
+  'IT/과학',   // ID: 6 - 중간 업데이트 빈도
+  '세계',      // ID: 7 - 중간 업데이트 빈도
+  '스포츠',    // ID: 8 - 높은 업데이트 빈도
+  '연예'       // ID: 4 - 높은 업데이트 빈도
 ];
 // 예상 부하: [중간][중간][높음][높음] = 평균 부하
 // Crawler B1 (Primary): 30초 간격으로 크롤링 시작

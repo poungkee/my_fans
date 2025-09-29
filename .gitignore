@@ -152,3 +152,4 @@ backend/ai/summarize-ai/*.tsbuildinfo
 
 # === Korean filename documents (temporary) ===
 "docs/AI_*"
+backend/ai/bias-analysis-ai/
