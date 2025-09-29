@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { localAIService } from '../services/localAIService';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
+import { BiasAnalysis } from '../entities/BiasAnalysis';
+import { Source } from '../entities/Source';
 
 const router = Router();
 
@@ -174,6 +176,203 @@ router.get('/ai/test-news', async (req, res) => {
   } catch (error: any) {
     console.error('Test News Error:', error);
     res.status(500).json({ error: '테스트 중 오류가 발생했습니다: ' + error.message });
+  }
+});
+
+// 언론사별 편향성 통계 API
+router.get('/ai/bias/source-statistics', async (req, res) => {
+  try {
+    const biasRepo = AppDataSource.getRepository(BiasAnalysis);
+    const sourceRepo = AppDataSource.getRepository(Source);
+
+    // 최근 30일간 데이터만 분석
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // 언론사별 편향성 통계 쿼리
+    const statistics = await biasRepo
+      .createQueryBuilder('bias')
+      .select('bias.source_id', 'sourceId')
+      .addSelect('COUNT(bias.id)', 'articleCount')
+      .addSelect('AVG(bias.political_bias)', 'avgPoliticalBias')
+      .addSelect('AVG(bias.economic_bias)', 'avgEconomicBias')
+      .addSelect('AVG(bias.social_bias)', 'avgSocialBias')
+      .addSelect('STDDEV(bias.political_bias)', 'politicalStdDev')
+      .addSelect('STDDEV(bias.economic_bias)', 'economicStdDev')
+      .addSelect('STDDEV(bias.social_bias)', 'socialStdDev')
+      .addSelect('AVG(bias.confidence_level)', 'avgConfidence')
+      .where('bias.analyzed_at >= :thirtyDaysAgo', { thirtyDaysAgo })
+      .andWhere('bias.source_id IS NOT NULL')
+      .groupBy('bias.source_id')
+      .getRawMany();
+
+    // 언론사 정보 조회
+    const sources = await sourceRepo.find();
+    const sourceMap = new Map(sources.map(s => [s.id.toString(), s.name]));
+
+    // 결과 포맷팅
+    const formattedStats = statistics.map(stat => {
+      const politicalBias = parseFloat(stat.avgPoliticalBias) || 0;
+      const economicBias = parseFloat(stat.avgEconomicBias) || 0;
+      const socialBias = parseFloat(stat.avgSocialBias) || 0;
+
+      // 전체 편향성 점수 계산 (3개 영역 평균)
+      const overallBias = (politicalBias + economicBias + socialBias) / 3;
+
+      // 편향 성향 판단
+      let stance = '중도';
+      if (politicalBias < -3) stance = '진보';
+      else if (politicalBias > 3) stance = '보수';
+
+      // 일관성 점수 계산 (표준편차가 낮을수록 일관성이 높음)
+      const avgStdDev = (
+        parseFloat(stat.politicalStdDev || 0) +
+        parseFloat(stat.economicStdDev || 0) +
+        parseFloat(stat.socialStdDev || 0)
+      ) / 3;
+      const consistency = Math.max(0, 100 - (avgStdDev * 10)); // 0-100 점수로 변환
+
+      return {
+        sourceId: stat.sourceId,
+        sourceName: sourceMap.get(stat.sourceId.toString()) || '알 수 없음',
+        articleCount: parseInt(stat.articleCount),
+        biasScores: {
+          political: Math.round(politicalBias * 10) / 10,
+          economic: Math.round(economicBias * 10) / 10,
+          social: Math.round(socialBias * 10) / 10,
+          overall: Math.round(overallBias * 10) / 10
+        },
+        stance: stance,
+        consistency: Math.round(consistency),
+        standardDeviations: {
+          political: Math.round(parseFloat(stat.politicalStdDev || 0) * 100) / 100,
+          economic: Math.round(parseFloat(stat.economicStdDev || 0) * 100) / 100,
+          social: Math.round(parseFloat(stat.socialStdDev || 0) * 100) / 100
+        },
+        avgConfidence: Math.round(parseFloat(stat.avgConfidence || 0) * 100) / 100,
+        period: '최근 30일'
+      };
+    });
+
+    // 편향성 점수로 정렬
+    formattedStats.sort((a, b) => Math.abs(b.biasScores.overall) - Math.abs(a.biasScores.overall));
+
+    res.json({
+      success: true,
+      data: formattedStats,
+      metadata: {
+        period: '최근 30일',
+        totalSources: formattedStats.length,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    console.error('Source bias statistics error:', error);
+    res.status(500).json({
+      success: false,
+      error: '언론사별 편향성 통계 조회 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// 특정 언론사의 편향성 통계 API
+router.get('/ai/bias/source/:sourceName', async (req, res) => {
+  try {
+    const { sourceName } = req.params;
+    const sourceRepo = AppDataSource.getRepository(Source);
+    const biasRepo = AppDataSource.getRepository(BiasAnalysis);
+
+    // 언론사 찾기
+    const source = await sourceRepo.findOne({ where: { name: sourceName } });
+    if (!source) {
+      return res.status(404).json({
+        success: false,
+        error: '해당 언론사를 찾을 수 없습니다'
+      });
+    }
+
+    // 최근 30일간 데이터
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // 해당 언론사의 편향성 통계
+    const statistics = await biasRepo
+      .createQueryBuilder('bias')
+      .select('COUNT(bias.id)', 'articleCount')
+      .addSelect('AVG(bias.political_bias)', 'avgPoliticalBias')
+      .addSelect('AVG(bias.economic_bias)', 'avgEconomicBias')
+      .addSelect('AVG(bias.social_bias)', 'avgSocialBias')
+      .addSelect('STDDEV(bias.political_bias)', 'politicalStdDev')
+      .addSelect('STDDEV(bias.economic_bias)', 'economicStdDev')
+      .addSelect('STDDEV(bias.social_bias)', 'socialStdDev')
+      .addSelect('AVG(bias.confidence_level)', 'avgConfidence')
+      .addSelect('MIN(bias.political_bias)', 'minPoliticalBias')
+      .addSelect('MAX(bias.political_bias)', 'maxPoliticalBias')
+      .where('bias.source_id = :sourceId', { sourceId: source.id })
+      .andWhere('bias.analyzed_at >= :thirtyDaysAgo', { thirtyDaysAgo })
+      .getRawOne();
+
+    if (!statistics || parseInt(statistics.articleCount) === 0) {
+      return res.json({
+        success: true,
+        data: {
+          sourceName: source.name,
+          message: '최근 30일간 분석된 기사가 없습니다'
+        }
+      });
+    }
+
+    const politicalBias = parseFloat(statistics.avgPoliticalBias) || 0;
+    const economicBias = parseFloat(statistics.avgEconomicBias) || 0;
+    const socialBias = parseFloat(statistics.avgSocialBias) || 0;
+    const overallBias = (politicalBias + economicBias + socialBias) / 3;
+
+    let stance = '중도';
+    if (politicalBias < -3) stance = '진보';
+    else if (politicalBias > 3) stance = '보수';
+
+    const avgStdDev = (
+      parseFloat(statistics.politicalStdDev || 0) +
+      parseFloat(statistics.economicStdDev || 0) +
+      parseFloat(statistics.socialStdDev || 0)
+    ) / 3;
+    const consistency = Math.max(0, 100 - (avgStdDev * 10));
+
+    res.json({
+      success: true,
+      data: {
+        sourceName: source.name,
+        articleCount: parseInt(statistics.articleCount),
+        biasScores: {
+          political: Math.round(politicalBias * 10) / 10,
+          economic: Math.round(economicBias * 10) / 10,
+          social: Math.round(socialBias * 10) / 10,
+          overall: Math.round(overallBias * 10) / 10
+        },
+        stance: stance,
+        consistency: Math.round(consistency),
+        range: {
+          political: {
+            min: Math.round(parseFloat(statistics.minPoliticalBias || 0) * 10) / 10,
+            max: Math.round(parseFloat(statistics.maxPoliticalBias || 0) * 10) / 10
+          }
+        },
+        standardDeviations: {
+          political: Math.round(parseFloat(statistics.politicalStdDev || 0) * 100) / 100,
+          economic: Math.round(parseFloat(statistics.economicStdDev || 0) * 100) / 100,
+          social: Math.round(parseFloat(statistics.socialStdDev || 0) * 100) / 100
+        },
+        avgConfidence: Math.round(parseFloat(statistics.avgConfidence || 0) * 100) / 100,
+        period: '최근 30일',
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    console.error('Source bias detail error:', error);
+    res.status(500).json({
+      success: false,
+      error: '언론사 편향성 상세 조회 중 오류가 발생했습니다'
+    });
   }
 });
 

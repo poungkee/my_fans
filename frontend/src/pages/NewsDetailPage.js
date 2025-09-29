@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import SourceBiasChart from '../components/SourceBiasChart';
+import ArticleAnalysis from '../components/ArticleAnalysis';
 import './NewsDetailPage.css';
 
 function NewsDetailPage() {
@@ -1005,38 +1007,42 @@ function NewsDetailPage() {
 
               {activeTab === 'media-info' && (
                 <div className="media-info">
-                  <h4>언론사 정보</h4>
-                  <div className="media-details">
-                    <div className="info-item">
-                      <strong>언론사:</strong> {article.source || article.agency}
-                    </div>
-                    <div className="info-item">
-                      <strong>기자:</strong> {article.journalist || '정보 없음'}
-                    </div>
-                    <div className="info-item">
-                      <strong>발행일:</strong> {formatDate(article.pub_date)}
-                    </div>
-                    <div className="info-item">
-                      <strong>수정일:</strong> {formatDate(article.updated_at)}
-                    </div>
-                    {article.url && (
+                  <div className="media-info-section">
+                    <h4>언론사 정보</h4>
+                    <div className="media-details">
                       <div className="info-item">
-                        <strong>원문:</strong>
-                        <a href={article.url} target="_blank" rel="noopener noreferrer">
-                          기사 원문 보기
-                        </a>
+                        <strong>언론사:</strong> {article.source || article.agency}
                       </div>
-                    )}
+                      <div className="info-item">
+                        <strong>기자:</strong> {article.journalist || '정보 없음'}
+                      </div>
+                      <div className="info-item">
+                        <strong>발행일:</strong> {formatDate(article.pub_date)}
+                      </div>
+                      <div className="info-item">
+                        <strong>수정일:</strong> {formatDate(article.updated_at)}
+                      </div>
+                      {article.url && (
+                        <div className="info-item">
+                          <strong>원문:</strong>
+                          <a href={article.url} target="_blank" rel="noopener noreferrer">
+                            기사 원문 보기
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 언론사 편향성 차트 추가 */}
+                  <div className="media-bias-section">
+                    <SourceBiasChart articleSource={article.source || article.agency} />
                   </div>
                 </div>
               )}
 
               {activeTab === 'analysis' && (
                 <div className="analysis-info">
-                  <h4>분석</h4>
-                  <div className="analysis-content">
-                    <p>기사 분석 결과가 여기에 표시됩니다.</p>
-                  </div>
+                  <ArticleAnalysis articleId={id} articleContent={article.content} />
                 </div>
               )}
             </div>

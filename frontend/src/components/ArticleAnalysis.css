@@ -1,0 +1,387 @@
+.article-analysis {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.analysis-header h4 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.analyze-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.analyze-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* 로딩 상태 */
+.analysis-loading {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 에러 상태 */
+.analysis-error {
+  text-align: center;
+  padding: 40px;
+  background: #fff3e0;
+  border-radius: 8px;
+  color: #e65100;
+}
+
+.retry-btn {
+  margin-top: 16px;
+  background: #ff9800;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* 분석 결과 */
+.analysis-results {
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.analysis-section {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.analysis-section h5 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #444;
+}
+
+/* 감성 분석 */
+.sentiment-result {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sentiment-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sentiment-label {
+  padding: 8px 20px;
+  border-radius: 20px;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.confidence-score {
+  color: #666;
+  font-size: 14px;
+}
+
+.sentiment-details {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.sentiment-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  min-width: 60px;
+  font-size: 14px;
+  color: #666;
+}
+
+.bar-track {
+  flex: 1;
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.bar-fill.positive {
+  background: #4caf50;
+}
+
+.bar-fill.negative {
+  background: #f44336;
+}
+
+.bar-value {
+  min-width: 30px;
+  text-align: right;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 키워드 클라우드 */
+.keywords-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+}
+
+.keyword-tag {
+  display: inline-block;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.keyword-tag:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* 정치 분석 */
+.political-result {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.bias-meter {
+  margin-bottom: 24px;
+}
+
+.meter-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.meter-track {
+  position: relative;
+  height: 12px;
+  background: linear-gradient(90deg,
+    #1976d2 0%,
+    #42a5f5 20%,
+    #e0e0e0 45%,
+    #e0e0e0 55%,
+    #ef5350 80%,
+    #d32f2f 100%
+  );
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.meter-pointer {
+  position: absolute;
+  top: -4px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border: 3px solid #333;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  transition: left 0.5s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.meter-value {
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.political-stance {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.stance-badge {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 정당별 분석 */
+.party-analysis {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.party-analysis h6 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.party-card {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.party-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.party-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.party-sentiment-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #e0e0e0;
+}
+
+.mini-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.mini-bar.positive {
+  background: #4caf50;
+}
+
+.mini-bar.neutral {
+  background: #9e9e9e;
+}
+
+.mini-bar.negative {
+  background: #f44336;
+}
+
+/* 빈 상태 */
+.analysis-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.analysis-description {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #999;
+}
+
+/* Footer */
+.analysis-footer {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 24px;
+  color: #999;
+  font-size: 12px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .article-analysis {
+    padding: 16px;
+  }
+
+  .analysis-section {
+    padding: 16px;
+  }
+
+  .party-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bar-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bar-track {
+    width: 100%;
+  }
+}

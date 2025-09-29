@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS keywords CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS sources CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS market_summary CASCADE;
 
 -- ================================
 -- 1. 기본 마스터 테이블
@@ -47,7 +48,8 @@ CREATE TABLE users (
 -- 언론사 마스터 (OID 기반 14개 타겟 언론사)
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY, -- OID를 직접 사용
-    name VARCHAR(100) NOT NULL UNIQUE
+    name VARCHAR(100) NOT NULL UNIQUE,
+    logo_url VARCHAR(500)
 );
 
 -- 카테고리 마스터 (간소화)
@@ -377,7 +379,32 @@ CREATE TRIGGER trigger_bookmark_sync
     FOR EACH ROW EXECUTE FUNCTION sync_bookmark_action();
 
 -- ================================
--- 8. 뷰 생성 (편의성)
+-- 8. 증시 데이터 테이블
+-- ================================
+
+-- 증시 요약 정보 테이블
+CREATE TABLE market_summary (
+    id BIGSERIAL PRIMARY KEY,
+    market_type VARCHAR(50) NOT NULL, -- 지수/환율/상품 등
+    name VARCHAR(100) NOT NULL,       -- KOSPI, KOSDAQ, USD/KRW 등
+    current_value DECIMAL(12,2),      -- 현재값
+    change_value DECIMAL(10,2),       -- 변동값
+    change_percent DECIMAL(5,2),      -- 변동률(%)
+    volume BIGINT,                    -- 거래량
+    trading_value DECIMAL(15,2),      -- 거래대금
+    high_value DECIMAL(12,2),         -- 고가
+    low_value DECIMAL(12,2),          -- 저가
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(market_type, name)
+);
+
+-- 증시 데이터 인덱스
+CREATE INDEX idx_market_summary_type ON market_summary(market_type);
+CREATE INDEX idx_market_summary_updated ON market_summary(updated_at DESC);
+
+-- ================================
+-- 9. 뷰 생성 (편의성)
 -- ================================
 
 -- 뉴스 상세 뷰 (조인 간소화)
@@ -466,12 +493,30 @@ INSERT INTO sources (id, name) VALUES
     (448, 'JTBC')
 ON CONFLICT (id) DO NOTHING;
 
+-- 초기 증시 샘플 데이터 (실제 API 연동 전까지 사용)
+INSERT INTO market_summary (market_type, name, current_value, change_value, change_percent, volume) VALUES
+    ('지수', 'KOSPI', 2672.18, 15.44, 0.58, 521234000),
+    ('지수', 'KOSDAQ', 775.82, 3.24, 0.42, 892145000),
+    ('지수', 'KOSPI200', 355.76, 2.13, 0.60, NULL),
+    ('환율', 'USD/KRW', 1334.50, -2.30, -0.17, NULL),
+    ('환율', 'EUR/KRW', 1485.23, 3.45, 0.23, NULL),
+    ('환율', 'JPY/KRW', 893.22, -1.56, -0.17, NULL),
+    ('지수', 'S&P 500', 5702.55, 23.11, 0.41, 3845670000),
+    ('지수', 'NASDAQ', 18119.59, 115.94, 0.64, 4523120000),
+    ('지수', 'DOW', 42313.00, 137.89, 0.33, 3012450000)
+ON CONFLICT (market_type, name) DO UPDATE SET
+    current_value = EXCLUDED.current_value,
+    change_value = EXCLUDED.change_value,
+    change_percent = EXCLUDED.change_percent,
+    volume = EXCLUDED.volume,
+    updated_at = NOW();
+
 -- ================================
 -- 완료 메시지
 -- ================================
 DO $$
 BEGIN
     RAISE NOTICE '✅ FANS 데이터베이스 구조 생성 완료!';
-    RAISE NOTICE '📊 테이블 13개, 인덱스 20개, 트리거 8개, 뷰 3개 생성됨';
+    RAISE NOTICE '📊 테이블 14개, 인덱스 22개, 트리거 8개, 뷰 3개 생성됨';
     RAISE NOTICE '🚀 다음 단계: TypeORM 엔티티 생성 및 API 구현';
 END $$;
