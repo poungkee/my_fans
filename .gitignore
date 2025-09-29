@@ -153,3 +153,6 @@ backend/ai/summarize-ai/*.tsbuildinfo
 # === Korean filename documents (temporary) ===
 "docs/AI_*"
 backend/ai/bias-analysis-ai/
+
+# === AI Training Data ===
+backend/ai/bias-analysis-ai/ai-training/
