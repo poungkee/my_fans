@@ -111,8 +111,8 @@ async function startServer() {
       // 뉴스 크롤링 스케줄러 자동 시작
       console.log('🔄 Starting news crawler scheduler...');
       newsSchedulerService.start({
-        intervalMinutes: 0.5, // 30초마다 실행
-        limitPerCategory: 1, // 카테고리당 1개씩 수집
+        intervalMinutes: 5, // 5분마다 실행
+        limitPerCategory: 20, // 카테고리당 20개씩 수집
         enabled: true
       });
     });

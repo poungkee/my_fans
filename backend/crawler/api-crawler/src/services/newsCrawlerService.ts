@@ -762,6 +762,20 @@ class NewsCrawlerService {
       const existingNews = await newsRepo.findOne({ where: { url: originalUrl } });
       if (existingNews) {
         console.log('이미 존재하는 뉴스:', originalUrl);
+
+        // 이미 존재하는 기사도 분석이 없으면 분석 실행
+        const biasRepo = AppDataSource.getRepository('BiasAnalysis');
+        const existingAnalysis = await biasRepo.findOne({ where: { articleId: existingNews.id } });
+
+        if (!existingAnalysis && parsedNews.content) {
+          try {
+            await this.analyzeBias(existingNews.id, parsedNews.content);
+            console.log(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
+          } catch (biasError) {
+            console.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
+          }
+        }
+
         return existingNews;
       }
 
