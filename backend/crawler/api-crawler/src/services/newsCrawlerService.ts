@@ -767,9 +767,9 @@ class NewsCrawlerService {
         const biasRepo = AppDataSource.getRepository('BiasAnalysis');
         const existingAnalysis = await biasRepo.findOne({ where: { articleId: existingNews.id } });
 
-        if (!existingAnalysis && parsedNews.content) {
+        if (!existingAnalysis && existingNews.content) {
           try {
-            await this.analyzeBias(existingNews.id, parsedNews.content);
+            await this.analyzeBias(existingNews.id, existingNews.content);
             console.log(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
           } catch (biasError) {
             console.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
