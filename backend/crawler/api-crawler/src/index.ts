@@ -60,13 +60,33 @@ app.get('/categories', (req, res) => {
   });
 });
 
+// 기존 기사 편향성 분석 (분석 안된 기사들)
+app.post('/analyze/backfill', async (req, res) => {
+  try {
+    const limit = Number(req.body?.limit) || 100; // 기본값 100개씩
+    console.log(`📊 기존 기사 편향성 분석 시작... (최대 ${limit}개)`);
+
+    const result = await newsCrawlerService.analyzeExistingArticles(limit);
+
+    res.json({
+      message: '기존 기사 분석 완료',
+      ...result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('기존 기사 분석 실패:', error);
+    res.status(500).json({ error: '기존 기사 분석 중 오류가 발생했습니다' });
+  }
+});
+
 // 크롤러 상태 조회
-app.get('/status', (req, res) => {
+app.get('/status', (_req, res) => {
   res.json({
     status: 'running',
     supportedCategories: newsCrawlerService.getSupportedCategories(),
     endpoints: [
       'POST /crawl/start - API 크롤링 시작',
+      'POST /analyze/backfill - 기존 기사 편향성 분석',
       'GET /categories - 지원하는 카테고리 목록',
       'GET /health - 헬스체크'
     ],

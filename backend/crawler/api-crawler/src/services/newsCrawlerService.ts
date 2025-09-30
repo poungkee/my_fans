@@ -1075,6 +1075,59 @@ class NewsCrawlerService {
       throw error;
     }
   }
+
+  // 기존 기사 중 분석되지 않은 기사들을 분석
+  async analyzeExistingArticles(limit: number = 100): Promise<{
+    total: number;
+    analyzed: number;
+    failed: number;
+    skipped: number;
+  }> {
+    const newsRepo = AppDataSource.getRepository('NewsArticle');
+
+    // 분석되지 않은 기사 조회
+    const articles = await newsRepo
+      .createQueryBuilder('article')
+      .leftJoin('bias_analysis', 'ba', 'ba.article_id = article.id')
+      .where('ba.id IS NULL')
+      .andWhere('article.content IS NOT NULL')
+      .andWhere("LENGTH(article.content) >= 100")
+      .limit(limit)
+      .getMany();
+
+    console.log(`[기존 기사 분석] 총 ${articles.length}개 기사 분석 시작`);
+
+    let analyzed = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    for (const article of articles) {
+      try {
+        if (!article.content || article.content.length < 100) {
+          skipped++;
+          continue;
+        }
+
+        await this.analyzeBias(article.id, article.content);
+        analyzed++;
+
+        // 과부하 방지를 위한 딜레이
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`[기존 기사 분석 실패] 기사 ID ${article.id}:`, error);
+        failed++;
+      }
+    }
+
+    console.log(`[기존 기사 분석 완료] 성공: ${analyzed}, 실패: ${failed}, 스킵: ${skipped}`);
+
+    return {
+      total: articles.length,
+      analyzed,
+      failed,
+      skipped
+    };
+  }
 }
 
 export const newsCrawlerService = new NewsCrawlerService();
