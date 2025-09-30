@@ -1,12 +1,13 @@
 import 'reflect-metadata';
+import dotenv from 'dotenv';
+
+// 환경변수 먼저 로드 (docker-compose의 env_file이 우선, 없으면 로컬 .env)
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { AppDataSource } from './config/database';
 import { newsCrawlerService } from './services/newsCrawlerService';
-
-// 환경변수 로드
-dotenv.config({ path: '../.env' });
 
 const app = express();
 const PORT = parseInt(process.env.API_CRAWLER_PORT || '4003', 10);
@@ -26,8 +27,10 @@ app.get('/health', (req, res) => {
 // API 크롤링 시작
 app.post('/crawl/start', async (req, res) => {
   try {
-    console.log('📰 API 크롤링 시작...');
-    const results = await newsCrawlerService.crawlAllCategories(1);
+    console.log('Request body:', req.body);
+    const limit = Number(req.body?.limit) || 5; // 기본값 5
+    console.log(`📰 API 크롤링 시작... (카테고리당 ${limit}개)`);
+    const results = await newsCrawlerService.crawlAllCategories(limit);
 
     let totalCollected = 0;
     const summary: string[] = [];

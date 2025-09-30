@@ -31,23 +31,53 @@ interface ParsedNews {
 }
 
 class NewsCrawlerService {
-  private _naverClientId: string | null = null;
-  private _naverClientSecret: string | null = null;
+  // Naver API 키 설정 (2개 키를 라운드 로빈 방식으로 사용)
+  private naverApiKeys: Array<{ clientId: string; clientSecret: string }> = [];
+  private currentKeyIndex: number = 0;
 
-  private get NAVER_CLIENT_ID(): string {
-    if (this._naverClientId === null) {
-      this._naverClientId = process.env.NAVER_CLIENT_ID || '';
-      console.log('[CRAWLER DEBUG] NAVER_CLIENT_ID:', this._naverClientId ? '***PRESENT***' : 'MISSING');
+  constructor() {
+    console.log('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
+
+    // 환경변수에서 2개의 Naver API 키 로드
+    const key1Id = process.env.NAVER_CLIENT_ID || '';
+    const key1Secret = process.env.NAVER_CLIENT_SECRET || '';
+    const key2Id = process.env.NAVER_CLIENT_ID_2 || '';
+    const key2Secret = process.env.NAVER_CLIENT_SECRET_2 || '';
+
+    console.log(`[CRAWLER DEBUG] Key1 존재: ${!!key1Id}, Key2 존재: ${!!key2Id}`);
+
+    // 첫 번째 키 추가
+    if (key1Id && key1Secret) {
+      this.naverApiKeys.push({ clientId: key1Id, clientSecret: key1Secret });
+      console.log('[CRAWLER DEBUG] ✅ Naver API Key #1 로드됨');
+    } else {
+      console.log('[CRAWLER DEBUG] ❌ Naver API Key #1 없음');
     }
-    return this._naverClientId;
+
+    // 두 번째 키 추가
+    if (key2Id && key2Secret) {
+      this.naverApiKeys.push({ clientId: key2Id, clientSecret: key2Secret });
+      console.log('[CRAWLER DEBUG] ✅ Naver API Key #2 로드됨');
+    } else {
+      console.log('[CRAWLER DEBUG] ❌ Naver API Key #2 없음');
+    }
+
+    console.log(`[CRAWLER DEBUG] 🔑 총 ${this.naverApiKeys.length}개의 Naver API 키 사용 가능`);
   }
 
-  private get NAVER_CLIENT_SECRET(): string {
-    if (this._naverClientSecret === null) {
-      this._naverClientSecret = process.env.NAVER_CLIENT_SECRET || '';
-      console.log('[CRAWLER DEBUG] NAVER_CLIENT_SECRET:', this._naverClientSecret ? '***PRESENT***' : 'MISSING');
+  // 현재 사용할 API 키 가져오기 (라운드 로빈)
+  private getCurrentApiKey(): { clientId: string; clientSecret: string } {
+    if (this.naverApiKeys.length === 0) {
+      throw new Error('Naver API 키가 설정되지 않았습니다.');
     }
-    return this._naverClientSecret;
+
+    const key = this.naverApiKeys[this.currentKeyIndex];
+    console.log(`[CRAWLER DEBUG] API Key #${this.currentKeyIndex + 1} 사용 중`);
+
+    // 다음 요청을 위해 인덱스 증가 (라운드 로빈)
+    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.naverApiKeys.length;
+
+    return key;
   }
   // 텍스트 정리 함수
   // URL에서 언론사 추출
@@ -300,10 +330,13 @@ class NewsCrawlerService {
 
       console.log(`[API DEBUG] 검색어: "${enhancedQuery}"`);
 
+      // 라운드 로빈 방식으로 API 키 선택
+      const apiKey = this.getCurrentApiKey();
+
       const response = await axios.get(url, {
         headers: {
-          'X-Naver-Client-Id': this.NAVER_CLIENT_ID,
-          'X-Naver-Client-Secret': this.NAVER_CLIENT_SECRET,
+          'X-Naver-Client-Id': apiKey.clientId,
+          'X-Naver-Client-Secret': apiKey.clientSecret,
         }
       });
 
@@ -744,13 +777,14 @@ class NewsCrawlerService {
         '스포츠': 8
       };
 
-      // 언론사 ID 매핑 (14개 타겟 언론사 - 실제 DB ID 기준)
+      // 언론사 ID 매핑 (실제 DB ID 기준)
       const sourceIdMap: { [key: string]: number } = {
         '연합뉴스': 1, '동아일보': 20, '문화일보': 21,
         '세계일보': 22, '조선일보': 23, '중앙일보': 25,
         '한겨레': 28, '경향신문': 32, '한국일보': 55,
         '매일경제': 56, '한국경제': 214, '머니투데이': 421,
-        'YTN': 437, 'JTBC': 448
+        'YTN': 437, 'JTBC': 448,
+        '기타': 449  // 목록에 없는 언론사는 기타로 분류
       };
 
       // URL과 제목에서 언론사 추출 (RSS 크롤러와 동일한 방식)
@@ -769,15 +803,12 @@ class NewsCrawlerService {
       }
 
       // 추출된 언론사명으로 sourceId 결정
-      const sourceId = sourceIdMap[extractedSource] || 1; // 기본값: 연합뉴스
+      // 매핑에 없는 언론사는 '기타'(449)로 분류
+      const sourceId = sourceIdMap[extractedSource] || 449;
 
-      console.log(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId}`);
+      console.log(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId} ${sourceId === 449 ? '(기타)' : ''}`);
 
-      // 타겟 언론사가 아닌 경우 저장하지 않음 (추출된 언론사가 있을 때만)
-      if (extractedSource && !sourceIdMap[extractedSource]) {
-        console.log(`[DEBUG] 비타겟 언론사로 뉴스 저장 건너뜀: ${extractedSource}`);
-        return null;
-      }
+      // ✅ 모든 뉴스를 저장 (목록에 없으면 '기타'로 저장)
 
       // NewsArticle 생성 (새 스키마)
       const article = newsRepo.create({
@@ -793,7 +824,13 @@ class NewsCrawlerService {
 
       const savedArticle = await newsRepo.save(article);
 
-      // AI 요약 기능 제거 - 크롤러에서는 기본 데이터만 수집
+      // AI 편향성 분석 자동 실행
+      try {
+        await this.analyzeBias(savedArticle.id, parsedNews.content);
+      } catch (biasError) {
+        console.error(`[편향성 분석 실패] 기사 ID ${savedArticle.id}:`, biasError);
+        // 편향성 분석 실패해도 기사는 저장됨
+      }
 
       return savedArticle;
 
@@ -982,6 +1019,46 @@ class NewsCrawlerService {
     } catch (error) {
       console.log(`[API DEBUG] URL 파싱 오류: ${url}`);
       return '';
+    }
+  }
+
+  // AI 편향성 분석 실행
+  private async analyzeBias(articleId: number, content: string): Promise<void> {
+    if (!content || content.length < 100) {
+      console.log(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
+      return;
+    }
+
+    try {
+      const BIAS_AI_URL = 'http://bias-analysis-ai:8002';
+
+      // bias-analysis-ai 서비스 호출
+      const response = await axios.post(`${BIAS_AI_URL}/analyze/full`, {
+        text: content,
+        article_id: articleId
+      }, {
+        timeout: 30000 // 30초 타임아웃
+      });
+
+      if (response.data) {
+        // BiasAnalysis 엔티티에 저장
+        const biasRepo = AppDataSource.getRepository('BiasAnalysis');
+
+        const political = response.data.political;
+        const biasAnalysis = biasRepo.create({
+          articleId: articleId,
+          biasScore: political?.bias_score || 0,
+          politicalLeaning: political?.leaning || 'neutral',
+          confidence: response.data.sentiment?.confidence || 0,
+          analysisData: response.data
+        });
+
+        await biasRepo.save(biasAnalysis);
+        console.log(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
+      }
+    } catch (error: any) {
+      console.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);
+      throw error;
     }
   }
 }

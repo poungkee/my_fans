@@ -87,10 +87,10 @@ function SourceBiasChart({ sourceName, articleSource }) {
       {/* 종합 편향성 스코어 카드 */}
       <div className="overall-score-card">
         <div className="score-main">
-          <div className="score-value" style={{ color: getColorByBias(biasData.biasScores.political) }}>
-            {biasData.biasScores.overall > 0 ? '+' : ''}{biasData.biasScores.overall}
+          <div className="score-value" style={{ color: getColorByBias(biasData.biasScore) }}>
+            {biasData.biasScore > 0 ? '+' : ''}{biasData.biasScore}
           </div>
-          <div className="score-label">종합 편향성</div>
+          <div className="score-label">편향성 점수</div>
         </div>
         <div className="score-stance">
           <span className={`stance-badge stance-${biasData.stance}`}>
@@ -104,7 +104,7 @@ function SourceBiasChart({ sourceName, articleSource }) {
         <div className="scale-item">
           <div className="scale-header">
             <span className="scale-title">정치적 편향성</span>
-            <span className="scale-value">{biasData.biasScores.political > 0 ? '+' : ''}{biasData.biasScores.political}</span>
+            <span className="scale-value">{biasData.biasScore > 0 ? '+' : ''}{biasData.biasScore}</span>
           </div>
           <div className="scale-bar">
             <div className="scale-track">
@@ -118,60 +118,8 @@ function SourceBiasChart({ sourceName, articleSource }) {
                 <div
                   className="scale-indicator"
                   style={{
-                    left: `${getPositionPercentage(biasData.biasScores.political)}%`,
-                    backgroundColor: getColorByBias(biasData.biasScores.political)
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="scale-item">
-          <div className="scale-header">
-            <span className="scale-title">경제적 편향성</span>
-            <span className="scale-value">{biasData.biasScores.economic > 0 ? '+' : ''}{biasData.biasScores.economic}</span>
-          </div>
-          <div className="scale-bar">
-            <div className="scale-track">
-              <div className="scale-labels">
-                <span>진보</span>
-                <span>중도</span>
-                <span>보수</span>
-              </div>
-              <div className="scale-line">
-                <div className="scale-center-mark"></div>
-                <div
-                  className="scale-indicator"
-                  style={{
-                    left: `${getPositionPercentage(biasData.biasScores.economic)}%`,
-                    backgroundColor: getColorByBias(biasData.biasScores.economic)
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="scale-item">
-          <div className="scale-header">
-            <span className="scale-title">사회적 편향성</span>
-            <span className="scale-value">{biasData.biasScores.social > 0 ? '+' : ''}{biasData.biasScores.social}</span>
-          </div>
-          <div className="scale-bar">
-            <div className="scale-track">
-              <div className="scale-labels">
-                <span>진보</span>
-                <span>중도</span>
-                <span>보수</span>
-              </div>
-              <div className="scale-line">
-                <div className="scale-center-mark"></div>
-                <div
-                  className="scale-indicator"
-                  style={{
-                    left: `${getPositionPercentage(biasData.biasScores.social)}%`,
-                    backgroundColor: getColorByBias(biasData.biasScores.social)
+                    left: `${getPositionPercentage(biasData.biasScore)}%`,
+                    backgroundColor: getColorByBias(biasData.biasScore)
                   }}
                 />
               </div>
@@ -229,30 +177,22 @@ function SourceBiasChart({ sourceName, articleSource }) {
           <table>
             <thead>
               <tr>
-                <th>영역</th>
-                <th>평균</th>
-                <th>표준편차</th>
-                <th>범위</th>
+                <th>항목</th>
+                <th>값</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>정치</td>
-                <td>{biasData.biasScores.political}</td>
-                <td>{biasData.standardDeviations.political}</td>
-                <td>{biasData.range?.political ? `${biasData.range.political.min} ~ ${biasData.range.political.max}` : 'N/A'}</td>
+                <td>평균 편향성 점수</td>
+                <td>{biasData.biasScore}</td>
               </tr>
               <tr>
-                <td>경제</td>
-                <td>{biasData.biasScores.economic}</td>
-                <td>{biasData.standardDeviations.economic}</td>
-                <td>-</td>
+                <td>표준편차</td>
+                <td>{biasData.standardDeviation}</td>
               </tr>
               <tr>
-                <td>사회</td>
-                <td>{biasData.biasScores.social}</td>
-                <td>{biasData.standardDeviations.social}</td>
-                <td>-</td>
+                <td>범위</td>
+                <td>{biasData.range ? `${biasData.range.min} ~ ${biasData.range.max}` : 'N/A'}</td>
               </tr>
             </tbody>
           </table>

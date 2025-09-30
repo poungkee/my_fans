@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { NewsArticle } from './NewsArticle';
-import { BiasAnalysis } from './BiasAnalysis';
 
 @Entity('sources')
 export class Source {
@@ -16,7 +15,4 @@ export class Source {
     // 관계 설정
     @OneToMany(() => NewsArticle, (article) => article.source)
     articles: NewsArticle[];
-
-    @OneToMany(() => BiasAnalysis, (bias) => bias.source)
-    biasAnalyses: BiasAnalysis[];
 }

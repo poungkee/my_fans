@@ -888,11 +888,10 @@ class RSSCrawlerService {
       '머니투데이': 421,
       'YTN': 437,
       'JTBC': 448,
-      '국민일보': 1, // 매핑되지 않은 경우 연합뉴스로
-      '스타투데이': 1 // 기본값으로 연합뉴스 사용
+      '기타': 449  // 목록에 없는 언론사는 기타로 분류
     };
 
-    return sourceIdMap[sourceName] || 1; // 매핑되지 않은 경우 기본값
+    return sourceIdMap[sourceName] || 449; // 매핑되지 않은 경우 '기타'로 분류
   }
 
   // 텍스트 정리 함수

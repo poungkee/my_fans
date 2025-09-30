@@ -264,7 +264,7 @@ router.get("/news/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const article = await newsRepo.findOne({
       where: { id },
-      relations: ["source", "category", "stats", "newsKeywords", "newsKeywords.keyword"]
+      relations: ["source", "category", "stats"]
     });
 
     if (!article) return res.status(404).json({ error: "NOT_FOUND" });
@@ -280,12 +280,24 @@ router.get("/news/:id", async (req: Request, res: Response) => {
 
     const result = await mapArticle(article);
 
-    // 키워드 추가
-    if (article.newsKeywords) {
-      result.keywords = article.newsKeywords.map(nk => ({
-        keyword: nk.keyword?.keyword,
-        relevance: nk.relevance
-      }));
+    // 키워드 별도 조회 (옵셔널)
+    try {
+      const newsKeywordRepo = AppDataSource.getRepository('NewsKeyword');
+      const keywords = await newsKeywordRepo
+        .createQueryBuilder('nk')
+        .leftJoinAndSelect('nk.keyword', 'k')
+        .where('nk.news_id = :newsId', { newsId: id })
+        .getMany();
+
+      if (keywords && keywords.length > 0) {
+        result.keywords = keywords.map((nk: any) => ({
+          keyword: nk.keyword?.keyword,
+          relevance: nk.relevance
+        }));
+      }
+    } catch (keywordError) {
+      console.warn("키워드 조회 실패:", keywordError);
+      // 키워드 조회 실패해도 기사는 반환
     }
 
     res.json(result);

@@ -140,21 +140,19 @@
 | `feedback_score` | INT | NULLABLE | 피드백 점수 | -1, 0, 1 |
 | `created_at` | TIMESTAMPTZ | NOT NULL | 추천 생성일 | "2025-01-15 09:00:00+09" |
 
-#### 12. `bias_analysis` - 편향성 분석
+#### 12. `bias_analysis` - 편향성 분석 (자동 분석)
 | 컬럼명 | 타입 | 제약조건 | 설명 | 저장 예시 |
 |--------|------|----------|------|-----------|
 | `id` | BIGINT | PK, AUTO_INCREMENT | 분석 ID | 1, 2, 3... |
-| `article_id` | BIGINT | UNIQUE, FK | 기사 ID | 100, 101, 102... |
-| `source_id` | BIGINT | FK, NULLABLE | 언론사 ID | 1, 2, 3... |
-| `journalist` | VARCHAR(100) | NULLABLE | 기자명 | "홍길동 기자" |
-| `political_bias` | DECIMAL(3,1) | NULLABLE | 정치적 편향 (-5.0~5.0) | -2.1, 0.0, 3.4 |
-| `economic_bias` | DECIMAL(3,1) | NULLABLE | 경제적 편향 (-5.0~5.0) | -1.5, 1.8, 0.2 |
-| `social_bias` | DECIMAL(3,1) | NULLABLE | 사회적 편향 (-5.0~5.0) | 0.5, -3.2, 2.1 |
-| `confidence_level` | DECIMAL(3,2) | NULLABLE | 신뢰도 (0.0~1.0) | 0.85, 0.92, 0.76 |
-| `analysis_method` | VARCHAR(50) | NULLABLE | 분석 방법 | "ML_Logistic_Regression", "rule_based" |
-| `sample_size` | INT | NULLABLE | 샘플 크기 | 100, 500, 1000 |
-| `analysis_data` | JSONB | NULLABLE | 분석 상세 데이터 | {"sentiment": {...}, "sentence_types": {...}} |
-| `analyzed_at` | TIMESTAMPTZ | NOT NULL | 분석 일시 | "2025-01-15 11:00:00+09" |
+| `article_id` | BIGINT | FK, NOT NULL | 기사 ID | 100, 101, 102... |
+| `bias_score` | DECIMAL(3,2) | NULLABLE | 편향성 점수 (-10.0~10.0) | -2.5, 0.0, 3.8 |
+| `political_leaning` | VARCHAR(50) | NULLABLE | 정치적 성향 | "진보", "보수", "중도", "neutral" |
+| `confidence` | DECIMAL(3,2) | NULLABLE | 신뢰도 (0.0~1.0) | 0.85, 0.92, 0.76 |
+| `analysis_data` | JSONB | NULLABLE | AI 분석 상세 데이터 (키워드, 감성, 정당별 분석 등) | {"sentiment": {...}, "keywords": [...], "political": {...}} |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW | 분석 일시 | "2025-01-15 11:00:00+09" |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW | 업데이트 일시 | "2025-01-15 11:05:00+09" |
+
+**참고**: 크롤링 시 bias-analysis-ai 서비스(8002)를 자동 호출하여 분석 데이터를 저장합니다.
 
 #### 13. `market_summary` - 시장 요약
 | 컬럼명 | 타입 | 제약조건 | 설명 | 저장 예시 |
@@ -189,7 +187,7 @@
 | `NewsKeyword.ts` | news_keywords | M:N 관계 매핑 |
 | `ArticleStat.ts` | article_stats | 통계 데이터 관리 |
 | `AIRecommendation.ts` | ai_recommendations | AI 추천 결과 저장 |
-| `BiasAnalysis.ts` | bias_analyses | 편향성 분석 데이터 |
+| `BiasAnalysis.ts` | bias_analysis | AI 편향성 분석 데이터 (자동 저장) |
 
 ### 엔티티 관계
 ```
@@ -255,10 +253,13 @@ GET  /api/user/status/:sourceName # 구독 상태 확인
 
 #### 🤖 AI 기능
 ```
-POST /api/ai/summarize      # 뉴스 요약 요청 (포트 8000 - summarize-ai)
-GET  /api/ai/recommendations # 개인화 추천
-POST /api/ai/bias-check     # 편향성 분석 (포트 8002 - bias-analysis-ai)
-GET  /api/ai/analyze/:id    # 기사 편향성 분석 결과 조회
+POST /api/ai/summarize                  # 뉴스 요약 요청 (포트 8000 - summarize-ai)
+POST /api/ai/summarize-news/:newsId     # 특정 기사 요약 및 DB 저장
+GET  /api/ai/recommendations             # 개인화 추천
+GET  /api/ai/bias/article/:articleId    # 특정 기사 편향성 분석 결과 조회 (자동 분석된 데이터)
+GET  /api/ai/bias/source/:sourceName    # 특정 언론사의 편향성 통계 (최근 30일)
+GET  /api/ai/bias/source-statistics     # 전체 언론사 편향성 통계 조회
+GET  /api/ai/health                      # AI 서비스 상태 확인
 ```
 
 #### 🔄 크롤러 관리
@@ -463,10 +464,24 @@ NAVER_CLIENT_ID=your-naver-id
 | `fans_postgres` | PostgreSQL | 5432 | Healthy | 메인 데이터베이스 |
 | `fans_main_api` | Backend API | 3000 | Up | 메인 API 서버 |
 | `fans_frontend` | React | 3001 | Up | 웹 프론트엔드 |
-| `fans_rss_crawler` | RSS Crawler | 4002 | Healthy | RSS 피드 크롤러 |
-| `fans_api_crawler` | API Crawler | 4003 | Healthy | 네이버 API 크롤러 |
+| `fans_rss_crawler` | RSS Crawler | 4002 | Healthy | RSS 피드 크롤러 (기사 저장 시 자동 AI 분석) |
+| `fans_api_crawler` | API Crawler | 4003 | Healthy | 네이버 API 크롤러 (기사 저장 시 자동 AI 분석) |
 | `fans_summarize_ai` | Summarize AI | 8000 | Healthy | 뉴스 요약 AI |
-| `fans_bias_analysis_ai` | Bias Analysis AI | 8002 | Healthy | 편향성 분석 AI |
+| `fans_bias_analysis_ai` | Bias Analysis AI | 8002 | Healthy | 편향성 분석 AI (크롤러가 자동 호출) |
+
+### 자동 편향성 분석 워크플로우
+
+```
+1. 크롤러 실행 (RSS/API)
+   ↓
+2. 기사 파싱 및 news_articles 테이블에 저장
+   ↓
+3. bias-analysis-ai:8002/analyze/full 자동 호출
+   ↓
+4. AI 분석 결과를 bias_analysis 테이블에 저장
+   ↓
+5. 프론트엔드에서 분석 탭 열 때 /api/ai/bias/article/:id 호출로 자동 표시
+```
 
 ### Docker Compose 실행
 

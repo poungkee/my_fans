@@ -3,64 +3,40 @@ import './ArticleAnalysis.css';
 
 function ArticleAnalysis({ articleId, articleContent }) {
   const [analysisData, setAnalysisData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const API_BASE = process.env.REACT_APP_API_BASE || '';
 
-  // AI 분석 요청
-  const requestAnalysis = async () => {
-    if (!articleContent || articleContent.length < 50) {
-      setError('분석할 내용이 너무 짧습니다');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // AI 서비스에 직접 분석 요청
-      const response = await fetch(`${API_BASE}/api/ai/analyze/full`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: articleContent,
-          article_id: articleId
-        })
-      });
-
-      if (!response.ok) {
-        // 대체 분석 API 시도
-        const fallbackResponse = await fetch(`http://localhost:8002/analyze/full`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: articleContent,
-            article_id: articleId
-          })
-        });
-
-        if (!fallbackResponse.ok) {
-          throw new Error('AI 분석 서비스를 사용할 수 없습니다');
-        }
-
-        const fallbackData = await fallbackResponse.json();
-        setAnalysisData(fallbackData);
-      } else {
-        const data = await response.json();
-        setAnalysisData(data);
+  // 컴포넌트 마운트 시 자동으로 저장된 분석 데이터 불러오기
+  useEffect(() => {
+    const fetchAnalysis = async () => {
+      if (!articleId) {
+        setError('기사 ID가 없습니다');
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error('AI 분석 오류:', err);
-      setError('AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      try {
+        // 기존에 저장된 분석 데이터 조회
+        const response = await fetch(`${API_BASE}/api/ai/bias/article/${articleId}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setAnalysisData(data);
+        } else {
+          setError('분석 데이터를 불러올 수 없습니다');
+        }
+      } catch (err) {
+        console.error('분석 데이터 조회 오류:', err);
+        setError('분석 데이터를 불러오는 중 오류가 발생했습니다');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalysis();
+  }, [articleId, API_BASE]);
 
   // 감성 라벨 한글 변환
   const getSentimentLabel = (sentiment) => {
@@ -97,26 +73,18 @@ function ArticleAnalysis({ articleId, articleContent }) {
     <div className="article-analysis">
       <div className="analysis-header">
         <h4>AI 기사 분석</h4>
-        {!loading && !analysisData && (
-          <button className="analyze-btn" onClick={requestAnalysis}>
-            분석 시작
-          </button>
-        )}
       </div>
 
       {loading && (
         <div className="analysis-loading">
           <div className="loading-spinner"></div>
-          <p>AI가 기사를 분석하고 있습니다...</p>
+          <p>분석 데이터를 불러오고 있습니다...</p>
         </div>
       )}
 
       {error && (
         <div className="analysis-error">
           <p>{error}</p>
-          <button className="retry-btn" onClick={requestAnalysis}>
-            다시 시도
-          </button>
         </div>
       )}
 
@@ -271,9 +239,9 @@ function ArticleAnalysis({ articleId, articleContent }) {
 
       {!loading && !analysisData && !error && (
         <div className="analysis-empty">
-          <p>AI 분석을 시작하려면 '분석 시작' 버튼을 클릭하세요</p>
+          <p>아직 분석 데이터가 없습니다</p>
           <p className="analysis-description">
-            기사의 감성, 키워드, 정치적 편향성 등을 분석합니다
+            기사가 크롤링되면 자동으로 분석됩니다
           </p>
         </div>
       )}

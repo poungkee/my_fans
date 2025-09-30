@@ -3,10 +3,10 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 @Entity('bias_analysis')
 export class BiasAnalysis {
     @PrimaryGeneratedColumn('increment', { type: 'bigint' })
-    id: number;
+    id!: number;
 
     @Column({ type: 'bigint', name: 'article_id' })
-    articleId: number;
+    articleId!: number;
 
     @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true, name: 'bias_score' })
     biasScore?: number;
@@ -21,8 +21,8 @@ export class BiasAnalysis {
     analysisData?: object;
 
     @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

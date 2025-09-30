@@ -5,7 +5,6 @@ import { NewsKeyword } from './NewsKeyword';
 import { UserAction } from './UserAction';
 import { Bookmark } from './Bookmark';
 import { AIRecommendation } from './AIRecommendation';
-import { BiasAnalysis } from './BiasAnalysis';
 import { ArticleStat } from './ArticleStat';
 import { Comment } from './Comment';
 
@@ -71,8 +70,6 @@ export class NewsArticle {
     @OneToMany(() => AIRecommendation, (recommendation) => recommendation.article)
     recommendations: AIRecommendation[];
 
-    @OneToMany(() => BiasAnalysis, (bias) => bias.article)
-    biasAnalyses: BiasAnalysis[];
 
     @OneToMany(() => ArticleStat, (stat) => stat.article)
     stats: ArticleStat[];
