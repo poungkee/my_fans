@@ -287,7 +287,7 @@ router.get("/news/:id", async (req: Request, res: Response) => {
       const keywords = await newsKeywordRepo
         .createQueryBuilder('nk')
         .leftJoinAndSelect('nk.keyword', 'k')
-        .where('nk.news_id = :newsId', { newsId: id })
+        .where('nk.article_id = :articleId', { articleId: id })
         .getMany();
 
       if (keywords && keywords.length > 0) {

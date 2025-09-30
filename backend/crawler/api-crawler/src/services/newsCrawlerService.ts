@@ -1,9 +1,9 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as iconv from 'iconv-lite';
-import { AppDataSource } from '../config/database';
-import { NewsArticle } from '../entities/NewsArticle';
-import logger from '../config/logger';
+import { AppDataSource } from '../../shared/config/database';
+import { NewsArticle } from '../../shared/entities/NewsArticle';
+import logger from '../../shared/config/logger';
 
 interface NaverNewsApiResponse {
   lastBuildDate: string;

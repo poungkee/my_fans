@@ -1,5 +1,5 @@
 import { newsCrawlerService } from './newsCrawlerService';
-import logger from '../config/logger';
+import logger from '../../shared/config/logger';
 
 interface SchedulerConfig {
   intervalMinutes: number;

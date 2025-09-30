@@ -85,7 +85,9 @@ services:
 
   # RSS Crawler Service (Port: 4002)
   rss-crawler:
-    build: ./backend/crawler/rss-crawler
+    build:
+      context: ./backend/crawler
+      dockerfile: ./rss-crawler/Dockerfile
     container_name: fans_rss_crawler
     ports:
       - "4002:4002"
@@ -107,7 +109,9 @@ services:
 
   # API Crawler Service (Port: 4003)
   api-crawler:
-    build: ./backend/crawler/api-crawler
+    build:
+      context: ./backend/crawler
+      dockerfile: ./api-crawler/Dockerfile
     container_name: fans_api_crawler
     ports:
       - "4003:4003"

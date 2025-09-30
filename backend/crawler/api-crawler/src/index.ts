@@ -6,9 +6,9 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { AppDataSource } from './config/database';
+import { AppDataSource } from '../shared/config/database';
 import { newsCrawlerService } from './services/newsCrawlerService';
-import logger from './config/logger';
+import logger from '../shared/config/logger';
 
 const app = express();
 const PORT = parseInt(process.env.API_CRAWLER_PORT || '4003', 10);

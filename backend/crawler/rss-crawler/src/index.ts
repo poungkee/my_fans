@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { AppDataSource } from './config/database';
+import { AppDataSource } from '../shared/config/database';
 import { rssCrawlerService } from './services/rssCrawlerService';
-import logger from './config/logger';
+import logger from '../shared/config/logger';
 
 // 환경변수 로드
 dotenv.config({ path: '../.env' });

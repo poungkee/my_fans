@@ -1,9 +1,9 @@
 import axios from 'axios';
 import * as xml2js from 'xml2js';
 import * as cheerio from 'cheerio';
-import { AppDataSource } from '../config/database';
-import { NewsArticle } from '../entities/NewsArticle';
-import logger from '../config/logger';
+import { AppDataSource } from '../../shared/config/database';
+import { NewsArticle } from '../../shared/entities/NewsArticle';
+import logger from '../../shared/config/logger';
 
 import { RSS_FEEDS, RSSFeed } from '../config/rssSources';
 
