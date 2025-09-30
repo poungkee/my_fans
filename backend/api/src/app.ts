@@ -17,8 +17,6 @@ import userInteractionsRoutes from './routes/userInteractions';
 import schedulerRoutes from './routes/scheduler';
 import subscriptionRoutes from './routes/subscription';
 import commentsRoutes from './routes/comments';
-import { newsSchedulerService } from './services/newsSchedulerService';
-
 const envPath = path.resolve(__dirname, '../.env');
 console.log('[DEBUG] Loading .env from:', envPath);
 const dotenvResult = dotenv.config({ path: envPath });
@@ -107,14 +105,6 @@ async function startServer() {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🌐 Local access: http://localhost:${PORT}/health`);
-
-      // 뉴스 크롤링 스케줄러 자동 시작
-      console.log('🔄 Starting news crawler scheduler...');
-      newsSchedulerService.start({
-        intervalMinutes: 5, // 5분마다 실행
-        limitPerCategory: 20, // 카테고리당 20개씩 수집
-        enabled: true
-      });
     });
   } catch (error) {
     console.error('❌ Database connection failed:', error);
