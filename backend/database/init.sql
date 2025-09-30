@@ -170,26 +170,18 @@ CREATE TABLE ai_recommendations (
 -- 편향성 분석 (통합)
 CREATE TABLE bias_analysis (
     id BIGSERIAL PRIMARY KEY,
-    article_id BIGINT REFERENCES news_articles(id) ON DELETE CASCADE,
-    source_id BIGINT REFERENCES sources(id),
-    journalist VARCHAR(100),
+    article_id BIGINT NOT NULL REFERENCES news_articles(id) ON DELETE CASCADE,
 
-    -- 편향성 점수
-    political_bias DECIMAL(3,1) CHECK (political_bias >= -10 AND political_bias <= 10),
-    economic_bias DECIMAL(3,1) CHECK (economic_bias >= -10 AND economic_bias <= 10),
-    social_bias DECIMAL(3,1) CHECK (social_bias >= -10 AND social_bias <= 10),
+    -- 편향성 분석 데이터 (AI 자동 분석)
+    bias_score NUMERIC(3,2),
+    political_leaning VARCHAR(50),
+    confidence NUMERIC(3,2),
 
-    confidence_level DECIMAL(3,2) CHECK (confidence_level >= 0 AND confidence_level <= 1),
-    analysis_method VARCHAR(50),
-    sample_size INTEGER,
-
-    -- 추가 분석 데이터 (JSON)
+    -- 전체 분석 데이터 (JSON)
     analysis_data JSONB,
 
-    analyzed_at TIMESTAMPTZ DEFAULT NOW(),
-
-    -- 기사당 최신 분석만 유지
-    CONSTRAINT uk_article_bias UNIQUE (article_id)
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 사용자 선호도 (AI 학습용)
