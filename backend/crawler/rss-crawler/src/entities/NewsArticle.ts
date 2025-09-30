@@ -31,13 +31,13 @@ export class NewsArticle {
     @Column({ type: 'varchar', length: 100, nullable: true })
     journalist?: string;
 
-    @Column({ type: 'timestamp', name: 'pub_date', nullable: true })
+    @Column({ type: 'timestamptz', name: 'pub_date', nullable: true })
     pubDate?: Date;
 
-    @CreateDateColumn({ name: 'created_at' })
+    @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt!: Date;
 
-    @UpdateDateColumn({ name: 'updated_at' })
+    @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
     updatedAt!: Date;
 
     // 관계 설정 (크롤러에서는 최소한으로)

@@ -9,12 +9,10 @@ import path from 'path';
 import { AppDataSource } from './config/database';
 import aiRoutes from './routes/ai';
 import newsRoutes from './routes/news';
-import crawlerRoutes from './routes/crawler';
 import commonRoutes from './routes/common';
 import marketSummaryRoutes from "./routes/marketSummary";
 import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
-import schedulerRoutes from './routes/scheduler';
 import subscriptionRoutes from './routes/subscription';
 import commentsRoutes from './routes/comments';
 const envPath = path.resolve(__dirname, '../.env');
@@ -88,11 +86,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userInteractionsRoutes);
 app.use('/api/user', subscriptionRoutes);
 app.use('/api', aiRoutes);
-app.use('/api', crawlerRoutes);
 app.use('/api', commonRoutes);
 app.use('/api', newsRoutes);
 app.use("/api/market", marketSummaryRoutes);
-app.use('/api', schedulerRoutes);
 app.use('/api', commentsRoutes);
 
 
