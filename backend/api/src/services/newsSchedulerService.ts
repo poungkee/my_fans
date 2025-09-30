@@ -9,8 +9,8 @@ interface SchedulerConfig {
 class NewsSchedulerService {
   private intervalId: NodeJS.Timeout | null = null;
   private config: SchedulerConfig = {
-    intervalMinutes: 10, // 10분마다 실행
-    limitPerCategory: 3, // 카테고리당 3개씩 수집
+    intervalMinutes: 5, // 5분마다 실행
+    limitPerCategory: 20, // 카테고리당 20개씩 수집
     enabled: false
   };
   private isRunning = false;
