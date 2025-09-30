@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import logger from '../config/logger';
 
 export class EmailService {
   private transporter: nodemailer.Transporter;
@@ -45,9 +46,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`이메일 인증 코드 전송 완료: ${email}`);
+      logger.info(`이메일 인증 코드 전송 완료: ${email}`);
     } catch (error) {
-      console.error('이메일 전송 실패:', error);
+      logger.error('이메일 전송 실패:', error);
       throw new Error('이메일 전송에 실패했습니다.');
     }
   }
@@ -89,9 +90,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`비밀번호 재설정 코드 전송 완료: ${email}`);
+      logger.info(`비밀번호 재설정 코드 전송 완료: ${email}`);
     } catch (error) {
-      console.error('이메일 전송 실패:', error);
+      logger.error('이메일 전송 실패:', error);
       throw new Error('이메일 전송에 실패했습니다.');
     }
   }
@@ -128,9 +129,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`인증 이메일 전송 완료: ${email}`);
+      logger.info(`인증 이메일 전송 완료: ${email}`);
     } catch (error) {
-      console.error('인증 이메일 전송 실패:', error);
+      logger.error('인증 이메일 전송 실패:', error);
       throw new Error('이메일 전송에 실패했습니다.');
     }
   }
@@ -177,9 +178,9 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`환영 이메일 전송 완료: ${email}`);
+      logger.info(`환영 이메일 전송 완료: ${email}`);
     } catch (error) {
-      console.error('환영 이메일 전송 실패:', error);
+      logger.error('환영 이메일 전송 실패:', error);
       // 환영 이메일 실패는 치명적이지 않으므로 에러를 던지지 않음
     }
   }

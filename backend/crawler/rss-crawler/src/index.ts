@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { AppDataSource } from './config/database';
 import { rssCrawlerService } from './services/rssCrawlerService';
+import logger from './config/logger';
 
 // 환경변수 로드
 dotenv.config({ path: '../.env' });
@@ -26,7 +27,7 @@ app.get('/health', (req, res) => {
 // RSS 크롤링 시작
 app.post('/crawl/start', async (req, res) => {
   try {
-    console.log('📰 RSS 크롤링 시작...');
+    logger.info('📰 RSS 크롤링 시작...');
     const results = await rssCrawlerService.crawlAllRSSFeeds(4);
 
     let totalSaved = 0;
@@ -44,7 +45,7 @@ app.post('/crawl/start', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('RSS 크롤링 실패:', error);
+    logger.error('RSS 크롤링 실패:', error);
     res.status(500).json({ error: 'RSS 크롤링 실행 중 오류가 발생했습니다' });
   }
 });
@@ -74,16 +75,16 @@ app.get('/status', (req, res) => {
 async function startServer() {
   try {
     await AppDataSource.initialize();
-    console.log('✅ Database connected successfully');
+    logger.info('✅ Database connected successfully');
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 RSS Crawler Service running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`📰 RSS crawl: POST http://localhost:${PORT}/crawl/start`);
-      console.log(`📋 RSS feeds: GET http://localhost:${PORT}/feeds`);
+      logger.info(`🚀 RSS Crawler Service running on port ${PORT}`);
+      logger.info(`📊 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📰 RSS crawl: POST http://localhost:${PORT}/crawl/start`);
+      logger.info(`📋 RSS feeds: GET http://localhost:${PORT}/feeds`);
     });
   } catch (error) {
-    console.error('❌ Failed to start RSS crawler service:', error);
+    logger.error('❌ Failed to start RSS crawler service:', error);
     process.exit(1);
   }
 }

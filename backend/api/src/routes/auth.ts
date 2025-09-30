@@ -12,6 +12,7 @@ import { authenticateToken, AuthenticatedRequest } from '../middleware/authMiddl
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import logger from '../config/logger';
 
 const router = Router();
 const authService = new AuthService();
@@ -262,7 +263,7 @@ router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
       },
     });
   } catch (e: any) {
-    console.error('Profile API error:', e);
+    logger.error('Profile API error:', e);
     return res.status(500).json({ success: false, error: '프로필 조회 중 오류가 발생했습니다.' });
   }
 });

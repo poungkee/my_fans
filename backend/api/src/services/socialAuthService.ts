@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { User } from '../entities/User';
 import { AuthService } from './authService';
+import logger from '../config/logger';
 
 export class SocialAuthService {
   private userRepository: Repository<User>;
@@ -56,7 +57,7 @@ export class SocialAuthService {
         message: '카카오 로그인 성공'
       };
     } catch (error) {
-      console.error('카카오 로그인 에러:', error);
+      logger.error('카카오 로그인 에러:', error);
       throw new Error('카카오 로그인에 실패했습니다.');
     }
   }
@@ -104,7 +105,7 @@ export class SocialAuthService {
         message: '네이버 로그인 성공'
       };
     } catch (error) {
-      console.error('네이버 로그인 에러:', error);
+      logger.error('네이버 로그인 에러:', error);
       throw new Error('네이버 로그인에 실패했습니다.');
     }
   }
@@ -121,7 +122,7 @@ export class SocialAuthService {
 
       return response.data;
     } catch (error) {
-      console.error('카카오 API 에러:', error);
+      logger.error('카카오 API 에러:', error);
       throw new Error('카카오 사용자 정보 조회에 실패했습니다.');
     }
   }
@@ -137,7 +138,7 @@ export class SocialAuthService {
 
       return response.data.response;
     } catch (error) {
-      console.error('네이버 API 에러:', error);
+      logger.error('네이버 API 에러:', error);
       throw new Error('네이버 사용자 정보 조회에 실패했습니다.');
     }
   }

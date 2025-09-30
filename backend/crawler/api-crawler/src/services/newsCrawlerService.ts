@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
+import logger from '../config/logger';
 
 interface NaverNewsApiResponse {
   lastBuildDate: string;
@@ -36,7 +37,7 @@ class NewsCrawlerService {
   private currentKeyIndex: number = 0;
 
   constructor() {
-    console.log('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
+    logger.debug('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
 
     // 환경변수에서 2개의 Naver API 키 로드
     const key1Id = process.env.NAVER_CLIENT_ID || '';
@@ -44,25 +45,25 @@ class NewsCrawlerService {
     const key2Id = process.env.NAVER_CLIENT_ID_2 || '';
     const key2Secret = process.env.NAVER_CLIENT_SECRET_2 || '';
 
-    console.log(`[CRAWLER DEBUG] Key1 존재: ${!!key1Id}, Key2 존재: ${!!key2Id}`);
+    logger.debug(`[CRAWLER DEBUG] Key1 존재: ${!!key1Id}, Key2 존재: ${!!key2Id}`);
 
     // 첫 번째 키 추가
     if (key1Id && key1Secret) {
       this.naverApiKeys.push({ clientId: key1Id, clientSecret: key1Secret });
-      console.log('[CRAWLER DEBUG] ✅ Naver API Key #1 로드됨');
+      logger.debug('[CRAWLER DEBUG] ✅ Naver API Key #1 로드됨');
     } else {
-      console.log('[CRAWLER DEBUG] ❌ Naver API Key #1 없음');
+      logger.debug('[CRAWLER DEBUG] ❌ Naver API Key #1 없음');
     }
 
     // 두 번째 키 추가
     if (key2Id && key2Secret) {
       this.naverApiKeys.push({ clientId: key2Id, clientSecret: key2Secret });
-      console.log('[CRAWLER DEBUG] ✅ Naver API Key #2 로드됨');
+      logger.debug('[CRAWLER DEBUG] ✅ Naver API Key #2 로드됨');
     } else {
-      console.log('[CRAWLER DEBUG] ❌ Naver API Key #2 없음');
+      logger.debug('[CRAWLER DEBUG] ❌ Naver API Key #2 없음');
     }
 
-    console.log(`[CRAWLER DEBUG] 🔑 총 ${this.naverApiKeys.length}개의 Naver API 키 사용 가능`);
+    logger.debug(`[CRAWLER DEBUG] 🔑 총 ${this.naverApiKeys.length}개의 Naver API 키 사용 가능`);
   }
 
   // 현재 사용할 API 키 가져오기 (라운드 로빈)
@@ -72,7 +73,7 @@ class NewsCrawlerService {
     }
 
     const key = this.naverApiKeys[this.currentKeyIndex];
-    console.log(`[CRAWLER DEBUG] API Key #${this.currentKeyIndex + 1} 사용 중`);
+    logger.debug(`[CRAWLER DEBUG] API Key #${this.currentKeyIndex + 1} 사용 중`);
 
     // 다음 요청을 위해 인덱스 증가 (라운드 로빈)
     this.currentKeyIndex = (this.currentKeyIndex + 1) % this.naverApiKeys.length;
@@ -191,7 +192,7 @@ class NewsCrawlerService {
 
       return '';
     } catch (error) {
-      console.log(`[DEBUG] URL 파싱 오류: ${url}`);
+      logger.debug(`[DEBUG] URL 파싱 오류: ${url}`);
       return '';
     }
   }
@@ -301,7 +302,7 @@ class NewsCrawlerService {
     const koreanChars = (text.match(/[가-힣]/g) || []).length;
     const koreanRatio = koreanChars / text.length;
 
-    console.log(`[DEBUG] 콘텐츠 유효성 검사: 길이=${text.length}, UI키워드=${uiKeywordCount}, 한글비율=${(koreanRatio*100).toFixed(1)}%`);
+    logger.debug(`[DEBUG] 콘텐츠 유효성 검사: 길이=${text.length}, UI키워드=${uiKeywordCount}, 한글비율=${(koreanRatio*100).toFixed(1)}%`);
 
     return koreanRatio >= 0.3; // 30% 이상 한글이면 유효
   }
@@ -328,7 +329,7 @@ class NewsCrawlerService {
       const encodedQuery = encodeURIComponent(enhancedQuery);
       const url = `https://openapi.naver.com/v1/search/news.json?query=${encodedQuery}&display=${display}&start=1&sort=date`;
 
-      console.log(`[API DEBUG] 검색어: "${enhancedQuery}"`);
+      logger.debug(`[API DEBUG] 검색어: "${enhancedQuery}"`);
 
       // 라운드 로빈 방식으로 API 키 선택
       const apiKey = this.getCurrentApiKey();
@@ -341,7 +342,7 @@ class NewsCrawlerService {
       });
 
       const data: NaverNewsApiResponse = response.data;
-      console.log(`[API DEBUG] 쿼리 "${query}" -> ${data.items.length}개 결과 반환 (total: ${data.total})`);
+      logger.debug(`[API DEBUG] 쿼리 "${query}" -> ${data.items.length}개 결과 반환 (total: ${data.total})`);
 
       // 최신 뉴스만 필터링 (오늘, 어제 뉴스만)
       const twoDaysAgo = new Date();
@@ -352,17 +353,17 @@ class NewsCrawlerService {
         return pubDate >= twoDaysAgo;
       });
 
-      console.log(`[API DEBUG] 최근 2일 내 뉴스 필터링: ${data.items.length}개 -> ${recentItems.length}개`);
+      logger.debug(`[API DEBUG] 최근 2일 내 뉴스 필터링: ${data.items.length}개 -> ${recentItems.length}개`);
       return recentItems;
     } catch (error) {
-      console.error('네이버 뉴스 API 호출 실패:', error);
+      logger.error('네이버 뉴스 API 호출 실패:', error);
       return [];
     }
   }
 
   async parseNewsContent(url: string): Promise<ParsedNews | null> {
     try {
-      console.log(`[DEBUG] 뉴스 파싱 시작: ${url}`);
+      logger.debug(`[DEBUG] 뉴스 파싱 시작: ${url}`);
 
       const response = await axios.get(url, {
         headers: {
@@ -375,18 +376,18 @@ class NewsCrawlerService {
         responseType: 'arraybuffer'
       });
 
-      console.log(`[DEBUG] HTTP 응답 상태: ${response.status}`);
+      logger.debug(`[DEBUG] HTTP 응답 상태: ${response.status}`);
 
       // 인코딩 처리 - 한글 깨짐 방지
       let html = '';
       if (response.data instanceof Buffer || Buffer.isBuffer(response.data)) {
         const buffer = Buffer.from(response.data);
 
-        console.log(`[DEBUG] 버퍼 크기: ${buffer.length} bytes`);
+        logger.debug(`[DEBUG] 버퍼 크기: ${buffer.length} bytes`);
 
         // Content-Type 헤더에서 charset 확인
         const contentType = response.headers['content-type'] || '';
-        console.log(`[DEBUG] Content-Type: ${contentType}`);
+        logger.debug(`[DEBUG] Content-Type: ${contentType}`);
 
         let encoding = 'utf8';
         if (contentType.includes('charset=euc-kr') || contentType.includes('charset=ks_c_5601-1987')) {
@@ -395,7 +396,7 @@ class NewsCrawlerService {
           encoding = 'utf8';
         }
 
-        console.log(`[DEBUG] 감지된 인코딩: ${encoding}`);
+        logger.debug(`[DEBUG] 감지된 인코딩: ${encoding}`);
 
         // iconv-lite로 디코딩
         try {
@@ -406,11 +407,11 @@ class NewsCrawlerService {
             // UTF-8이 깨졌다면 EUC-KR로 재시도
             if (html.includes('�') || html.includes('????')) {
               html = iconv.decode(buffer, 'euc-kr');
-              console.log(`[DEBUG] EUC-KR로 재시도`);
+              logger.debug(`[DEBUG] EUC-KR로 재시도`);
             }
           }
         } catch (error) {
-          console.log(`[DEBUG] 인코딩 실패, UTF-8 기본값 사용:`, error);
+          logger.debug(`[DEBUG] 인코딩 실패, UTF-8 기본값 사용:`, error);
           html = buffer.toString('utf8');
         }
       } else {
@@ -442,13 +443,13 @@ class NewsCrawlerService {
       let title = '';
       for (const selector of titleSelectors) {
         const found = this.cleanText($(selector).first().text());
-        console.log(`[DEBUG] 제목 셀렉터 ${selector}: "${found}"`);
+        logger.debug(`[DEBUG] 제목 셀렉터 ${selector}: "${found}"`);
         if (found && found.length > 5 && found.length < 200) {
           title = found;
           break;
         }
       }
-      console.log(`[DEBUG] 최종 추출된 제목: ${title}`);
+      logger.debug(`[DEBUG] 최종 추출된 제목: ${title}`);
 
       // 본문 추출 (개선된 버전)
       let content = '';
@@ -477,7 +478,7 @@ class NewsCrawlerService {
         '.news-article .content'
       ];
 
-      console.log(`[DEBUG] 본문 추출 시도 중...`);
+      logger.debug(`[DEBUG] 본문 추출 시도 중...`);
       for (const selector of contentSelectors) {
         const element = $(selector);
         if (element.length === 0) continue;
@@ -488,17 +489,17 @@ class NewsCrawlerService {
         let found = element.text();
         found = this.cleanContent(found);
 
-        console.log(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
+        logger.debug(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
         if (found && found.length > 100 && found.length < 10000 && this.isValidContent(found)) {
           content = found;
-          console.log(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
+          logger.debug(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
           break;
         }
       }
 
       // 대체 방법: 본문 p 태그들만 선별적으로 추출
       if (!content) {
-        console.log(`[DEBUG] 대체 방법으로 본문 추출 시도...`);
+        logger.debug(`[DEBUG] 대체 방법으로 본문 추출 시도...`);
         const paragraphs: string[] = [];
         $('p').each((_index, el) => {
           const $el = $(el);
@@ -522,7 +523,7 @@ class NewsCrawlerService {
           const allText = paragraphs.join(' ');
           if (allText.length > 100 && this.isValidContent(allText)) {
             content = allText;
-            console.log(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);
+            logger.debug(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);
           }
         }
       }
@@ -583,7 +584,7 @@ class NewsCrawlerService {
           const cleanedName = cleanJournalistName(found);
           if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
             journalist = cleanedName;
-            console.log(`[DEBUG] 셀렉터로 기자 추출: ${selector} -> "${found}" -> "${journalist}"`);
+            logger.debug(`[DEBUG] 셀렉터로 기자 추출: ${selector} -> "${found}" -> "${journalist}"`);
             break;
           }
         }
@@ -606,7 +607,7 @@ class NewsCrawlerService {
               const cleanedName = cleanJournalistName(extractedName);
               if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
                 journalist = cleanedName;
-                console.log(`[DEBUG] 본문 패턴으로 기자 추출: "${match[0]}" -> "${journalist}"`);
+                logger.debug(`[DEBUG] 본문 패턴으로 기자 추출: "${match[0]}" -> "${journalist}"`);
                 break;
               }
             }
@@ -674,7 +675,7 @@ class NewsCrawlerService {
       ];
 
       let imageUrl = '';
-      console.log(`[DEBUG] 이미지 추출 시도 중...`);
+      logger.debug(`[DEBUG] 이미지 추출 시도 중...`);
       for (const selector of imageSelectors) {
         const images = $(selector);
         for (let i = 0; i < images.length; i++) {
@@ -682,7 +683,7 @@ class NewsCrawlerService {
           const alt = $(images[i]).attr('alt') || '';
           const className = $(images[i]).attr('class') || '';
 
-          console.log(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
+          logger.debug(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
 
           // 로고나 아이콘 이미지 제외 (더 강화)
           const isLogo = src ? (
@@ -707,10 +708,10 @@ class NewsCrawlerService {
 
           if (src && (src.startsWith('http') || src.startsWith('//')) && !isLogo && !isTooSmall) {
             imageUrl = src.startsWith('//') ? 'https:' + src : src;
-            console.log(`[DEBUG] 이미지 URL 발견: ${imageUrl} (크기: ${width}x${height})`);
+            logger.debug(`[DEBUG] 이미지 URL 발견: ${imageUrl} (크기: ${width}x${height})`);
             break;
           } else if (src) {
-            console.log(`[DEBUG] 이미지 제외됨 - 로고: ${isLogo}, 작음: ${isTooSmall}, URL: ${src}`);
+            logger.debug(`[DEBUG] 이미지 제외됨 - 로고: ${isLogo}, 작음: ${isTooSmall}, URL: ${src}`);
           }
         }
         if (imageUrl) break;
@@ -735,7 +736,7 @@ class NewsCrawlerService {
       const pubDate = pubDateString ? new Date(pubDateString) : new Date();
 
       if (!title || !content) {
-        console.log('파싱 실패: 제목 또는 내용이 없음', { title: !!title, content: !!content });
+        logger.info('파싱 실패: 제목 또는 내용이 없음', { title: !!title, content: !!content });
         return null;
       }
 
@@ -749,7 +750,7 @@ class NewsCrawlerService {
       };
 
     } catch (error) {
-      console.error('뉴스 파싱 실패:', error);
+      logger.error('뉴스 파싱 실패:', error);
       return null;
     }
   }
@@ -761,7 +762,7 @@ class NewsCrawlerService {
       // 중복 체크
       const existingNews = await newsRepo.findOne({ where: { url: originalUrl } });
       if (existingNews) {
-        console.log('이미 존재하는 뉴스:', originalUrl);
+        logger.info('이미 존재하는 뉴스:', originalUrl);
 
         // 이미 존재하는 기사도 분석이 없으면 분석 실행
         const biasRepo = AppDataSource.getRepository('BiasAnalysis');
@@ -770,9 +771,9 @@ class NewsCrawlerService {
         if (!existingAnalysis && existingNews.content) {
           try {
             await this.analyzeBias(existingNews.id, existingNews.content);
-            console.log(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
+            logger.info(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
           } catch (biasError) {
-            console.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
+            logger.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
           }
         }
 
@@ -820,7 +821,7 @@ class NewsCrawlerService {
       // 매핑에 없는 언론사는 '기타'(449)로 분류
       const sourceId = sourceIdMap[extractedSource] || 449;
 
-      console.log(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId} ${sourceId === 449 ? '(기타)' : ''}`);
+      logger.debug(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId} ${sourceId === 449 ? '(기타)' : ''}`);
 
       // ✅ 모든 뉴스를 저장 (목록에 없으면 '기타'로 저장)
 
@@ -842,14 +843,14 @@ class NewsCrawlerService {
       try {
         await this.analyzeBias(savedArticle.id, parsedNews.content);
       } catch (biasError) {
-        console.error(`[편향성 분석 실패] 기사 ID ${savedArticle.id}:`, biasError);
+        logger.error(`[편향성 분석 실패] 기사 ID ${savedArticle.id}:`, biasError);
         // 편향성 분석 실패해도 기사는 저장됨
       }
 
       return savedArticle;
 
     } catch (error) {
-      console.error('뉴스 저장 실패:', error);
+      logger.error('뉴스 저장 실패:', error);
       return null;
     }
   }
@@ -862,7 +863,7 @@ class NewsCrawlerService {
       throw new Error(`지원하지 않는 카테고리: ${categoryName}`);
     }
 
-    console.log(`${categoryName} 카테고리 뉴스 수집 시작...`);
+    logger.info(`${categoryName} 카테고리 뉴스 수집 시작...`);
 
     const naverNews = await this.fetchNewsFromNaver(category.query, limit);
     const results: NewsArticle[] = [];
@@ -871,19 +872,19 @@ class NewsCrawlerService {
       try {
         // HTML 태그 제거
         const title = item.title.replace(/<[^>]*>/g, '');
-        console.log(`파싱 중: ${title}`);
+        logger.info(`파싱 중: ${title}`);
 
         const parsed = await this.parseNewsContent(item.originallink || item.link);
         if (parsed) {
           const saved = await this.saveNewsToDatabase(parsed, categoryName, item.originallink || item.link);
           if (saved) {
             results.push(saved);
-            console.log(`저장 완료: ${saved.title}`);
+            logger.info(`저장 완료: ${saved.title}`);
           } else {
-            console.log(`[파싱 실패] 저장 실패: ${title}`);
+            logger.info(`[파싱 실패] 저장 실패: ${title}`);
           }
         } else {
-          console.log(`[파싱 실패] 내용 파싱 실패: ${title}`);
+          logger.info(`[파싱 실패] 내용 파싱 실패: ${title}`);
         }
 
         // 🕒 개별 뉴스 기사 간 요청 간격 조절
@@ -892,11 +893,11 @@ class NewsCrawlerService {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
-        console.error(`뉴스 처리 실패: ${item.title}`, error);
+        logger.error(`뉴스 처리 실패: ${item.title}`, error);
       }
     }
 
-    console.log(`${categoryName} 카테고리 수집 완료: ${results.length}개`);
+    logger.info(`${categoryName} 카테고리 수집 완료: ${results.length}개`);
     return results;
   }
 
@@ -914,7 +915,7 @@ class NewsCrawlerService {
         // 값을 줄이면 더 빠르게, 늘리면 더 안전하게 크롤링됩니다
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error(`${category.name} 카테고리 수집 실패:`, error);
+        logger.error(`${category.name} 카테고리 수집 실패:`, error);
         results[category.name] = [];
       }
     }
@@ -1028,10 +1029,10 @@ class NewsCrawlerService {
         }
       }
 
-      console.log(`[API DEBUG] 알 수 없는 도메인: ${domain}`);
+      logger.debug(`[API DEBUG] 알 수 없는 도메인: ${domain}`);
       return '';
     } catch (error) {
-      console.log(`[API DEBUG] URL 파싱 오류: ${url}`);
+      logger.debug(`[API DEBUG] URL 파싱 오류: ${url}`);
       return '';
     }
   }
@@ -1039,7 +1040,7 @@ class NewsCrawlerService {
   // AI 편향성 분석 실행
   private async analyzeBias(articleId: number, content: string): Promise<void> {
     if (!content || content.length < 100) {
-      console.log(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
+      logger.info(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
       return;
     }
 
@@ -1068,10 +1069,10 @@ class NewsCrawlerService {
         });
 
         await biasRepo.save(biasAnalysis);
-        console.log(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
+        logger.info(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
       }
     } catch (error: any) {
-      console.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);
+      logger.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);
       throw error;
     }
   }
@@ -1095,7 +1096,7 @@ class NewsCrawlerService {
       .limit(limit)
       .getMany();
 
-    console.log(`[기존 기사 분석] 총 ${articles.length}개 기사 분석 시작`);
+    logger.info(`[기존 기사 분석] 총 ${articles.length}개 기사 분석 시작`);
 
     let analyzed = 0;
     let failed = 0;
@@ -1114,12 +1115,12 @@ class NewsCrawlerService {
         // 과부하 방지를 위한 딜레이
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`[기존 기사 분석 실패] 기사 ID ${article.id}:`, error);
+        logger.error(`[기존 기사 분석 실패] 기사 ID ${article.id}:`, error);
         failed++;
       }
     }
 
-    console.log(`[기존 기사 분석 완료] 성공: ${analyzed}, 실패: ${failed}, 스킵: ${skipped}`);
+    logger.info(`[기존 기사 분석 완료] 성공: ${analyzed}, 실패: ${failed}, 스킵: ${skipped}`);
 
     return {
       total: articles.length,

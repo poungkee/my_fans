@@ -4,6 +4,7 @@ import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
 import { BiasAnalysis } from '../entities/BiasAnalysis';
 import { Source } from '../entities/Source';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.post('/ai/summarize', async (req, res) => {
       success: result.success
     });
   } catch (error: any) {
-    console.error('AI Summarize Error:', error);
+    logger.error('AI Summarize Error:', error);
     res.status(500).json({ error: error.message || 'AI 요약 처리 중 오류가 발생했습니다' });
   }
 });
@@ -74,7 +75,7 @@ router.post('/ai/summarize-news/:newsId', async (req, res) => {
     });
 
   } catch (error: any) {
-    console.error('News AI Summarize Error:', error);
+    logger.error('News AI Summarize Error:', error);
     res.status(500).json({ error: error.message || '뉴스 AI 요약 처리 중 오류가 발생했습니다' });
   }
 });
@@ -100,7 +101,7 @@ router.get('/ai/health', async (req, res) => {
       });
     }
   } catch (error: any) {
-    console.error('AI Health Check Error:', error);
+    logger.error('AI Health Check Error:', error);
     res.status(503).json({
       status: 'error',
       ai_service: 'local-korean-t5',
@@ -153,7 +154,7 @@ router.get('/ai/test-news', async (req, res) => {
           success: true
         });
 
-        console.log(`[TEST] 뉴스 ${news.id} 요약 완료: ${endTime - startTime}ms`);
+        logger.info(`[TEST] 뉴스 ${news.id} 요약 완료: ${endTime - startTime}ms`);
       } catch (error: any) {
         results.push({
           id: news.id,
@@ -174,7 +175,7 @@ router.get('/ai/test-news', async (req, res) => {
     });
 
   } catch (error: any) {
-    console.error('Test News Error:', error);
+    logger.error('Test News Error:', error);
     res.status(500).json({ error: '테스트 중 오류가 발생했습니다: ' + error.message });
   }
 });
@@ -245,7 +246,7 @@ router.get('/ai/bias/source-statistics', async (req, res) => {
       }
     });
   } catch (error: any) {
-    console.error('Source bias statistics error:', error);
+    logger.error('Source bias statistics error:', error);
     res.status(500).json({
       success: false,
       error: '언론사별 편향성 통계 조회 중 오류가 발생했습니다'
@@ -283,7 +284,7 @@ router.get('/ai/bias/article/:articleId', async (req, res) => {
       }
     });
   } catch (error: any) {
-    console.error('Article bias data error:', error);
+    logger.error('Article bias data error:', error);
     res.status(500).json({
       success: false,
       error: '기사 편향성 데이터 조회 중 오류가 발생했습니다'
@@ -363,7 +364,7 @@ router.get('/ai/bias/source/:sourceName', async (req, res) => {
       }
     });
   } catch (error: any) {
-    console.error('Source bias detail error:', error);
+    logger.error('Source bias detail error:', error);
     res.status(500).json({
       success: false,
       error: '언론사 편향성 상세 조회 중 오류가 발생했습니다'

@@ -9,6 +9,7 @@ import { KakaoOAuthProvider, NaverOAuthProvider } from './oauthProviders';
 import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
+import logger from '../config/logger';
 
 type JwtPayload = {
   userId: number;
@@ -58,7 +59,7 @@ export class AuthService {
       // 이미지 다운로드
       const response = await fetch(imageUrl);
       if (!response.ok) {
-        console.warn('[WARN] Failed to download profile image:', response.status);
+        logger.warn('Failed to download profile image:', response.status);
         return null;
       }
 
@@ -69,7 +70,7 @@ export class AuthService {
       // 상대 경로 반환
       return `/uploads/profiles/${filename}`;
     } catch (error: any) {
-      console.error('[ERROR] Profile image download failed:', error.message);
+      logger.error('Profile image download failed:', error.message);
       return null;
     }
   }
@@ -78,7 +79,7 @@ export class AuthService {
   private getJwtSecret(): string {
     const secret = process.env.JWT_SECRET || 'your-secret-key';
     if (!process.env.JWT_SECRET) {
-      console.warn('[WARN] JWT_SECRET is not set. Using fallback dev secret.');
+      logger.warn('JWT_SECRET is not set. Using fallback dev secret.');
     }
     return secret;
   }
@@ -152,7 +153,7 @@ export class AuthService {
     try {
       await this.emailService.sendWelcomeEmail(email, username);
     } catch (err) {
-      console.error('환영 이메일 전송 실패:', err);
+      logger.error('환영 이메일 전송 실패:', err);
     }
 
     // 회원가입 후 자동 로그인을 위한 토큰 생성
@@ -190,7 +191,7 @@ export class AuthService {
     session.oauthState = state;
 
     const redirectUri = this.getKakaoRedirectUri();
-    console.log('[DEBUG] Kakao start login → redirect_uri:', redirectUri);
+    logger.debug('Kakao start login → redirect_uri:', redirectUri);
 
     return KakaoOAuthProvider.buildAuthorizeUrl(state, redirectUri);
   }
@@ -201,7 +202,7 @@ export class AuthService {
     state: string
   ): Promise<{ user: User; token: string; message: string }> {
     if (!session?.oauthState || session.oauthState !== state) {
-      console.warn('[WARN] Kakao callback state mismatch', {
+      logger.warn('Kakao callback state mismatch', {
         expected: session?.oauthState,
         received: state,
       });
@@ -209,7 +210,7 @@ export class AuthService {
     }
     delete session.oauthState;
 
-    console.log('[DEBUG] Kakao callback → code:', code, 'state:', state);
+    logger.debug('Kakao callback → code:', code, 'state:', state);
 
     const redirectUri = this.getKakaoRedirectUri();
     const token = await KakaoOAuthProvider.exchangeToken(code, redirectUri);
@@ -305,7 +306,7 @@ export class AuthService {
     state: string
   ): Promise<{ user: User; token: string; message: string }> {
     if (!session?.oauthState || session.oauthState !== state) {
-      console.warn('[WARN] Kakao callback state mismatch', {
+      logger.warn('Naver callback state mismatch', {
         expected: session?.oauthState,
         received: state,
       });
@@ -523,7 +524,7 @@ export class AuthService {
 
       return parsedPreferences;
     } catch (error) {
-      console.error('Error getting user preferences:', error);
+      logger.error('Error getting user preferences:', error);
       return null;
     }
   }
@@ -564,7 +565,7 @@ export class AuthService {
 
       return { message: '인증코드가 이메일로 발송되었습니다.' };
     } catch (err) {
-      console.error('이메일 발송 실패:', err);
+      logger.error('이메일 발송 실패:', err);
       throw new Error('이메일 발송에 실패했습니다.');
     }
   }

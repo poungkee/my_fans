@@ -3,6 +3,7 @@ import * as xml2js from 'xml2js';
 import * as cheerio from 'cheerio';
 import { AppDataSource } from '../config/database';
 import { NewsArticle } from '../entities/NewsArticle';
+import logger from '../config/logger';
 
 import { RSS_FEEDS, RSSFeed } from '../config/rssSources';
 
@@ -32,7 +33,7 @@ class RSSCrawlerService {
   // RSS 피드에서 뉴스 가져오기
   private async fetchNewsFromRSS(feed: RSSFeed, limit: number = 10): Promise<ParsedRSSNews[]> {
     try {
-      console.log(`[RSS DEBUG] ${feed.sourceName} RSS 크롤링 시작: ${feed.feedUrl}`);
+      logger.info(`[RSS DEBUG] ${feed.sourceName} RSS 크롤링 시작: ${feed.feedUrl}`);
 
       const response = await axios.get(feed.feedUrl, {
         timeout: 10000,
@@ -49,7 +50,7 @@ class RSSCrawlerService {
       const result = await parser.parseStringPromise(xmlData);
 
       const items: RSSItem[] = result.rss?.channel?.[0]?.item || [];
-      console.log(`[RSS DEBUG] ${feed.sourceName}에서 ${items.length}개 아이템 발견`);
+      logger.info(`[RSS DEBUG] ${feed.sourceName}에서 ${items.length}개 아이템 발견`);
 
       const parsedNews: ParsedRSSNews[] = [];
 
@@ -62,15 +63,15 @@ class RSSCrawlerService {
             parsedNews.push(news);
           }
         } catch (error) {
-          console.log(`[RSS DEBUG] ${feed.sourceName} 아이템 파싱 실패:`, error);
+          logger.info(`[RSS DEBUG] ${feed.sourceName} 아이템 파싱 실패:`, error);
         }
       }
 
-      console.log(`[RSS DEBUG] ${feed.sourceName}에서 ${parsedNews.length}개 뉴스 파싱 완료`);
+      logger.info(`[RSS DEBUG] ${feed.sourceName}에서 ${parsedNews.length}개 뉴스 파싱 완료`);
       return parsedNews;
 
     } catch (error) {
-      console.error(`[RSS ERROR] ${feed.sourceName} RSS 크롤링 실패:`, error);
+      logger.error(`[RSS ERROR] ${feed.sourceName} RSS 크롤링 실패:`, error);
       return [];
     }
   }
@@ -91,13 +92,13 @@ class RSSCrawlerService {
             .join('\n\n');
 
           if (textElements.length > 100) {
-            console.log(`[RSS DEBUG] 조선일보 JSON에서 ${textElements.length}자 추출 성공`);
+            logger.info(`[RSS DEBUG] 조선일보 JSON에서 ${textElements.length}자 추출 성공`);
             return textElements;
           }
         }
       }
     } catch (error) {
-      console.log('[RSS DEBUG] 조선일보 JSON 파싱 실패, HTML 방식으로 대체');
+      logger.info('[RSS DEBUG] 조선일보 JSON 파싱 실패, HTML 방식으로 대체');
     }
     return '';
   }
@@ -105,7 +106,7 @@ class RSSCrawlerService {
   // 웹페이지에서 실제 본문 추출 (사이트별 맞춤 로직)
   private async extractContentFromURL(url: string, sourceName: string): Promise<{ content: string; imageUrl?: string; journalist?: string }> {
     try {
-      console.log(`[RSS DEBUG] ${sourceName} 본문 추출 시작: ${url}`);
+      logger.info(`[RSS DEBUG] ${sourceName} 본문 추출 시작: ${url}`);
 
       const response = await axios.get(url, {
         timeout: 10000,
@@ -129,7 +130,7 @@ class RSSCrawlerService {
       }
 
     } catch (error) {
-      console.log(`[RSS DEBUG] ${sourceName} 본문 추출 실패: ${error}`);
+      logger.info(`[RSS DEBUG] ${sourceName} 본문 추출 실패: ${error}`);
       return { content: '' };
     }
   }
@@ -148,7 +149,7 @@ class RSSCrawlerService {
         // 한겨레 전용 - 불필요한 요소 제거
         element.find('script, style, .ad, .share, .related, .comment, .reporter-box, .copyright').remove();
         content = element.text().trim();
-        console.log(`[RSS DEBUG] 한겨레 선택자 ${selector}에서 ${content.length}자 추출`);
+        logger.info(`[RSS DEBUG] 한겨레 선택자 ${selector}에서 ${content.length}자 추출`);
         if (content.length > 100) break;
       }
     }
@@ -174,7 +175,7 @@ class RSSCrawlerService {
         // 경향신문 전용 - UI 요소 제거
         element.find('script, style, .ad, .share, .related, .article-util, .reporter-info').remove();
         content = element.text().trim();
-        console.log(`[RSS DEBUG] 경향신문 선택자 ${selector}에서 ${content.length}자 추출`);
+        logger.info(`[RSS DEBUG] 경향신문 선택자 ${selector}에서 ${content.length}자 추출`);
         if (content.length > 100) break;
       }
     }
@@ -218,12 +219,12 @@ class RSSCrawlerService {
       // 연속된 줄바꿈을 문단 구분으로 정리
       content = content.replace(/\n{3,}/g, '\n\n');
 
-      console.log(`[RSS DEBUG] 동아일보 section.news_view에서 ${content.length}자 추출`);
+      logger.info(`[RSS DEBUG] 동아일보 section.news_view에서 ${content.length}자 추출`);
     }
 
     // 본문이 너무 짧으면 fallback
     if (content.length < 100) {
-      console.log('[RSS DEBUG] 동아일보 본문이 짧아서 fallback 시도');
+      logger.info('[RSS DEBUG] 동아일보 본문이 짧아서 fallback 시도');
       // 기본 article 내용 시도
       const article = $('article');
       if (article.length > 0) {
@@ -269,7 +270,7 @@ class RSSCrawlerService {
           } else {
             content = elements.text().trim();
           }
-          console.log(`[RSS DEBUG] 조선일보 선택자 ${selector}에서 ${content.length}자 추출`);
+          logger.info(`[RSS DEBUG] 조선일보 선택자 ${selector}에서 ${content.length}자 추출`);
           if (content.length > 100) break;
         }
       }
@@ -300,7 +301,7 @@ class RSSCrawlerService {
       if (element.length > 0) {
         element.find('script, style, .ad, .share, .related').remove();
         content = element.text().trim();
-        console.log(`[RSS DEBUG] ${sourceName} 선택자 ${selector}에서 ${content.length}자 추출`);
+        logger.info(`[RSS DEBUG] ${sourceName} 선택자 ${selector}에서 ${content.length}자 추출`);
         if (content.length > 100) break;
       }
     }
@@ -348,7 +349,7 @@ class RSSCrawlerService {
         }
       }
     } catch (error) {
-      console.log('[RSS DEBUG] DOM 기자명 추출 중 오류:', error);
+      logger.info('[RSS DEBUG] DOM 기자명 추출 중 오류:', error);
     }
 
     // 본문에서 "기자" 패턴 분석
@@ -621,7 +622,7 @@ class RSSCrawlerService {
       const content = extracted.content || description;
 
       if (content.length < 50) {
-        console.log(`[RSS DEBUG] ${feed.sourceName} 본문이 너무 짧음: ${title}`);
+        logger.info(`[RSS DEBUG] ${feed.sourceName} 본문이 너무 짧음: ${title}`);
         return null;
       }
 
@@ -665,10 +666,10 @@ class RSSCrawlerService {
         finalSourceName = feed.sourceName;
       }
 
-      console.log(`[RSS DEBUG] URL: ${link}`);
-      console.log(`[RSS DEBUG] RSS 피드: ${feed.sourceName} (ID: ${feed.sourceId})`);
-      console.log(`[RSS DEBUG] URL에서 추출된 실제 소스: ${actualSource}`);
-      console.log(`[RSS DEBUG] 최종 매핑될 소스: ${finalSourceName} (ID: ${finalSourceId})`);
+      logger.info(`[RSS DEBUG] URL: ${link}`);
+      logger.info(`[RSS DEBUG] RSS 피드: ${feed.sourceName} (ID: ${feed.sourceId})`);
+      logger.info(`[RSS DEBUG] URL에서 추출된 실제 소스: ${actualSource}`);
+      logger.info(`[RSS DEBUG] 최종 매핑될 소스: ${finalSourceName} (ID: ${finalSourceId})`);
 
       return {
         title,
@@ -682,7 +683,7 @@ class RSSCrawlerService {
       };
 
     } catch (error) {
-      console.log(`[RSS DEBUG] RSS 아이템 파싱 오류:`, error);
+      logger.info(`[RSS DEBUG] RSS 아이템 파싱 오류:`, error);
       return null;
     }
   }
@@ -863,10 +864,10 @@ class RSSCrawlerService {
         }
       }
 
-      console.log(`[RSS DEBUG] 알 수 없는 도메인: ${domain}`);
+      logger.info(`[RSS DEBUG] 알 수 없는 도메인: ${domain}`);
       return '';
     } catch (error) {
-      console.log(`[RSS DEBUG] URL 파싱 오류: ${url}`);
+      logger.info(`[RSS DEBUG] URL 파싱 오류: ${url}`);
       return '';
     }
   }
@@ -928,7 +929,7 @@ class RSSCrawlerService {
           });
 
           if (existing) {
-            console.log(`[RSS DEBUG] 중복 뉴스 스킵: ${news.title}`);
+            logger.info(`[RSS DEBUG] 중복 뉴스 스킵: ${news.title}`);
             continue;
           }
 
@@ -946,23 +947,23 @@ class RSSCrawlerService {
 
           await repository.save(article);
           savedCount++;
-          console.log(`[RSS DEBUG] 저장 완료: ${news.mediaSource} - ${news.title}`);
+          logger.info(`[RSS DEBUG] 저장 완료: ${news.mediaSource} - ${news.title}`);
 
         } catch (error) {
-          console.error(`[RSS ERROR] 뉴스 저장 실패:`, error);
+          logger.error(`[RSS ERROR] 뉴스 저장 실패:`, error);
         }
       }
 
       return savedCount;
     } catch (error) {
-      console.error('[RSS ERROR] 데이터베이스 저장 중 오류:', error);
+      logger.error('[RSS ERROR] 데이터베이스 저장 중 오류:', error);
       return 0;
     }
   }
 
   // 모든 RSS 피드 크롤링
   public async crawlAllRSSFeeds(limitPerFeed: number = 4): Promise<{ [sourceName: string]: number }> {
-    console.log('📰 RSS 크롤링 시작...');
+    logger.info('📰 RSS 크롤링 시작...');
     const results: { [sourceName: string]: number } = {};
 
     for (const feed of RSS_FEEDS) {
@@ -971,19 +972,19 @@ class RSSCrawlerService {
         const savedCount = await this.saveNewsToDatabase(newsList);
         results[feed.sourceName] = savedCount;
 
-        console.log(`✅ ${feed.sourceName}: ${savedCount}개 저장 완료`);
+        logger.info(`✅ ${feed.sourceName}: ${savedCount}개 저장 완료`);
 
         // 각 피드 사이에 1초 딜레이
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
-        console.error(`❌ ${feed.sourceName} 크롤링 실패:`, error);
+        logger.error(`❌ ${feed.sourceName} 크롤링 실패:`, error);
         results[feed.sourceName] = 0;
       }
     }
 
     const totalSaved = Object.values(results).reduce((sum, count) => sum + count, 0);
-    console.log(`📊 RSS 크롤링 완료 - 총 ${totalSaved}개 저장`);
+    logger.info(`📊 RSS 크롤링 완료 - 총 ${totalSaved}개 저장`);
 
     return results;
   }

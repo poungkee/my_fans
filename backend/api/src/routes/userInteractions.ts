@@ -8,6 +8,7 @@ import { UserAction, ActionType } from '../entities/UserAction';
 import { ArticleStat } from '../entities/ArticleStat';
 import { AIRecommendation } from '../entities/AIRecommendation';
 import { Comment } from '../entities/Comment';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.get('/bookmarks', authenticateToken, async (req: AuthenticatedRequest, re
       }
     });
   } catch (error) {
-    console.error('북마크 조회 에러:', error);
+    logger.error('북마크 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '북마크 목록을 가져오는 중 오류가 발생했습니다.'
@@ -94,7 +95,7 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.save(userAction);
       } catch (actionError) {
         // UserAction 저장 실패는 무시 (북마크는 이미 성공)
-        console.warn('UserAction 저장 실패:', actionError);
+        logger.warn('UserAction 저장 실패:', actionError);
       }
 
       res.json({
@@ -116,7 +117,7 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
       });
     }
   } catch (error: any) {
-    console.error('북마크 처리 에러:', error);
+    logger.error('북마크 처리 에러:', error);
 
     // 중복 키 에러 처리 (PostgreSQL)
     if (error.code === '23505') {
@@ -144,19 +145,19 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
     const newsId = parseInt(req.params.newsId);
     const { type } = req.body; // 'like', 'dislike', 'remove'
 
-    console.log(`🔥 반응 처리 요청 시작 - userId: ${userId}, newsId: ${newsId}, type: ${type}`);
+    logger.info(`반응 처리 요청 시작 - userId: ${userId}, newsId: ${newsId}, type: ${type}`);
 
     const userActionRepo = queryRunner.manager.getRepository(UserAction);
 
     // 현재 사용자의 반응 상태 조회
-    console.log(`🔥 반응 상태 조회 시작 - userId: ${userId}, newsId: ${newsId}`);
+    logger.info(`반응 상태 조회 시작 - userId: ${userId}, newsId: ${newsId}`);
     const existingLike = await userActionRepo.findOne({
       where: { userId, articleId: newsId, actionType: ActionType.LIKE }
     });
     const existingDislike = await userActionRepo.findOne({
       where: { userId, articleId: newsId, actionType: ActionType.DISLIKE }
     });
-    console.log(`🔥 기존 반응 상태 - 좋아요: ${!!existingLike}, 싫어요: ${!!existingDislike}`);
+    logger.info(`기존 반응 상태 - 좋아요: ${!!existingLike}, 싫어요: ${!!existingDislike}`);
 
     if (type === 'like') {
       // 기존 싫어요 제거
@@ -276,7 +277,7 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
     }
   } catch (error) {
     await queryRunner.rollbackTransaction();
-    console.error('반응 처리 에러:', error);
+    logger.error('반응 처리 에러:', error);
     res.status(500).json({
       success: false,
       error: '반응 처리 중 오류가 발생했습니다.'
@@ -310,7 +311,7 @@ router.post('/view/:newsId', authenticateToken, async (req: AuthenticatedRequest
       message: '조회 기록이 저장되었습니다.'
     });
   } catch (error) {
-    console.error('조회 기록 에러:', error);
+    logger.error('조회 기록 에러:', error);
     res.status(500).json({
       success: false,
       error: '조회 기록 저장 중 오류가 발생했습니다.'
@@ -360,7 +361,7 @@ router.get('/history', authenticateToken, async (req: AuthenticatedRequest, res:
       }
     });
   } catch (error) {
-    console.error('히스토리 조회 에러:', error);
+    logger.error('히스토리 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '활동 히스토리를 가져오는 중 오류가 발생했습니다.'
@@ -409,7 +410,7 @@ router.get('/recommendations', authenticateToken, async (req: AuthenticatedReque
       }
     });
   } catch (error) {
-    console.error('추천 조회 에러:', error);
+    logger.error('추천 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '추천 목록을 가져오는 중 오류가 발생했습니다.'
@@ -449,7 +450,7 @@ router.get('/reactions/:newsId', authenticateToken, async (req: AuthenticatedReq
       }
     });
   } catch (error) {
-    console.error('반응 상태 조회 에러:', error);
+    logger.error('반응 상태 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '반응 상태를 조회하는 중 오류가 발생했습니다.'
@@ -496,7 +497,7 @@ router.get('/comments', authenticateToken, async (req: AuthenticatedRequest, res
       }
     });
   } catch (error) {
-    console.error('사용자 댓글 조회 에러:', error);
+    logger.error('사용자 댓글 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '댓글 목록을 가져오는 중 오류가 발생했습니다.'
@@ -535,7 +536,7 @@ router.post('/recommendation-feedback/:newsId', authenticateToken, async (req: A
       message: '피드백이 저장되었습니다.'
     });
   } catch (error) {
-    console.error('추천 피드백 에러:', error);
+    logger.error('추천 피드백 에러:', error);
     res.status(500).json({
       success: false,
       error: '피드백 저장 중 오류가 발생했습니다.'
@@ -580,7 +581,7 @@ router.get('/reactions', authenticateToken, async (req: AuthenticatedRequest, re
       }
     });
   } catch (error) {
-    console.error('사용자 반응 조회 에러:', error);
+    logger.error('사용자 반응 조회 에러:', error);
     res.status(500).json({
       success: false,
       error: '반응 목록을 가져오는 중 오류가 발생했습니다.'

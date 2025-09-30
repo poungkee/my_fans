@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../../config/database';
 import { Category } from '../../entities/Category';
 import { Source } from '../../entities/Source';
+import logger from '../../config/logger';
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.get('/common/categories', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('카테고리 조회 실패:', error);
+    logger.error('카테고리 조회 실패:', error);
     res.status(500).json({
       success: false,
       error: '카테고리 목록을 불러올 수 없습니다.'
@@ -58,7 +59,7 @@ router.get('/common/media-sources', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('언론사 조회 실패:', error);
+    logger.error('언론사 조회 실패:', error);
     res.status(500).json({
       success: false,
       error: '언론사 목록을 불러올 수 없습니다.'
@@ -110,7 +111,7 @@ router.get('/common/all', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('공통 데이터 조회 실패:', error);
+    logger.error('공통 데이터 조회 실패:', error);
     res.status(500).json({
       success: false,
       error: '공통 데이터를 불러올 수 없습니다.'

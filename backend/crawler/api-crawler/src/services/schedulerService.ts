@@ -1,4 +1,5 @@
 import { newsCrawlerService } from './newsCrawlerService';
+import logger from '../config/logger';
 
 interface SchedulerConfig {
   intervalMinutes: number;
@@ -22,7 +23,7 @@ class SchedulerService {
    */
   start(config?: Partial<SchedulerConfig>): void {
     if (this.config.enabled) {
-      console.log('📅 뉴스 크롤링 스케줄러가 이미 실행 중입니다.');
+      logger.info('📅 뉴스 크롤링 스케줄러가 이미 실행 중입니다.');
       return;
     }
 
@@ -34,8 +35,8 @@ class SchedulerService {
     this.config.enabled = true;
     const intervalMs = this.config.intervalMinutes * 60 * 1000;
 
-    console.log(`🕒 뉴스 크롤링 스케줄러 시작: ${this.config.intervalMinutes}분마다 실행`);
-    console.log(`📊 카테고리당 수집 개수: ${this.config.limitPerCategory}개`);
+    logger.info(`🕒 뉴스 크롤링 스케줄러 시작: ${this.config.intervalMinutes}분마다 실행`);
+    logger.info(`📊 카테고리당 수집 개수: ${this.config.limitPerCategory}개`);
 
     // 첫 실행은 즉시
     this.runCrawling();
@@ -58,7 +59,7 @@ class SchedulerService {
     }
     this.config.enabled = false;
     this.nextRunTime = null;
-    console.log('🛑 뉴스 크롤링 스케줄러 중지됨');
+    logger.info('🛑 뉴스 크롤링 스케줄러 중지됨');
   }
 
   /**
@@ -66,7 +67,7 @@ class SchedulerService {
    */
   private async runCrawling(): Promise<void> {
     if (this.isRunning) {
-      console.log('⏳ 이전 크롤링이 아직 실행 중입니다. 건너뜁니다.');
+      logger.info('⏳ 이전 크롤링이 아직 실행 중입니다. 건너뜁니다.');
       return;
     }
 
@@ -74,19 +75,19 @@ class SchedulerService {
     this.lastRunTime = new Date();
 
     try {
-      console.log(`\n📰 [${ this.lastRunTime.toLocaleString('ko-KR')}] 뉴스 크롤링 시작...`);
+      logger.info(`\n📰 [${ this.lastRunTime.toLocaleString('ko-KR')}] 뉴스 크롤링 시작...`);
 
       const results = await newsCrawlerService.crawlAllCategories(this.config.limitPerCategory);
 
       let totalCollected = 0;
       for (const [category, articles] of Object.entries(results)) {
         totalCollected += articles.length;
-        console.log(`  ✓ ${category}: ${articles.length}개`);
+        logger.info(`  ✓ ${category}: ${articles.length}개`);
       }
 
-      console.log(`✅ 크롤링 완료 - 총 ${totalCollected}개 수집\n`);
+      logger.info(`✅ 크롤링 완료 - 총 ${totalCollected}개 수집\n`);
     } catch (error) {
-      console.error('❌ 크롤링 실패:', error);
+      logger.error('❌ 크롤링 실패:', error);
     } finally {
       this.isRunning = false;
       this.updateNextRunTime();

@@ -4,6 +4,7 @@ import { Comment } from "../entities/Comment";
 import { User } from "../entities/User";
 import { NewsArticle } from "../entities/NewsArticle";
 import { authenticateToken, AuthenticatedRequest } from "../middleware/authMiddleware";
+import logger from "../config/logger";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get("/comments/article/:articleId", async (req: Request, res: Response) =
 
     res.json({ success: true, data: formattedComments });
   } catch (error) {
-    console.error("댓글 조회 실패:", error);
+    logger.error("댓글 조회 실패:", error);
     res.status(500).json({ error: "댓글 조회에 실패했습니다." });
   }
 });
@@ -105,7 +106,7 @@ router.post("/comments", authenticateToken, async (req: AuthenticatedRequest, re
 
     res.status(201).json({ success: true, data: formattedComment });
   } catch (error) {
-    console.error("댓글 작성 실패:", error);
+    logger.error("댓글 작성 실패:", error);
     res.status(500).json({ error: "댓글 작성에 실패했습니다." });
   }
 });
@@ -136,7 +137,7 @@ router.delete("/comments/:commentId", authenticateToken, async (req: Authenticat
 
     res.json({ success: true, message: "댓글이 삭제되었습니다." });
   } catch (error) {
-    console.error("댓글 삭제 실패:", error);
+    logger.error("댓글 삭제 실패:", error);
     res.status(500).json({ error: "댓글 삭제에 실패했습니다." });
   }
 });
@@ -170,7 +171,7 @@ router.post("/comments/:commentId/like", authenticateToken, async (req: Authenti
       }
     });
   } catch (error) {
-    console.error("댓글 좋아요 처리 실패:", error);
+    logger.error("댓글 좋아요 처리 실패:", error);
     res.status(500).json({ error: "좋아요 처리에 실패했습니다." });
   }
 });

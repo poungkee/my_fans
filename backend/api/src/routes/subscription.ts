@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { UserPreference } from '../entities/UserPreference';
 import { Source } from '../entities/Source';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/authMiddleware';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -58,7 +59,7 @@ router.get('/subscriptions', authenticateToken, async (req: AuthenticatedRequest
         });
 
     } catch (error) {
-        console.error('구독 목록 조회 실패:', error);
+        logger.error('구독 목록 조회 실패:', error);
         res.status(500).json({ ok: false, error: '구독 목록 조회에 실패했습니다.' });
     }
 });
@@ -117,7 +118,7 @@ router.post('/subscribe', authenticateToken, async (req: AuthenticatedRequest, r
         });
 
     } catch (error) {
-        console.error('구독 추가 실패:', error);
+        logger.error('구독 추가 실패:', error);
         res.status(500).json({ ok: false, error: '구독에 실패했습니다.' });
     }
 });
@@ -169,7 +170,7 @@ router.delete('/unsubscribe', authenticateToken, async (req: AuthenticatedReques
         });
 
     } catch (error) {
-        console.error('구독 취소 실패:', error);
+        logger.error('구독 취소 실패:', error);
         res.status(500).json({ ok: false, error: '구독 취소에 실패했습니다.' });
     }
 });
@@ -209,7 +210,7 @@ router.get('/status/:sourceName', authenticateToken, async (req: AuthenticatedRe
         });
 
     } catch (error) {
-        console.error('구독 상태 확인 실패:', error);
+        logger.error('구독 상태 확인 실패:', error);
         res.status(500).json({ ok: false, error: '구독 상태 확인에 실패했습니다.' });
     }
 });

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
 import { User } from '../entities/User';
+import logger from '../config/logger';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -50,7 +51,7 @@ export const authenticateToken = async (
 
     next();
   } catch (error) {
-    console.error('토큰 검증 에러:', error);
+    logger.error('토큰 검증 에러:', error);
     return res.status(401).json({
       success: false,
       error: '유효하지 않은 토큰입니다.'

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../config/logger';
 
 interface LocalAISummarizeRequest {
   text: string;
@@ -31,7 +32,7 @@ class RateLimiter {
     this.requests = this.requests.filter(time => time > oneMinuteAgo);
 
     if (this.requests.length >= this.REQUEST_LIMIT) {
-      console.log(`[RATE LIMIT] 분당 제한 초과: ${this.requests.length}/${this.REQUEST_LIMIT}`);
+      logger.warn(`분당 제한 초과: ${this.requests.length}/${this.REQUEST_LIMIT}`);
       return false;
     }
 
@@ -65,7 +66,7 @@ export class LocalAIService {
     this.aiServiceURL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
     this.rateLimiter = new RateLimiter();
 
-    console.log('[DEBUG] Local AI Service URL:', this.aiServiceURL);
+    logger.debug('Local AI Service URL:', this.aiServiceURL);
   }
 
   private extractKeywords(text: string): string[] {
@@ -128,7 +129,7 @@ export class LocalAIService {
     this.rateLimiter.recordRequest();
 
     try {
-      console.log(`[LOCAL AI] 요약 요청 시작... (${text.length}자)`);
+      logger.info(`요약 요청 시작... (${text.length}자)`);
       const startTime = Date.now();
 
       const requestBody: LocalAISummarizeRequest = {
@@ -155,7 +156,7 @@ export class LocalAIService {
         const summary = response.data.summary || this.generateFallbackSummary(text);
         const keywords = this.extractKeywords(text);
 
-        console.log(`[LOCAL AI] 요약 완료 (${duration}ms)`);
+        logger.info(`요약 완료 (${duration}ms)`);
 
         return {
           success: true,
@@ -166,7 +167,7 @@ export class LocalAIService {
         };
 
       } catch (aiError: any) {
-        console.warn('[LOCAL AI] AI 서비스 연결 실패, 폴백 모드 사용:', aiError.message);
+        logger.warn('AI 서비스 연결 실패, 폴백 모드 사용:', aiError.message);
 
         if (!this.fallbackEnabled) {
           throw aiError;
@@ -176,7 +177,7 @@ export class LocalAIService {
         const fallbackSummary = this.generateFallbackSummary(text);
         const keywords = this.extractKeywords(text);
 
-        console.log('[LOCAL AI] 폴백 요약 생성 완료');
+        logger.info('폴백 요약 생성 완료');
 
         return {
           success: true,
@@ -188,7 +189,7 @@ export class LocalAIService {
       }
 
     } catch (error: any) {
-      console.error('[LOCAL AI] 요약 실패:', error.message);
+      logger.error('요약 실패:', error.message);
       throw new Error(`Local AI 요약 실패: ${error.message}`);
     }
   }
@@ -199,10 +200,10 @@ export class LocalAIService {
         timeout: 5000
       });
 
-      console.log('[LOCAL AI] Health check 성공:', response.data);
+      logger.info('Health check 성공:', response.data);
       return true;
     } catch (error: any) {
-      console.warn('[LOCAL AI] AI 서비스 연결 실패, 폴백 모드 사용 가능:', error.message);
+      logger.warn('AI 서비스 연결 실패, 폴백 모드 사용 가능:', error.message);
       return this.fallbackEnabled; // 폴백이 활성화되어 있으면 healthy로 간주
     }
   }
@@ -213,12 +214,12 @@ export class LocalAIService {
 
   setAIServiceURL(url: string) {
     this.aiServiceURL = url;
-    console.log('[LOCAL AI] AI Service URL 변경:', url);
+    logger.info('AI Service URL 변경:', url);
   }
 
   setFallbackEnabled(enabled: boolean) {
     this.fallbackEnabled = enabled;
-    console.log('[LOCAL AI] 폴백 모드:', enabled ? '활성화' : '비활성화');
+    logger.info('폴백 모드:', enabled ? '활성화' : '비활성화');
   }
 }
 

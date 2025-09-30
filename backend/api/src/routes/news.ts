@@ -6,6 +6,7 @@ import { Source } from "../entities/Source";
 import { ArticleStat } from "../entities/ArticleStat";
 import { Bookmark } from "../entities/Bookmark";
 import { ILike, In } from "typeorm";
+import logger from "../config/logger";
 
 const router = Router();
 
@@ -111,7 +112,7 @@ router.get("/feed", async (req: Request, res: Response) => {
 
     res.json({ items });
   } catch (e: any) {
-    console.error("FEED_ERROR:", e);
+    logger.error("FEED_ERROR:", e);
     res.status(500).json({ items: [], error: e?.message || "FEED_FAILED" });
   }
 });
@@ -151,7 +152,7 @@ router.get("/search", async (req: Request, res: Response) => {
 
     res.json({ items });
   } catch (e: any) {
-    console.error("SEARCH_ERROR:", e);
+    logger.error("SEARCH_ERROR:", e);
     res.status(500).json({ items: [], error: e?.message || "SEARCH_FAILED" });
   }
 });
@@ -182,7 +183,7 @@ router.get("/trending", async (req: Request, res: Response) => {
     const items = await Promise.all(articles.map(mapArticle));
     res.json({ items });
   } catch (e: any) {
-    console.error("TRENDING_ERROR:", e);
+    logger.error("TRENDING_ERROR:", e);
     res.status(500).json({ items: [], error: e?.message || "TRENDING_FAILED" });
   }
 });
@@ -247,7 +248,7 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
       }
     });
   } catch (e: any) {
-    console.error("BY_SOURCE_ERROR:", e);
+    logger.error("BY_SOURCE_ERROR:", e);
     res.status(500).json({ items: [], error: e?.message || "BY_SOURCE_FAILED" });
   }
 });
@@ -296,13 +297,13 @@ router.get("/news/:id", async (req: Request, res: Response) => {
         }));
       }
     } catch (keywordError) {
-      console.warn("키워드 조회 실패:", keywordError);
+      logger.warn("키워드 조회 실패:", keywordError);
       // 키워드 조회 실패해도 기사는 반환
     }
 
     res.json(result);
   } catch (e: any) {
-    console.error("DETAIL_ERROR:", e);
+    logger.error("DETAIL_ERROR:", e);
     res.status(500).json({ error: e?.message || "DETAIL_FAILED" });
   }
 });
@@ -366,7 +367,7 @@ router.get("/:id/stats", async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error("기사 통계 조회 실패:", error);
+    logger.error("기사 통계 조회 실패:", error);
     res.status(500).json({
       success: false,
       error: "기사 통계를 조회하는 중 오류가 발생했습니다."
