@@ -233,7 +233,6 @@ CREATE INDEX idx_recommendations_clicked ON ai_recommendations(was_clicked) WHER
 CREATE INDEX idx_recommendations_created ON ai_recommendations(created_at DESC);
 
 -- 편향성 분석 인덱스
-CREATE INDEX idx_bias_journalist ON bias_analysis(journalist) WHERE journalist IS NOT NULL;
 CREATE INDEX idx_bias_article ON bias_analysis(article_id);
 
 -- 키워드 인덱스
