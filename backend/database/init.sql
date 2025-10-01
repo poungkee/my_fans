@@ -466,7 +466,7 @@ INSERT INTO categories (name) VALUES
     ('IT/과학'), ('세계'), ('스포츠'), ('연예')
 ON CONFLICT (name) DO NOTHING;
 
--- 14개 타겟 언론사 (OID 기반)
+-- 14개 타겟 언론사 (OID 기반) + 기타
 INSERT INTO sources (id, name) VALUES
     (001, '연합뉴스'),
     (020, '동아일보'),
@@ -481,7 +481,8 @@ INSERT INTO sources (id, name) VALUES
     (214, '한국경제'),
     (421, '머니투데이'),
     (437, 'YTN'),
-    (448, 'JTBC')
+    (448, 'JTBC'),
+    (449, '기타')
 ON CONFLICT (id) DO NOTHING;
 
 -- 초기 증시 샘플 데이터 (실제 API 연동 전까지 사용)
