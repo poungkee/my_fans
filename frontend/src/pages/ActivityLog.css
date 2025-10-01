@@ -1214,19 +1214,6 @@
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-.comment-card:hover::after {
-  content: "클릭하여 기사 보기 →";
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  background: #3b82f6;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
 .comment-content {
   display: flex;
   flex-direction: column;

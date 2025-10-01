@@ -54,13 +54,33 @@ const ActivityLog = () => {
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      // TODO: 실제 API 호출로 교체
-      // const response = await fetch('/api/user/activities', {
-      //   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      // });
-      // const data = await response.json();
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
 
-      setActivities([]);
+      if (!token || isTokenExpired(token)) {
+        setActivities([]);
+        return;
+      }
+
+      const response = await fetch('/api/user/history?limit=100', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setActivities(data.data.history || []);
+        } else {
+          setActivities([]);
+        }
+      } else {
+        setActivities([]);
+      }
     } catch (error) {
       console.warn('활동 로그 조회 실패:', error);
       setActivities([]);
@@ -691,28 +711,58 @@ const ActivityLog = () => {
             </div>
 
             <div className="activity-list">
-              {filteredActivities.length === 0 ? (
+              <h3>📝 최근 활동</h3>
+              {activities.length === 0 ? (
                 <div className="no-activities">
                   <p>활동 기록이 없습니다.</p>
                 </div>
               ) : (
-                filteredActivities.map(activity => (
-                  <div key={activity.id} className="activity-item">
-                    <div className="activity-icon" style={{ backgroundColor: getActivityColor(activity.type) }}>
-                      {getActivityIcon(activity.type)}
+                activities.map(activity => (
+                  <div key={activity.id} className="activity-item" onClick={() => navigate(`/news/${activity.article.id}`)}>
+                    <div className="activity-type-badge">
+                      {activity.type === 'VIEW' ? '👁️ 읽음' :
+                       activity.type === 'LIKE' ? '👍 좋아요' :
+                       activity.type === 'DISLIKE' ? '👎 싫어요' :
+                       activity.type === 'BOOKMARK' ? '🔖 북마크' :
+                       activity.type === 'COMMENT' ? '💬 댓글' : activity.type}
                     </div>
                     <div className="activity-content">
-                      <div className="activity-title">{activity.title}</div>
-                      <div className="activity-description">{activity.description}</div>
+                      <div className="activity-title">{activity.article.title}</div>
                       <div className="activity-meta">
-                        <span className="activity-source">{activity.source}</span>
-                        <span className="activity-time">{formatTimestamp(activity.timestamp)}</span>
+                        <span className="activity-source">{activity.article.source}</span>
+                        <span className="activity-category">{activity.article.category}</span>
+                        <span className="activity-time">{new Date(activity.createdAt).toLocaleString('ko-KR')}</span>
                       </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
+          </div>
+        ) : filter === 'read' ? (
+          <div className="read-content">
+            <h3>📖 읽은 기사</h3>
+            {activities.filter(a => a.type === 'VIEW').length === 0 ? (
+              <div className="no-activities">
+                <p>읽은 기사가 없습니다.</p>
+              </div>
+            ) : (
+              <div className="activity-list">
+                {activities.filter(a => a.type === 'VIEW').map(activity => (
+                  <div key={activity.id} className="activity-item" onClick={() => navigate(`/news/${activity.article.id}`)}>
+                    <div className="activity-type-badge">👁️ 읽음</div>
+                    <div className="activity-content">
+                      <div className="activity-title">{activity.article.title}</div>
+                      <div className="activity-meta">
+                        <span className="activity-source">{activity.article.source}</span>
+                        <span className="activity-category">{activity.article.category}</span>
+                        <span className="activity-time">{new Date(activity.createdAt).toLocaleString('ko-KR')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : filter === 'subscription' ? (
           <div className="subscription-content">
@@ -833,7 +883,6 @@ const ActivityLog = () => {
                             e.stopPropagation();
                             handleDeleteComment(comment.id);
                           }}
-                          title="댓글 삭제"
                         >
                           🗑️
                         </button>
@@ -868,13 +917,12 @@ const ActivityLog = () => {
                           </div>
                         </div>
                       </div>
-                      <div
-                        className="comment-click-area"
+                      <button
+                        className="go-to-article-btn"
                         onClick={() => navigate(`/news/${comment.article.id}#comments`)}
-                        style={{ cursor: 'pointer', padding: '10px 0' }}
                       >
-                        <span className="click-hint">💬 기사로 이동하여 댓글 보기</span>
-                      </div>
+                        📰 기사로 바로가기
+                      </button>
                     </div>
                   </div>
                 ))}

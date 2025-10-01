@@ -131,6 +131,18 @@ CREATE TABLE bookmarks (
     CONSTRAINT uk_user_bookmark UNIQUE (user_id, news_id)
 );
 
+-- 댓글
+CREATE TABLE comments (
+    id BIGSERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    article_id BIGINT REFERENCES news_articles(id) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
+    like_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ================================
 -- 4. 통계 및 집계 (성능 최적화)
 -- ================================
@@ -242,6 +254,12 @@ CREATE INDEX idx_keywords_frequency ON keywords(frequency DESC);
 CREATE INDEX idx_bookmarks_user ON bookmarks(user_id);
 CREATE INDEX idx_bookmarks_news ON bookmarks(news_id);
 
+-- comments 인덱스
+CREATE INDEX idx_comments_user ON comments(user_id);
+CREATE INDEX idx_comments_article ON comments(article_id);
+CREATE INDEX idx_comments_parent ON comments(parent_id);
+CREATE INDEX idx_comments_created ON comments(created_at DESC);
+
 -- ================================
 -- 7. 트리거 및 함수
 -- ================================
@@ -291,13 +309,13 @@ CREATE TRIGGER trigger_search_vector
 CREATE OR REPLACE FUNCTION update_article_stats()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- article_stats 레코드가 없으면 생성
-    INSERT INTO article_stats (article_id)
-    VALUES (NEW.article_id)
-    ON CONFLICT (article_id) DO NOTHING;
-
-    -- action_type에 따라 카운트 업데이트
     IF TG_OP = 'INSERT' THEN
+        -- article_stats 레코드가 없으면 생성
+        INSERT INTO article_stats (article_id)
+        VALUES (NEW.article_id)
+        ON CONFLICT (article_id) DO NOTHING;
+
+        -- action_type에 따라 카운트 업데이트
         UPDATE article_stats
         SET
             view_count = CASE
@@ -318,6 +336,7 @@ BEGIN
             END,
             updated_at = NOW()
         WHERE article_id = NEW.article_id;
+        RETURN NEW;
     ELSIF TG_OP = 'DELETE' THEN
         UPDATE article_stats
         SET
@@ -335,9 +354,9 @@ BEGIN
             END,
             updated_at = NOW()
         WHERE article_id = OLD.article_id;
+        RETURN OLD;
     END IF;
-
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -354,14 +373,16 @@ BEGIN
         INSERT INTO user_actions (user_id, article_id, action_type)
         VALUES (NEW.user_id, NEW.news_id, 'BOOKMARK')
         ON CONFLICT (user_id, article_id, action_type) DO NOTHING;
+        RETURN NEW;
     ELSIF TG_OP = 'DELETE' THEN
         -- 북마크 삭제 시 user_actions에서도 삭제
         DELETE FROM user_actions
         WHERE user_id = OLD.user_id
         AND article_id = OLD.news_id
         AND action_type = 'BOOKMARK';
+        RETURN OLD;
     END IF;
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 

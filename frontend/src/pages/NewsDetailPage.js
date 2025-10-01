@@ -83,6 +83,24 @@ function NewsDetailPage() {
         if (data.dislike_count !== undefined) {
           setDislikeCount(data.dislike_count);
         }
+
+        // 로그인 상태일 때 VIEW 액션 기록
+        if (isLoggedIn) {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          if (token) {
+            fetch(`${API_BASE}/api/user/view/${id}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                readingDuration: 0,
+                readingPercentage: 0
+              })
+            }).catch(err => console.warn('VIEW 액션 기록 실패:', err));
+          }
+        }
       } catch (err) {
         console.error('기사 로드 실패:', err);
         setError('기사를 불러올 수 없습니다.');
@@ -92,7 +110,7 @@ function NewsDetailPage() {
     };
 
     fetchArticle();
-  }, [id, API_BASE]);
+  }, [id, API_BASE, isLoggedIn]);
 
   // 댓글, 좋아요/싫어요 상태, 구독 상태, 북마크 상태 로딩
   useEffect(() => {
@@ -381,15 +399,26 @@ function NewsDetailPage() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (navigator.share) {
-      navigator.share({
-        title: article?.title,
-        url: window.location.href
-      });
+      try {
+        await navigator.share({
+          title: article?.title,
+          url: window.location.href
+        });
+      } catch (error) {
+        // 사용자가 취소한 경우 (AbortError) 무시
+        if (error.name !== 'AbortError') {
+          console.error('공유 실패:', error);
+        }
+      }
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('링크가 클립보드에 복사되었습니다.');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('링크가 클립보드에 복사되었습니다.');
+      } catch (error) {
+        console.error('클립보드 복사 실패:', error);
+      }
     }
   };
 
