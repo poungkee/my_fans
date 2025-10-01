@@ -122,18 +122,27 @@ async def analyze_full(request: AnalysisRequest):
 
         party_analysis = political_analyzer.analyze_party_mentions(request.text)
         political_result = None
+        bias_score = 0.0
+        stance = "중립"
+
         if party_analysis:
             bias = political_analyzer.calculate_bias_score(request.text)
+            bias_score = bias['bias_score']
+            stance = bias['stance']
             political_result = {
                 "party_analysis": party_analysis,
-                "bias_score": bias['bias_score'],
-                "stance": bias['stance']
+                "bias_score": bias_score,
+                "stance": stance
             }
 
         return {
+            "article_id": request.article_id,
             "sentiment": sentiment,
             "keywords": [{"word": k, "score": float(s)} for k, s in keywords],
             "political": political_result,
+            "bias_score": bias_score,
+            "political_leaning": stance,
+            "confidence": sentiment.get('confidence', 0.0),
             "processed_at": datetime.now().isoformat()
         }
     except Exception as e:

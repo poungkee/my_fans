@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import { AppDataSource } from '../shared/config/database';
 import { newsCrawlerService } from './services/newsCrawlerService';
+import { schedulerService } from './services/schedulerService';
 import logger from '../shared/config/logger';
 
 const app = express();
@@ -82,17 +83,51 @@ app.post('/analyze/backfill', async (req, res) => {
 
 // 크롤러 상태 조회
 app.get('/status', (_req, res) => {
+  const schedulerStatus = schedulerService.getStatus();
   res.json({
     status: 'running',
+    scheduler: schedulerStatus,
     supportedCategories: newsCrawlerService.getSupportedCategories(),
     endpoints: [
       'POST /crawl/start - API 크롤링 시작',
       'POST /analyze/backfill - 기존 기사 편향성 분석',
+      'POST /scheduler/start - 스케줄러 시작',
+      'POST /scheduler/stop - 스케줄러 중지',
       'GET /categories - 지원하는 카테고리 목록',
+      'GET /status - 크롤러 상태 조회',
       'GET /health - 헬스체크'
     ],
     timestamp: new Date().toISOString()
   });
+});
+
+// 스케줄러 시작
+app.post('/scheduler/start', (req, res) => {
+  try {
+    const config = req.body;
+    schedulerService.start(config);
+    res.json({
+      message: '스케줄러가 시작되었습니다',
+      status: schedulerService.getStatus()
+    });
+  } catch (error: any) {
+    logger.error('스케줄러 시작 실패:', error);
+    res.status(500).json({ error: error?.message || '스케줄러 시작 실패' });
+  }
+});
+
+// 스케줄러 중지
+app.post('/scheduler/stop', (_req, res) => {
+  try {
+    schedulerService.stop();
+    res.json({
+      message: '스케줄러가 중지되었습니다',
+      status: schedulerService.getStatus()
+    });
+  } catch (error: any) {
+    logger.error('스케줄러 중지 실패:', error);
+    res.status(500).json({ error: error?.message || '스케줄러 중지 실패' });
+  }
 });
 
 async function startServer() {
@@ -105,6 +140,24 @@ async function startServer() {
       logger.info(`📊 Health check: http://localhost:${PORT}/health`);
       logger.info(`📰 API crawl: POST http://localhost:${PORT}/crawl/start`);
       logger.info(`📋 API categories: GET http://localhost:${PORT}/categories`);
+      logger.info(`🕒 Scheduler status: GET http://localhost:${PORT}/status`);
+
+      // 자동 크롤링 활성화 (환경변수로 제어)
+      const autoStart = process.env.AUTO_CRAWL === 'true';
+      if (autoStart) {
+        const intervalMinutes = parseInt(process.env.CRAWL_INTERVAL_MINUTES || '5');
+        const limitPerCategory = parseInt(process.env.CRAWL_LIMIT_PER_CATEGORY || '5');
+
+        logger.info(`\n⏰ 자동 크롤링 활성화 - ${intervalMinutes}분마다 실행 (카테고리당 ${limitPerCategory}개)`);
+        schedulerService.start({
+          intervalMinutes,
+          limitPerCategory,
+          enabled: true
+        });
+      } else {
+        logger.info('\n⏸️  자동 크롤링 비활성화 - 수동 실행 모드');
+        logger.info('   시작하려면: POST http://localhost:${PORT}/scheduler/start');
+      }
     });
   } catch (error) {
     logger.error('❌ Failed to start API crawler service:', error);

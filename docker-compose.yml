@@ -117,19 +117,162 @@ services:
       - "4003:4003"
     env_file:
       - .env
+    environment:
+      - AUTO_CRAWL=true
+      - CRAWL_INTERVAL_MINUTES=5    # 5분마다 크롤링
+      - CRAWL_LIMIT_PER_CATEGORY=5  # 카테고리당 5개씩
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bias-analysis-ai:
+        condition: service_healthy
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # volumes:
+    #   - ./backend/crawler/api-crawler/src:/app/src
+    #   - ./backend/crawler/api-crawler/package.json:/app/package.json
+    #   - ./backend/crawler/api-crawler/package-lock.json:/app/package-lock.json
+    #   - ./backend/crawler/api-crawler/tsconfig.json:/app/tsconfig.json
+    #   - /app/node_modules
+    #   - /app/dist
+    restart: unless-stopped
+
+  # ================================
+  # Puppeteer Crawler - 방법 1: 환경변수 기반 (완벽한 시간차 분산)
+  # ================================
+
+  puppeteer-crawler-1:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_1
+    ports:
+      - "4004:4004"
+    env_file:
+      - .env
+    environment:
+      - PUPPETEER_CRAWLER_PORT=4004
+      - AUTO_CRAWL=true
+      - CRAWL_INTERVAL=180000        # 3분
+      - TOTAL_REPLICAS=3
+      - REPLICA_INDEX=0              # 인스턴스 번호
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - fans_network
-    volumes:
-      - ./backend/crawler/api-crawler/src:/app/src
-      - ./backend/crawler/api-crawler/package.json:/app/package.json
-      - ./backend/crawler/api-crawler/package-lock.json:/app/package-lock.json
-      - ./backend/crawler/api-crawler/tsconfig.json:/app/tsconfig.json
-      - /app/node_modules
-      - /app/dist
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     restart: unless-stopped
+
+  puppeteer-crawler-2:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_2
+    ports:
+      - "4005:4004"
+    env_file:
+      - .env
+    environment:
+      - PUPPETEER_CRAWLER_PORT=4004
+      - AUTO_CRAWL=true
+      - CRAWL_INTERVAL=180000
+      - TOTAL_REPLICAS=3
+      - REPLICA_INDEX=1              # 인스턴스 번호
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  puppeteer-crawler-3:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_3
+    ports:
+      - "4006:4004"
+    env_file:
+      - .env
+    environment:
+      - PUPPETEER_CRAWLER_PORT=4004
+      - AUTO_CRAWL=true
+      - CRAWL_INTERVAL=180000
+      - TOTAL_REPLICAS=3
+      - REPLICA_INDEX=2              # 인스턴스 번호
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  # ================================
+  # Puppeteer Crawler - 방법 2: 랜덤 지연 (자동 확장)
+  # 사용법: docker-compose up -d --scale puppeteer-crawler-random=N
+  # ================================
+
+  # puppeteer-crawler-random:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   ports:
+  #     - "4004-4010:4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=4004
+  #     - AUTO_CRAWL=true
+  #     - CRAWL_INTERVAL=180000
+  #     - TOTAL_REPLICAS=3
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
   # ================================
   # 메인 API 서비스

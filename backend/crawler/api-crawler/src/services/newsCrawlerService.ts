@@ -259,25 +259,63 @@ class NewsCrawlerService {
     return text
       // HTML 태그 제거
       .replace(/<[^>]*>/g, '')
+      // CSS/JS 코드 제거 (강화)
+      .replace(/\.(news_primary|title|content)\s*\{[^}]*\}/g, '')
+      .replace(/font-family:[^;]+;/g, '')
+      .replace(/font-size:[^;]+;/g, '')
+      .replace(/font-weight:[^;]+;/g, '')
+      .replace(/\{[^}]*font[^}]*\}/g, '')
+      // URL 패턴 제거 (http, https, doi 등)
+      .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/doi\.org\/[^\s]+/g, '')
+      .replace(/www\.[^\s]+/g, '')
       // 웹사이트 공통 요소들 제거
       .replace(/로그인|회원가입|구독|공유하기|페이스북|트위터|카카오톡/g, '')
       .replace(/SNS 퍼가기|URL 복사|글자크기 설정/g, '')
       .replace(/뉴스 요약쏙|AI 요약은|OpenAI의 최신 기술을/g, '')
       .replace(/읽는 재미의 발견|새로워진|크롬브라우저만 가능/g, '')
       .replace(/웹 알림 동의|다양한 경제, 산업 현장의/g, '')
+      .replace(/무단전재 및 재배포 금지|저작권자|ⓒ|Copyright|copyright/g, '')
+      .replace(/기사입력|기사수정|최종수정|발행일|등록일|기사제보|보도자료/g, '')
+      // 연관기사 관련 텍스트 제거
+      .replace(/관련기사|추천기사|인기기사|많이 본 뉴스|실시간 뉴스|HOT 클릭/g, '')
+      .replace(/다른기사 보기|이 기사를|댓글|좋아요/g, '')
       // 기자 서명 패턴 정리
       .replace(/기자\s*구독\s*공유하기/g, '')
       .replace(/\s*기자\s*수정\s*\d{4}-\d{2}-\d{2}/g, '')
       .replace(/등록\s*\d{4}-\d{2}-\d{2}/g, '')
-      // 연속된 공백 정리
-      .replace(/\s+/g, ' ')
-      .replace(/\n+/g, ' ')
+      .replace(/\s*기자\s*[a-zA-Z0-9._%+-]+@[^\s]*/g, '') // 기자 이메일
+      // 이메일 주소 제거
+      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+      // 한 줄 내에서 연속된 공백만 제거 (줄바꿈 유지!)
+      .split('\n')
+      .map(line => line.replace(/ +/g, ' ').trim())
+      .join('\n')
+      // 3개 이상 연속 줄바꿈은 2개로 정리
+      .replace(/\n\n\n+/g, '\n\n')
       .trim();
   }
 
   // 유효한 본문 내용인지 검증하는 함수
   private isValidContent(text: string): boolean {
     if (!text || text.length < 50) return false;
+
+    // 실시간 검색어, 랭킹 등 내용 없는 기사 제외
+    const emptyContentPatterns = [
+      /실시간\s*(인기)?검색어/,
+      /HOT\s*클릭/,
+      /급상승\s*검색어/,
+      /인기\s*검색어/,
+      /^\d+위\s+/,  // "1위 xxx" 형식
+      /네이버\s*실시간/,
+    ];
+
+    for (const pattern of emptyContentPatterns) {
+      if (pattern.test(text)) {
+        logger.debug(`[DEBUG] 내용 없는 기사 패턴 감지: ${pattern}`);
+        return false;
+      }
+    }
 
     // 웹사이트 UI 요소들이 많이 포함된 경우 제외
     const uiKeywords = [
@@ -291,10 +329,10 @@ class NewsCrawlerService {
       return count + (text.includes(keyword) ? 1 : 0);
     }, 0);
 
-    // UI 키워드가 5개 이상이면 본문이 아닌 것으로 판단 (기존 3개에서 5개로 완화)
+    // UI 키워드가 5개 이상이면 본문이 아닌 것으로 판단
     if (uiKeywordCount >= 5) return false;
 
-    // 의미있는 한글 문장이 있는지 확인 (조건 완화)
+    // 의미있는 한글 문장이 있는지 확인
     const koreanContent = text.match(/[가-힣]{5,}/g);
     if (!koreanContent || koreanContent.length === 0) return false;
 
@@ -459,6 +497,9 @@ class NewsCrawlerService {
         '#articleBodyContents',
         // 네이버 스포츠
         '.news_end_body_container',
+        // 쿠키뉴스, 일부 언론사
+        '#article',
+        '.newsview_content',
         // 조선일보, 동아일보 등
         '.article_body',
         '.article_view .article_body',
@@ -483,13 +524,66 @@ class NewsCrawlerService {
         const element = $(selector);
         if (element.length === 0) continue;
 
-        // 불필요한 요소 제거
-        element.find('script, style, .ad, .advertisement, .share, .social, .comment, .related, .sidebar, .header, .footer, .nav, .menu').remove();
+        // 불필요한 요소 제거 (연관기사, 광고, 링크 등 강화)
+        element.find('script, style, .ad, .advertisement, .share, .social, .comment, .related, .sidebar, .header, .footer, .nav, .menu, .recommend, .more-news, .link-article, aside, [class*="relate"], [class*="recommend"], [class*="more"], [class*="popular"], [id*="popular"], [class*="ranking"], [id*="ranking"]').remove();
 
-        let found = element.text();
+        // 연관기사, 인기기사 등을 포함하는 ul, ol 리스트 제거
+        element.find('ul, ol').each((_idx, list) => {
+          const $list = $(list);
+          const listText = $list.text();
+          // 리스트가 링크만 있거나 제목 나열인 경우 제거
+          const linkCount = $list.find('a').length;
+          const itemCount = $list.find('li').length;
+          // 각 li가 짧은 텍스트(제목 같은)만 있으면 제거
+          if (linkCount > 2 || (itemCount > 2 && listText.length / itemCount < 50)) {
+            $list.remove();
+          }
+        });
+
+        // a 태그 완전 제거 (링크된 텍스트도 제거)
+        element.find('a').remove();
+
+        // p 태그마다 줄바꿈 추가 (문단 분리)
+        let found = '';
+        const pTags = element.find('p');
+        if (pTags.length > 0) {
+          pTags.each((_idx, p) => {
+            const $p = $(p);
+
+            // p 태그가 연관기사/인기기사 섹션에 있는지 체크
+            const parent = $p.parent();
+            const parentClass = parent.attr('class') || '';
+            const parentId = parent.attr('id') || '';
+
+            if (parentClass.match(/relat|recommend|popular|ranking|more|link|hot|trend/i) ||
+                parentId.match(/relat|recommend|popular|ranking|more|link|hot|trend/i)) {
+              return; // 이 p 태그는 스킵
+            }
+
+            const text = $p.text().trim();
+
+            // 연예 가십/클릭베이트 패턴 제외
+            const isCelebrityGossip = text.match(/^(임신|결혼|이혼|♥|비키니|탄수화물|과감|파격|깜짝|충격)/);
+            const hasEllipsis = text.endsWith('...');
+
+            // 본문 문단은 보통 80자 이상 (50->80으로 상향)
+            // 연예가십이나 요약형 제목은 제외
+            if (text && text.length > 80 && !isCelebrityGossip && !hasEllipsis) {
+              found += text + '\n\n';
+            }
+          });
+          logger.debug(`[DEBUG] Extracted from ${pTags.length} p-tags, length with newlines: ${found.length}`);
+        }
+
+        // p 태그가 없거나 추출 실패하면 기존 방식 사용
+        if (!found || found.length < 100) {
+          found = element.text();
+          logger.debug(`[DEBUG] P-tag extraction failed, using element.text()`);
+        }
+
         found = this.cleanContent(found);
 
-        logger.debug(`[DEBUG] 셀렉터 ${selector}: ${found ? found.length : 0}자`);
+        logger.debug(`[DEBUG] Selector ${selector}: after cleanContent ${found ? found.length : 0} chars`);
         if (found && found.length > 100 && found.length < 10000 && this.isValidContent(found)) {
           content = found;
           logger.debug(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);

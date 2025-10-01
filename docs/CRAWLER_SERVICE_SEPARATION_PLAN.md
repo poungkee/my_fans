@@ -337,6 +337,190 @@ POST /api/crawler/cluster/control  # 클러스터 제어
 
 ---
 
-**문서 버전**: v3.0
-**최종 수정**: 2025-09-29
-**다음 검토**: 2025-10-06
+## 7. Puppeteer 크롤러 도입 (2025-10-01 추가)
+
+### 7.1 도입 배경 및 전략 변경
+
+**초기 계획 (폐기)**:
+- ~~JTBC, 중앙일보, 한국일보 등 개별 언론사 사이트 직접 크롤링~~
+- **문제점**: 각 언론사마다 HTML 구조 분석 필요, 유지보수 어려움
+
+**최종 결정 (채택)**:
+- **Daum 뉴스 포털 단일 크롤링 방식**
+- Daum이 여러 언론사 기사를 통일된 형식으로 제공
+- `.cp_name` 셀렉터로 원 언론사명 추출 가능
+
+**Puppeteer 선택 이유**:
+1. Daum 뉴스 동적 콘텐츠 렌더링 처리
+2. 통일된 HTML 구조로 단일 파서만 필요
+3. 브라우저 풀링으로 성능 최적화
+4. 3개 인스턴스로 부하 분산
+
+### 7.2 아키텍처
+
+```
+Puppeteer Crawler Service (Port 4004-4006)
+├── Browser Pool (최대 5개 브라우저)
+├── Site Parser
+│   └── Daum Parser (단일 파서로 모든 언론사 처리)
+│       ├── 제목 추출: h3.tit_view
+│       ├── 본문 추출: div.article_view
+│       ├── 원 언론사: .cp_name ⭐
+│       └── 기자/날짜 추출
+└── Auto-Crawling Scheduler (시간차 분산)
+```
+
+**크롤링 흐름**:
+```
+Daum 뉴스 섹션 페이지 접속
+  ↓
+기사 URL 목록 추출 (v.daum.net/v/*)
+  ↓
+각 기사 페이지 파싱
+  ↓
+원 언론사명(.cp_name) 추출 → 해당 언론사로 저장
+  예: 서울신문, 경향신문, 연합뉴스, 한겨레 등
+```
+
+### 7.3 시간차 크롤링 전략 (개선)
+
+**기존 계획** (문서 3.3):
+```
+시간축: 0초   15초   30초   45초   60초   75초   90초
+A1:     ●            ●            ●            ●
+A2:           ●            ●            ●
+```
+
+**실제 구현** (Puppeteer 크롤러):
+```
+시간축: 0초        60초       120초      180초      240초
+인스턴스 0: ●                           ●
+인스턴스 1:         ●                           ●
+인스턴스 2:                   ●                           ●
+
+간격: 3분 (180초)
+지연: interval / replicas * index
+```
+
+### 7.4 구현 방식 (2가지 제공)
+
+#### 방법 1: 환경변수 기반 (현재 활성화) ✅
+```yaml
+# docker-compose.yml
+puppeteer-crawler-1:
+  environment:
+    - REPLICA_INDEX=0  # 0초 지연
+    - CRAWL_INTERVAL=180000
+
+puppeteer-crawler-2:
+  environment:
+    - REPLICA_INDEX=1  # 60초 지연
+
+puppeteer-crawler-3:
+  environment:
+    - REPLICA_INDEX=2  # 120초 지연
+```
+
+**장점**:
+- 완벽한 시간차 분산
+- 정확한 부하 제어
+- 예측 가능한 실행 패턴
+
+**단점**:
+- 인스턴스 추가 시 docker-compose.yml 수동 편집 필요
+- 확장성 제한적
+
+#### 방법 2: 랜덤 지연 (주석 처리됨)
+```typescript
+// 0 ~ (interval / totalReplicas) 사이 랜덤 지연
+const startDelay = Math.floor(Math.random() * maxDelay);
+```
+
+**장점**:
+- `docker-compose up -d --scale puppeteer-crawler=N` 자동 확장
+- 설정 간편
+
+**단점**:
+- 완벽한 균등 분배 아님
+- 실행 시간 예측 불가
+
+### 7.5 전환 방법
+
+**코드 전환** (`src/index.ts`):
+```typescript
+function startAutoCrawling(service: NewsCrawlerService): void {
+  // 방법 1: 환경변수 기반
+  startAutoCrawlingWithEnv(service);
+
+  // 방법 2: 랜덤 지연 (주석 해제 시 사용)
+  // startAutoCrawlingWithRandom(service);
+}
+```
+
+**설정 전환** (`docker-compose.yml`):
+```yaml
+# 방법 1 → 방법 2 전환
+# 1. puppeteer-crawler-1, 2, 3 주석 처리
+# 2. puppeteer-crawler-random 주석 해제
+```
+
+### 7.6 성능 비교
+
+| 크롤러 | 속도 | JavaScript 지원 | 타겟 언론사 수집 | 비용 |
+|--------|------|----------------|-----------------|------|
+| API Crawler | 빠름 | ✗ | 낮음 | 낮음 |
+| RSS Crawler | 빠름 | ✗ | 낮음 | 낮음 |
+| **Puppeteer Crawler** | **중간** | **✓** | **높음** | **중간** |
+
+**병렬 처리 성능**:
+- 단일 인스턴스: 100개 URL → 2~3분
+- 3개 인스턴스: 300개 URL → 3~4분 (시간차 분산)
+- 브라우저 풀: 최대 5개 동시 실행
+
+### 7.7 운영 가이드
+
+**기본 실행**:
+```bash
+docker-compose up -d puppeteer-crawler-1 puppeteer-crawler-2 puppeteer-crawler-3
+```
+
+**간격 조정**:
+```bash
+# .env 파일 수정
+CRAWL_INTERVAL=300000  # 5분으로 변경
+```
+
+**인스턴스 추가** (방법 1 사용 시):
+```yaml
+# docker-compose.yml에 추가
+puppeteer-crawler-4:
+  environment:
+    - REPLICA_INDEX=3
+  ports:
+    - "4007:4004"
+```
+
+**로그 확인**:
+```bash
+docker logs fans_puppeteer_crawler_1 | grep "Auto-Crawl\|Instance"
+```
+
+### 7.8 향후 계획
+
+1. **AI 편향 분석 연동** (다음 단계)
+   - 크롤링 완료 후 자동으로 AI 분석 요청
+   - BiasAnalysis 테이블 자동 업데이트
+
+2. **추가 언론사 확장**
+   - 기타 언론사 파서 추가
+   - 범용 파서 개발
+
+3. **성능 모니터링**
+   - 크롤링 성공/실패율 추적
+   - 브라우저 풀 사용률 모니터링
+
+---
+
+**문서 버전**: v4.0
+**최종 수정**: 2025-10-01
+**다음 검토**: 2025-10-08

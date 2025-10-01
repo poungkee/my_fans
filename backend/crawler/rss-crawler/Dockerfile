@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# 빌드 캐시 무효화 (node:18 -> node:20 마이그레이션 보장)
+ARG CACHEBUST=1
+
 # curl 설치 (헬스체크용)
 RUN apk add --no-cache curl
 
