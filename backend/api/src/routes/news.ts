@@ -202,7 +202,6 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(Number(req.query.limit) || 20, 100);
     const days = Math.min(Number(req.query.days) || 7, 30);
-    const sort = String(req.query.sort || "pubDate"); // created_at 또는 pubDate
 
     if (!sourceName) {
       return res.status(400).json({ error: "SOURCE_NAME_REQUIRED" });
@@ -220,21 +219,13 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
 
     const skip = (page - 1) * limit;
 
-    let query = newsRepo.createQueryBuilder("article")
+    const articles = await newsRepo.createQueryBuilder("article")
       .leftJoinAndSelect("article.source", "source")
       .leftJoinAndSelect("article.category", "category")
       .leftJoinAndSelect("article.stats", "stats")
       .where("article.sourceId = :sourceId", { sourceId: source.id })
-      .andWhere("article.pubDate > :date", { date: daysAgo });
-
-    // 정렬 기준 적용
-    if (sort === "created_at") {
-      query = query.orderBy("article.createdAt", "DESC");
-    } else {
-      query = query.orderBy("article.pubDate", "DESC");
-    }
-
-    const articles = await query
+      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .orderBy("article.pubDate", "DESC")
       .skip(skip)
       .take(limit)
       .getMany();
