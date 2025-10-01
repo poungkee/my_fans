@@ -80,7 +80,7 @@ CREATE TABLE news_articles (
     image_url VARCHAR(1000),
 
     -- 정규화된 FK
-    source_id BIGINT REFERENCES sources(id) ON UPDATE CASCADE,
+    source_id INTEGER REFERENCES sources(id) ON UPDATE CASCADE,
     category_id BIGINT REFERENCES categories(id) ON UPDATE CASCADE,
 
     -- 기자 정보

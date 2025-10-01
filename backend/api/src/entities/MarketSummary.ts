@@ -1,34 +1,37 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn } from 'typeorm';
 
 @Entity('market_summary')
 export class MarketSummary {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id!: number;
 
-  @Column({ length: 20 })
-  symbol!: string;
+  @Column({ type: 'varchar', length: 50, name: 'market_type' })
+  marketType!: string;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   name!: string;
 
-  @Column('decimal', { precision: 15, scale: 2 })
-  price!: number;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'current_value' })
+  currentValue?: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  change!: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'change_value' })
+  changeValue?: number;
 
-  @Column('decimal', { precision: 5, scale: 2, name: 'change_percent' })
-  changePercent!: number;
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'change_percent' })
+  changePercent?: number;
 
-  @Column({ length: 50, nullable: true })
-  market!: string;
+  @Column({ type: 'bigint', nullable: true })
+  volume?: number;
 
-  @Column({ length: 10, nullable: true })
-  currency!: string;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true, name: 'trading_value' })
+  tradingValue?: number;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'high_value' })
+  highValue?: number;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'low_value' })
+  lowValue?: number;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt!: Date;
 }

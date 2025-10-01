@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { NewsArticle } from './NewsArticle';
 
 @Entity('sources')
 export class Source {
-    @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+    @Column({ type: 'integer', primary: true })
     id!: number;
 
     @Column({ type: 'varchar', length: 100, unique: true })

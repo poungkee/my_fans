@@ -28,7 +28,7 @@ export class NewsArticle {
     @Column({ type: 'varchar', length: 1000, nullable: true, name: 'image_url' })
     imageUrl?: string;
 
-    @Column({ type: 'bigint', name: 'source_id' })
+    @Column({ type: 'integer', name: 'source_id' })
     sourceId: number;
 
     @Column({ type: 'bigint', name: 'category_id' })

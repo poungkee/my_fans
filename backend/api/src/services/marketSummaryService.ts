@@ -115,52 +115,44 @@ export class MarketSummaryService {
 
     const marketData = [
       {
-        symbol: "^KS11",
+        marketType: "KOSPI",
         name: "KOSPI",
-        price: kospi || 0,
-        change: 0,
-        changePercent: 0,
-        market: "KOSPI",
-        currency: "KRW",
+        currentValue: kospi,
+        changeValue: null,
+        changePercent: null,
       },
       {
-        symbol: "^IXIC",
+        marketType: "NASDAQ",
         name: "NASDAQ",
-        price: nasdaq || 0,
-        change: 0,
-        changePercent: 0,
-        market: "NASDAQ",
-        currency: "USD",
+        currentValue: nasdaq,
+        changeValue: null,
+        changePercent: null,
       },
       {
-        symbol: "USD/KRW",
+        marketType: "FX",
         name: "USD/KRW",
-        price: usdkrw || 0,
-        change: 0,
-        changePercent: 0,
-        market: "FX",
-        currency: "KRW",
+        currentValue: usdkrw,
+        changeValue: null,
+        changePercent: null,
       },
       {
-        symbol: "BTC-USD",
+        marketType: "CRYPTO",
         name: "Bitcoin (USD)",
-        price: btc || 0,
-        change: 0,
-        changePercent: 0,
-        market: "CRYPTO",
-        currency: "USD",
+        currentValue: btc,
+        changeValue: null,
+        changePercent: null,
       },
     ];
 
     for (const data of marketData) {
-      if (data.price > 0) {
+      if (data.currentValue != null) {
         const existing = await this.marketSummaryRepository.findOne({
-          where: { symbol: data.symbol }
+          where: { marketType: data.marketType, name: data.name }
         });
 
         if (existing) {
-          existing.price = data.price;
-          existing.change = data.change;
+          existing.currentValue = data.currentValue;
+          existing.changeValue = data.changeValue;
           existing.changePercent = data.changePercent;
           existing.updatedAt = new Date();
           await this.marketSummaryRepository.save(existing);
