@@ -12,6 +12,7 @@ import {
   ParsedArticle,
 } from './siteParsers';
 import axios from 'axios';
+import { summarizeArticle, analyzeBias } from '../../shared/services/aiService';
 
 export class NewsCrawlerService {
   private parsers: Map<string, SiteParser> = new Map();
@@ -198,58 +199,15 @@ export class NewsCrawlerService {
 
     logger.info(`새 기사 저장: ${article.title}`);
 
+    // AI 요약 자동 실행 (비동기, 실패해도 계속)
+    summarizeArticle(saved.id, article.content).catch((error) => {
+      logger.error(`AI 요약 실패 (기사 ID: ${saved.id}):`, error);
+    });
+
     // AI 편향 분석 요청 (비동기, 실패해도 계속)
-    this.requestBiasAnalysis(saved.id, article.title, article.content).catch((error) => {
+    analyzeBias(saved.id, article.content).catch((error) => {
       logger.error(`AI 분석 요청 실패 (기사 ID: ${saved.id}):`, error);
     });
-  }
-
-  /**
-   * AI 편향 분석 서비스에 분석 요청 및 DB 저장
-   */
-  private async requestBiasAnalysis(articleId: number, title: string, content: string): Promise<void> {
-    const biasAnalysisUrl = process.env.BIAS_ANALYSIS_AI_URL || 'http://bias-analysis-ai:8002';
-
-    try {
-      const response = await axios.post(
-        `${biasAnalysisUrl}/analyze/full`,
-        {
-          article_id: articleId,
-          text: `${title}\n\n${content}`,
-        },
-        {
-          timeout: 30000, // 30초 타임아웃
-        }
-      );
-
-      const analysisResult = response.data;
-      logger.info(`AI 분석 완료 (기사 ID: ${articleId})`);
-
-      // BiasAnalysis 데이터베이스에 저장
-      const biasRepo = AppDataSource.getRepository(BiasAnalysis);
-
-      const biasAnalysis = biasRepo.create({
-        articleId: articleId,
-        biasScore: analysisResult.bias_score || 0,
-        politicalLeaning: analysisResult.political_leaning || '중립',
-        confidence: analysisResult.confidence || 0,
-        analysisData: {
-          sentiment: analysisResult.sentiment,
-          keywords: analysisResult.keywords,
-          political: analysisResult.political,
-          processed_at: analysisResult.processed_at,
-        },
-      });
-
-      await biasRepo.save(biasAnalysis);
-      logger.info(`편향 분석 결과 저장 완료 (기사 ID: ${articleId})`);
-    } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        logger.error(`AI 분석 HTTP 오류 (기사 ID: ${articleId}): ${error.message}`);
-      } else {
-        logger.error(`편향 분석 저장 오류 (기사 ID: ${articleId}):`, error);
-      }
-    }
   }
 
   /**

@@ -4,6 +4,7 @@ import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../../shared/config/database';
 import { NewsArticle } from '../../shared/entities/NewsArticle';
 import logger from '../../shared/config/logger';
+import { summarizeArticle, analyzeBias } from '../../shared/services/aiService';
 
 interface NaverNewsApiResponse {
   lastBuildDate: string;
@@ -864,7 +865,7 @@ class NewsCrawlerService {
 
         if (!existingAnalysis && existingNews.content) {
           try {
-            await this.analyzeBias(existingNews.id, existingNews.content);
+            await analyzeBias(existingNews.id, existingNews.content);
             logger.info(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
           } catch (biasError) {
             logger.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
@@ -933,9 +934,16 @@ class NewsCrawlerService {
 
       const savedArticle = await newsRepo.save(article);
 
+      // AI 요약 자동 실행
+      try {
+        await summarizeArticle(savedArticle.id, parsedNews.content);
+      } catch (summaryError) {
+        logger.error(`[AI 요약 실패] 기사 ID ${savedArticle.id}:`, summaryError);
+      }
+
       // AI 편향성 분석 자동 실행
       try {
-        await this.analyzeBias(savedArticle.id, parsedNews.content);
+        await analyzeBias(savedArticle.id, parsedNews.content);
       } catch (biasError) {
         logger.error(`[편향성 분석 실패] 기사 ID ${savedArticle.id}:`, biasError);
         // 편향성 분석 실패해도 기사는 저장됨
@@ -1131,46 +1139,6 @@ class NewsCrawlerService {
     }
   }
 
-  // AI 편향성 분석 실행
-  private async analyzeBias(articleId: number, content: string): Promise<void> {
-    if (!content || content.length < 100) {
-      logger.info(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
-      return;
-    }
-
-    try {
-      const BIAS_AI_URL = 'http://bias-analysis-ai:8002';
-
-      // bias-analysis-ai 서비스 호출
-      const response = await axios.post(`${BIAS_AI_URL}/analyze/full`, {
-        text: content,
-        article_id: articleId
-      }, {
-        timeout: 30000 // 30초 타임아웃
-      });
-
-      if (response.data) {
-        // BiasAnalysis 엔티티에 저장
-        const biasRepo = AppDataSource.getRepository('BiasAnalysis');
-
-        const political = response.data.political;
-        const biasAnalysis = biasRepo.create({
-          articleId: articleId,
-          biasScore: political?.bias_score || 0,
-          politicalLeaning: political?.leaning || 'neutral',
-          confidence: response.data.sentiment?.confidence || 0,
-          analysisData: response.data
-        });
-
-        await biasRepo.save(biasAnalysis);
-        logger.info(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
-      }
-    } catch (error: any) {
-      logger.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);
-      throw error;
-    }
-  }
-
   // 기존 기사 중 분석되지 않은 기사들을 분석
   async analyzeExistingArticles(limit: number = 100): Promise<{
     total: number;
@@ -1203,7 +1171,7 @@ class NewsCrawlerService {
           continue;
         }
 
-        await this.analyzeBias(article.id, article.content);
+        await analyzeBias(article.id, article.content);
         analyzed++;
 
         // 과부하 방지를 위한 딜레이

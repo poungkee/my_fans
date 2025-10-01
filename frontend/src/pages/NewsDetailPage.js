@@ -550,40 +550,6 @@ function NewsDetailPage() {
     return date.toLocaleString('ko-KR');
   };
 
-  const handleCommentLike = (commentId, isReply = false, parentId = null) => {
-    if (!isLoggedIn) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login', { state: { from: location.pathname } });
-      return;
-    }
-
-    setComments(prev => prev.map(comment => {
-      if (!isReply && comment.id === commentId) {
-        return {
-          ...comment,
-          likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-          isLiked: !comment.isLiked
-        };
-      }
-      if (isReply && comment.id === parentId) {
-        return {
-          ...comment,
-          replies: comment.replies.map(reply => {
-            if (reply.id === commentId) {
-              return {
-                ...reply,
-                likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
-                isLiked: !reply.isLiked
-              };
-            }
-            return reply;
-          })
-        };
-      }
-      return comment;
-    }));
-  };
-
   const handleAddComment = async () => {
     console.log('🔥 댓글 작성 시작 - isLoggedIn:', isLoggedIn);
 
@@ -951,12 +917,6 @@ function NewsDetailPage() {
                         <p className="comment-text">{comment.content}</p>
                         <div className="comment-actions">
                           <button
-                            className={`like-button ${comment.isLiked ? 'liked' : ''}`}
-                            onClick={() => handleCommentLike(comment.id)}
-                          >
-                            👍 {comment.likes}
-                          </button>
-                          <button
                             className="reply-button"
                             onClick={() => handleReply(comment.id)}
                           >
@@ -1009,12 +969,6 @@ function NewsDetailPage() {
                                 </div>
                                 <p className="comment-text">{reply.content}</p>
                                 <div className="comment-actions">
-                                  <button
-                                    className={`like-button ${reply.isLiked ? 'liked' : ''}`}
-                                    onClick={() => handleCommentLike(reply.id, true, comment.id)}
-                                  >
-                                    👍 {reply.likes}
-                                  </button>
                                   {currentUser && currentUser.username === reply.author && (
                                     <button
                                       className="delete-button"
