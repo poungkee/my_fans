@@ -88,8 +88,13 @@ lerna-debug.log*
 secrets/
 .secrets/
 
-# === Python Virtual Environment ===
+# === Python Virtual Environment & Cache ===
 backend/ai-service/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
 # === Claude Code Memory File ===
 CLAUDE.md
@@ -147,3 +152,12 @@ work_log.md
 # Puppeteer Crawler
 backend/crawler/puppeteer-crawler/node_modules/
 backend/crawler/puppeteer-crawler/dist/
+backend/crawler/puppeteer-crawler/build/
+backend/crawler/puppeteer-crawler/logs/
+backend/crawler/puppeteer-crawler/*.log
+backend/crawler/puppeteer-crawler/*.tsbuildinfo
+
+# === Backup Archives ===
+*.tar.gz
+*.zip
+*_backup.tar.gz
