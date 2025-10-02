@@ -41,8 +41,8 @@ class NewsCrawlerService {
     logger.debug('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
 
     // 환경변수에서 2개의 Naver API 키 로드
-    const key1Id = process.env.NAVER_CLIENT_ID || '';
-    const key1Secret = process.env.NAVER_CLIENT_SECRET || '';
+    const key1Id = process.env.NAVER_SEARCH_CLIENT_ID || '';
+    const key1Secret = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
     const key2Id = process.env.NAVER_CLIENT_ID_2 || '';
     const key2Secret = process.env.NAVER_CLIENT_SECRET_2 || '';
 

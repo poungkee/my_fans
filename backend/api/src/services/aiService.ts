@@ -15,7 +15,7 @@ export class AIService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    this.baseURL = process.env.AI_SERVICE_URL || 'http://summarize-ai:8000';
   }
 
   async summarizeText(text: string): Promise<SummarizeResponse> {

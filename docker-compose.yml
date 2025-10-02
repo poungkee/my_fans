@@ -9,17 +9,19 @@ services:
     container_name: fans_postgres
     ports:
       - "5432:5432"
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: fans_db
-      POSTGRES_USER: fans_user
-      POSTGRES_PASSWORD: fans_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - fans_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fans_user -d fans_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fans_user} -d ${POSTGRES_DB:-fans_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,11 +36,13 @@ services:
     build: ./backend/ai/summarize-ai
     container_name: fans_summarize_ai
     ports:
-      - "8000:8000"
+      - "${SUMMARIZE_AI_PORT:-8000}:8000"
     env_file:
       - .env
     environment:
-      - PORT=8000
+      - PORT=${SUMMARIZE_AI_PORT:-8000}
+      - MODEL_NAME=${MODEL_NAME}
+      - MAX_SUMMARY_LENGTH=${MAX_SUMMARY_LENGTH}
     networks:
       - fans_network
     healthcheck:
@@ -58,11 +62,11 @@ services:
     build: ./backend/ai/bias-analysis-ai
     container_name: fans_bias_analysis_ai
     ports:
-      - "8002:8002"
+      - "${BIAS_ANALYSIS_AI_PORT:-8002}:8002"
     env_file:
       - .env
     environment:
-      - PORT=8002
+      - PORT=${BIAS_ANALYSIS_AI_PORT:-8002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,9 +94,11 @@ services:
       dockerfile: ./rss-crawler/Dockerfile
     container_name: fans_rss_crawler
     ports:
-      - "4002:4002"
+      - "${RSS_CRAWLER_PORT:-4002}:4002"
     env_file:
       - .env
+    environment:
+      - RSS_CRAWLER_PORT=${RSS_CRAWLER_PORT:-4002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,13 +120,18 @@ services:
       dockerfile: ./api-crawler/Dockerfile
     container_name: fans_api_crawler
     ports:
-      - "4003:4003"
+      - "${API_CRAWLER_PORT:-4003}:4003"
     env_file:
       - .env
     environment:
-      - AUTO_CRAWL=true
-      - CRAWL_INTERVAL_MINUTES=5    # 5분마다 크롤링
-      - CRAWL_LIMIT_PER_CATEGORY=5  # 카테고리당 5개씩
+      - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
+      - CRAWL_LIMIT_PER_CATEGORY=${CRAWL_LIMIT_PER_CATEGORY:-5}
+      - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
+      - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
+      - NAVER_CLIENT_ID_2=${NAVER_CLIENT_ID_2}
+      - NAVER_CLIENT_SECRET_2=${NAVER_CLIENT_SECRET_2}
     depends_on:
       postgres:
         condition: service_healthy
@@ -157,11 +168,11 @@ services:
     env_file:
       - .env
     environment:
-      - PUPPETEER_CRAWLER_PORT=4004
-      - AUTO_CRAWL=true
-      - CRAWL_INTERVAL=180000        # 3분
-      - TOTAL_REPLICAS=3
-      - REPLICA_INDEX=0              # 인스턴스 번호
+      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+      - REPLICA_INDEX=0
     depends_on:
       postgres:
         condition: service_healthy
@@ -188,11 +199,11 @@ services:
     env_file:
       - .env
     environment:
-      - PUPPETEER_CRAWLER_PORT=4004
-      - AUTO_CRAWL=true
-      - CRAWL_INTERVAL=180000
-      - TOTAL_REPLICAS=3
-      - REPLICA_INDEX=1              # 인스턴스 번호
+      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+      - REPLICA_INDEX=1
     depends_on:
       postgres:
         condition: service_healthy
@@ -219,11 +230,11 @@ services:
     env_file:
       - .env
     environment:
-      - PUPPETEER_CRAWLER_PORT=4004
-      - AUTO_CRAWL=true
-      - CRAWL_INTERVAL=180000
-      - TOTAL_REPLICAS=3
-      - REPLICA_INDEX=2              # 인스턴스 번호
+      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+      - REPLICA_INDEX=2
     depends_on:
       postgres:
         condition: service_healthy
@@ -283,11 +294,12 @@ services:
     build: ./backend/api
     container_name: fans_main_api
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     env_file:
       - .env
     environment:
-      - PORT=3000
+      - PORT=${PORT:-3000}
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -315,10 +327,12 @@ services:
     container_name: fans_frontend
     ports:
       - "3001:3001"
+    env_file:
+      - .env
     environment:
-      - REACT_APP_API_BASE=
-      - REACT_APP_API_URL=http://main-api:3000
-      - REACT_APP_AI_SERVICE_URL=http://summarize-ai:8000
+      - REACT_APP_API_BASE=${REACT_APP_API_BASE}
+      - REACT_APP_API_URL=${REACT_APP_API_URL}
+      - REACT_APP_AI_SERVICE_URL=${REACT_APP_AI_SERVICE_URL}
       - PORT=3001
     volumes:
       - ./frontend:/app

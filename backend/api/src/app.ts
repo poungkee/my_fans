@@ -28,8 +28,13 @@ app.use(helmet({
   contentSecurityPolicy: false, // CSP 완전히 비활성화
   crossOriginResourcePolicy: false, // CORP 비활성화
 }));
+// CORS 설정 - 환경변수에서 허용 origin 가져오기
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'http://localhost:3001'];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

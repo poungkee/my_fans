@@ -5,11 +5,15 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      throw new Error('EMAIL_USER and EMAIL_PASSWORD must be set in environment variables');
+    }
+
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER || 'poung1869@gmail.com',
-        pass: process.env.EMAIL_PASSWORD || 'fctt eetz cenb cdoc'
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
       }
     });
   }
@@ -17,7 +21,7 @@ export class EmailService {
   // 이메일 인증 코드 전송
   async sendVerificationCode(email: string, code: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'poung1869@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '[FANS] 이메일 인증 코드',
       html: `
@@ -56,7 +60,7 @@ export class EmailService {
   // 비밀번호 재설정 코드 전송
   async sendPasswordResetCode(email: string, code: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'poung1869@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '[FANS] 비밀번호 재설정 코드',
       html: `
@@ -100,7 +104,7 @@ export class EmailService {
   // 인증 이메일 전송 (비밀번호 변경/회원탈퇴)
   async sendVerificationEmail(email: string, subject: string, message: string, code: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'poung1869@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: `[FANS] ${subject}`,
       html: `
@@ -139,7 +143,7 @@ export class EmailService {
   // 환영 이메일 전송
   async sendWelcomeEmail(email: string, username: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'poung1869@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '[FANS] 회원가입을 환영합니다!',
       html: `
