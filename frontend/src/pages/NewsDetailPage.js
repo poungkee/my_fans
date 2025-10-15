@@ -66,15 +66,29 @@ function NewsDetailPage() {
     const fetchArticle = async () => {
       try {
         setLoading(true);
+        setError(null);
         window.scrollTo(0, 0);
+
+        console.log(`📰 기사 로드 시도: ID ${id}`);
         const response = await fetch(`${API_BASE}/api/news/${id}`);
 
+        console.log(`📰 API 응답 상태: ${response.status}`);
+
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          const errorText = await response.text();
+          console.error(`📰 API 에러 응답:`, errorText);
+          throw new Error(`기사를 불러올 수 없습니다 (HTTP ${response.status})`);
         }
 
         const data = await response.json();
+        console.log(`📰 기사 로드 성공:`, data.title);
+
+        if (!data || !data.id) {
+          throw new Error('기사 데이터가 올바르지 않습니다');
+        }
+
         setArticle(data);
+        setError(null);
 
         // 기사 데이터에서 초기 카운트 설정
         if (data.like_count !== undefined) {
@@ -83,34 +97,70 @@ function NewsDetailPage() {
         if (data.dislike_count !== undefined) {
           setDislikeCount(data.dislike_count);
         }
-
-        // 로그인 상태일 때 VIEW 액션 기록
-        if (isLoggedIn) {
-          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-          if (token) {
-            fetch(`${API_BASE}/api/user/view/${id}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                readingDuration: 0,
-                readingPercentage: 0
-              })
-            }).catch(err => console.warn('VIEW 액션 기록 실패:', err));
-          }
-        }
       } catch (err) {
-        console.error('기사 로드 실패:', err);
-        setError('기사를 불러올 수 없습니다.');
+        console.error('📰 기사 로드 실패:', err);
+        setError(err.message || '기사를 불러올 수 없습니다.');
+        setArticle(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchArticle();
-  }, [id, API_BASE, isLoggedIn]);
+  }, [id, API_BASE]);
+
+  // VIEW 액션 기록 - 별도 useEffect로 분리
+  useEffect(() => {
+    if (!id || !isLoggedIn) return;
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) return;
+
+    console.log('📊 VIEW 액션 기록 시도 - articleId:', id);
+
+    // 1. activity/view 호출 (추천 시스템용)
+    fetch(`${API_BASE}/api/activity/view`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        articleId: parseInt(id),
+        readingTime: 0
+      })
+    })
+      .then(res => {
+        if (res.ok) {
+          console.log('✅ VIEW 액션 기록 성공 (추천용)');
+        } else {
+          console.warn('⚠️ VIEW 액션 기록 실패 - 상태:', res.status);
+        }
+        return res.json();
+      })
+      .then(data => console.log('📊 VIEW 응답:', data))
+      .catch(err => console.error('❌ VIEW 액션 기록 에러:', err));
+
+    // 2. user/view 호출 (활동 로그 페이지용)
+    fetch(`${API_BASE}/api/user/view/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        readingDuration: 0,
+        readingPercentage: 0
+      })
+    })
+      .then(res => {
+        if (res.ok) {
+          console.log('✅ VIEW 기록 성공 (활동 로그용)');
+        }
+        return res.json();
+      })
+      .catch(err => console.warn('활동 로그 기록 실패:', err));
+  }, [id, isLoggedIn, API_BASE]);
 
   // 댓글, 좋아요/싫어요 상태, 구독 상태, 북마크 상태 로딩
   useEffect(() => {
@@ -306,6 +356,16 @@ function NewsDetailPage() {
           if (result.success) {
             setIsBookmarked(true);
             alert(result.message || '북마크가 완료되었습니다.');
+
+            // 활동 로그 기록
+            fetch(`${API_BASE}/api/activity/bookmark`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ articleId: parseInt(id) })
+            }).catch(err => console.warn('북마크 활동 로그 실패:', err));
           } else {
             alert(result.error || '북마크에 실패했습니다.');
           }
@@ -406,6 +466,21 @@ function NewsDetailPage() {
           title: article?.title,
           url: window.location.href
         });
+
+        // 공유 활동 로그 기록 (로그인 상태일 때만)
+        if (isLoggedIn) {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          if (token) {
+            fetch(`${API_BASE}/api/activity/share`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ articleId: parseInt(id), platform: 'native-share' })
+            }).catch(err => console.warn('공유 활동 로그 실패:', err));
+          }
+        }
       } catch (error) {
         // 사용자가 취소한 경우 (AbortError) 무시
         if (error.name !== 'AbortError') {
@@ -416,6 +491,21 @@ function NewsDetailPage() {
       try {
         await navigator.clipboard.writeText(window.location.href);
         alert('링크가 클립보드에 복사되었습니다.');
+
+        // 공유 활동 로그 기록 (로그인 상태일 때만)
+        if (isLoggedIn) {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          if (token) {
+            fetch(`${API_BASE}/api/activity/share`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ articleId: parseInt(id), platform: 'clipboard' })
+            }).catch(err => console.warn('공유 활동 로그 실패:', err));
+          }
+        }
       } catch (error) {
         console.error('클립보드 복사 실패:', error);
       }
@@ -464,9 +554,27 @@ function NewsDetailPage() {
             console.log('🔥 좋아요 추가됨');
             setIsLiked(true);
             setIsDisliked(false); // 좋아요 시 싫어요 해제
+
+            // 활동 로그 기록
+            fetch(`${API_BASE}/api/activity/like`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ articleId: parseInt(id) })
+            }).catch(err => console.warn('좋아요 활동 로그 실패:', err));
           } else if (result.action === 'removed') {
             console.log('🔥 좋아요 제거됨');
             setIsLiked(false);
+
+            // 좋아요 취소 활동 로그
+            fetch(`${API_BASE}/api/activity/like/${id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).catch(err => console.warn('좋아요 취소 활동 로그 실패:', err));
           }
         } else {
           console.error('좋아요 API 응답 에러:', result.error);
@@ -720,14 +828,23 @@ function NewsDetailPage() {
     );
   }
 
-  if (error || !article) {
+  if (error || (!loading && !article)) {
     return (
       <div className="news-detail-container">
         <div className="error">
           <p>{error || '기사를 찾을 수 없습니다.'}</p>
-          <button onClick={() => navigate('/')} className="back-button">
-            메인으로 돌아가기
-          </button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>
+            <button
+              onClick={() => window.location.reload()}
+              className="back-button"
+              style={{ backgroundColor: '#4CAF50' }}
+            >
+              다시 시도
+            </button>
+            <button onClick={() => navigate('/')} className="back-button">
+              메인으로 돌아가기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -852,14 +969,16 @@ function NewsDetailPage() {
             )}
 
             <div className="article-content-text">
-              {article.content && article.content.trim().length > 0 ? (
+              {article?.content && article.content.trim().length > 0 ? (
                 article.content.split('\n').map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
                   <p>기사 본문을 불러올 수 없습니다.</p>
-                  <p>원본 기사는 <a href={article.url} target="_blank" rel="noopener noreferrer">여기</a>에서 확인하실 수 있습니다.</p>
+                  {article?.url && (
+                    <p>원본 기사는 <a href={article.url} target="_blank" rel="noopener noreferrer">여기</a>에서 확인하실 수 있습니다.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -959,7 +1078,7 @@ function NewsDetailPage() {
                           </div>
                         )}
 
-                        {comment.replies.length > 0 && (
+                        {comment.replies && comment.replies.length > 0 && (
                           <div className="replies">
                             {comment.replies.map(reply => (
                               <div key={reply.id} className="reply">

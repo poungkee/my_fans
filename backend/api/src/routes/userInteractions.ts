@@ -98,6 +98,16 @@ router.post('/bookmark/:newsId', authenticateToken, async (req: AuthenticatedReq
         logger.warn('UserAction 저장 실패:', actionError);
       }
 
+      // 추천 캐시 무효화 (북마크 추가 시 추천 갱신 필요)
+      try {
+        await AppDataSource.query(
+          'DELETE FROM user_recommendations WHERE user_id = $1',
+          [userId]
+        );
+      } catch (cacheError) {
+        logger.warn('추천 캐시 삭제 실패:', cacheError);
+      }
+
       res.json({
         success: true,
         message: '기사가 북마크에 추가되었습니다.'
@@ -192,6 +202,16 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         await userActionRepo.save(likeAction);
         await queryRunner.commitTransaction();
 
+        // 추천 캐시 무효화 (좋아요 추가 시 추천 갱신 필요)
+        try {
+          await AppDataSource.query(
+            'DELETE FROM user_recommendations WHERE user_id = $1',
+            [userId]
+          );
+        } catch (cacheError) {
+          logger.warn('추천 캐시 삭제 실패:', cacheError);
+        }
+
         // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
         const articleStatRepo = AppDataSource.getRepository(ArticleStat);
         const stats = await articleStatRepo.findOne({ where: { articleId: newsId } });
@@ -238,6 +258,16 @@ router.post('/reaction/:newsId', authenticateToken, async (req: AuthenticatedReq
         });
         await userActionRepo.save(dislikeAction);
         await queryRunner.commitTransaction();
+
+        // 추천 캐시 무효화 (싫어요 추가 시 추천 갱신 필요)
+        try {
+          await AppDataSource.query(
+            'DELETE FROM user_recommendations WHERE user_id = $1',
+            [userId]
+          );
+        } catch (cacheError) {
+          logger.warn('추천 캐시 삭제 실패:', cacheError);
+        }
 
         // 업데이트된 통계 조회 (트랜잭션 커밋 후 일반 AppDataSource 사용)
         const articleStatRepo = AppDataSource.getRepository(ArticleStat);
@@ -305,6 +335,16 @@ router.post('/view/:newsId', authenticateToken, async (req: AuthenticatedRequest
       readingPercentage
     });
     await userActionRepo.save(viewAction);
+
+    // 추천 캐시 무효화 (기사 읽기 활동 시 추천 갱신 필요)
+    try {
+      await AppDataSource.query(
+        'DELETE FROM user_recommendations WHERE user_id = $1',
+        [userId]
+      );
+    } catch (cacheError) {
+      logger.warn('추천 캐시 삭제 실패:', cacheError);
+    }
 
     res.json({
       success: true,

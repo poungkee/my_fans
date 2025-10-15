@@ -3,16 +3,37 @@ import { SiteParser, ParsedArticle, ParserUtils } from './baseParser';
 import logger from '../../../shared/config/logger';
 
 export class DaumParser implements SiteParser {
+  // 섹션 URL과 카테고리 매핑
+  private sectionToCategoryMap: { [key: string]: string } = {
+    'politics': '정치',
+    'economic': '경제',
+    'society': '사회',
+    'foreign': '세계',
+    'culture': '생활/문화',
+    'digital': 'IT/과학',
+    'entertain': '연예',
+  };
+
   getSectionUrls(): string[] {
     return [
       'https://news.daum.net/politics', // 정치
       'https://news.daum.net/economic', // 경제
       'https://news.daum.net/society', // 사회
-      'https://news.daum.net/foreign', // 국제
-      'https://news.daum.net/culture', // 문화
-      'https://news.daum.net/digital', // IT
+      'https://news.daum.net/foreign', // 국제(세계)
+      'https://news.daum.net/culture', // 문화(생활/문화)
+      'https://news.daum.net/digital', // IT(IT/과학)
       'https://news.daum.net/entertain', // 연예
     ];
+  }
+
+  // URL에서 카테고리명 추출
+  private getCategoryFromUrl(url: string): string | undefined {
+    for (const [section, category] of Object.entries(this.sectionToCategoryMap)) {
+      if (url.includes(`/${section}`)) {
+        return category;
+      }
+    }
+    return undefined;
   }
 
   async extractArticleUrls(page: Page, sectionUrl: string): Promise<string[]> {
@@ -22,6 +43,9 @@ export class DaumParser implements SiteParser {
 
       // 페이지 로딩 및 동적 콘텐츠 대기
       await page.waitForTimeout(3000);
+
+      // 섹션 URL에서 카테고리 추출
+      const categoryName = this.getCategoryFromUrl(sectionUrl);
 
       const urls = await page.evaluate(() => {
         // Daum 뉴스 URL 패턴: v.daum.net/v/XXXXXXXXXX
@@ -33,9 +57,13 @@ export class DaumParser implements SiteParser {
 
       // 중복 제거
       const uniqueUrls = [...new Set(urls)];
-      logger.info(`Daum 섹션에서 ${uniqueUrls.length}개 기사 URL 발견`);
 
-      return uniqueUrls.slice(0, 20); // 최대 20개
+      // URL에 카테고리 정보 추가 (해시 파라미터로)
+      const urlsWithCategory = uniqueUrls.map(url => `${url}#category=${encodeURIComponent(categoryName || '기타')}`);
+
+      logger.info(`Daum 섹션에서 ${urlsWithCategory.length}개 기사 URL 발견 (카테고리: ${categoryName})`);
+
+      return urlsWithCategory.slice(0, 20); // 최대 20개
     } catch (error) {
       logger.error(`Daum URL 추출 실패: ${sectionUrl}`, error);
       return [];
@@ -44,8 +72,20 @@ export class DaumParser implements SiteParser {
 
   async parseArticle(page: Page, url: string): Promise<ParsedArticle | null> {
     try {
-      logger.info(`Daum 기사 파싱: ${url}`);
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
+      // URL에서 카테고리 추출 (해시 파라미터에서)
+      let categoryName: string | undefined;
+      if (url.includes('#category=')) {
+        const match = url.match(/#category=([^&]+)/);
+        if (match) {
+          categoryName = decodeURIComponent(match[1]);
+        }
+      }
+
+      // 해시 제거한 실제 URL
+      const cleanUrl = url.split('#')[0];
+
+      logger.info(`Daum 기사 파싱: ${cleanUrl} (카테고리: ${categoryName})`);
+      await page.goto(cleanUrl, { waitUntil: 'networkidle0', timeout: 45000 });
 
       // 기사 제목과 언론사 로고가 로딩될 때까지 대기
       try {
@@ -153,16 +193,17 @@ export class DaumParser implements SiteParser {
         .replace(/\n\s*\n/g, '\n\n')
         .trim();
 
-      logger.info(`Daum 기사 파싱 성공: ${article.title.substring(0, 30)}... (원 언론사: ${article.originalSource})`);
+      logger.info(`Daum 기사 파싱 성공: ${article.title.substring(0, 30)}... (원 언론사: ${article.originalSource}, 카테고리: ${categoryName})`);
 
       return {
         title: article.title,
         content: cleanedContent,
-        url,
+        url: cleanUrl, // 해시 제거한 URL 저장
         imageUrl: article.imageUrl || undefined,
         journalist: article.journalist || undefined,
         pubDate,
         originalSource: article.originalSource, // 원 언론사명 추가
+        categoryName: categoryName, // 카테고리 추가
       } as any;
     } catch (error) {
       logger.error(`Daum 기사 파싱 실패: ${url}`, error);

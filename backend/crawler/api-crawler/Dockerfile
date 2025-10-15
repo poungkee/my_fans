@@ -10,7 +10,7 @@ WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치
 COPY api-crawler/package*.json ./
-RUN npm install
+RUN npm ci
 
 # shared 디렉토리 복사 (먼저)
 COPY shared ./shared

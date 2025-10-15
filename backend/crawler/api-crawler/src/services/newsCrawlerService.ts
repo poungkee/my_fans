@@ -3,23 +3,15 @@ import * as cheerio from 'cheerio';
 import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../../shared/config/database';
 import { NewsArticle } from '../../shared/entities/NewsArticle';
+import { RawNewsArticle } from '../../shared/entities/RawNewsArticle';
 import logger from '../../shared/config/logger';
 import { summarizeArticle, analyzeBias } from '../../shared/services/aiService';
 
-interface NaverNewsApiResponse {
-  lastBuildDate: string;
-  total: number;
-  start: number;
-  display: number;
-  items: NaverNewsItem[];
-}
-
-interface NaverNewsItem {
+interface DaumNewsItem {
   title: string;
-  originallink: string;
-  link: string;
-  description: string;
-  pubDate: string;
+  url: string;
+  imageUrl?: string;
+  source?: string;
 }
 
 interface ParsedNews {
@@ -30,247 +22,60 @@ interface ParsedNews {
   pubDate: Date;
   imageUrl?: string;
   videoUrl?: string;
+  actualCategory?: string; // 기사 페이지에서 파싱한 실제 카테고리
 }
 
 class NewsCrawlerService {
-  // Naver API 키 설정 (2개 키를 라운드 로빈 방식으로 사용)
-  private naverApiKeys: Array<{ clientId: string; clientSecret: string }> = [];
-  private currentKeyIndex: number = 0;
+  private readonly categories = [
+    { name: '정치', sectionUrl: 'https://news.daum.net/politics' },
+    { name: '경제', sectionUrl: 'https://news.daum.net/economy' },
+    { name: '사회', sectionUrl: 'https://news.daum.net/society' },
+    { name: '세계', sectionUrl: 'https://news.daum.net/world' },
+    { name: 'IT/과학', sectionUrl: 'https://news.daum.net/tech' },
+    { name: '생활/문화', sectionUrl: 'https://news.daum.net/culture' },
+    { name: '스포츠', sectionUrl: 'https://sports.daum.net' },
+    { name: '연예', sectionUrl: 'https://entertain.daum.net' }
+  ];
 
   constructor() {
-    logger.debug('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
-
-    // 환경변수에서 2개의 Naver API 키 로드
-    const key1Id = process.env.NAVER_SEARCH_CLIENT_ID || '';
-    const key1Secret = process.env.NAVER_SEARCH_CLIENT_SECRET || '';
-    const key2Id = process.env.NAVER_CLIENT_ID_2 || '';
-    const key2Secret = process.env.NAVER_CLIENT_SECRET_2 || '';
-
-    logger.debug(`[CRAWLER DEBUG] Key1 존재: ${!!key1Id}, Key2 존재: ${!!key2Id}`);
-
-    // 첫 번째 키 추가
-    if (key1Id && key1Secret) {
-      this.naverApiKeys.push({ clientId: key1Id, clientSecret: key1Secret });
-      logger.debug('[CRAWLER DEBUG] ✅ Naver API Key #1 로드됨');
-    } else {
-      logger.debug('[CRAWLER DEBUG] ❌ Naver API Key #1 없음');
-    }
-
-    // 두 번째 키 추가
-    if (key2Id && key2Secret) {
-      this.naverApiKeys.push({ clientId: key2Id, clientSecret: key2Secret });
-      logger.debug('[CRAWLER DEBUG] ✅ Naver API Key #2 로드됨');
-    } else {
-      logger.debug('[CRAWLER DEBUG] ❌ Naver API Key #2 없음');
-    }
-
-    logger.debug(`[CRAWLER DEBUG] 🔑 총 ${this.naverApiKeys.length}개의 Naver API 키 사용 가능`);
-  }
-
-  // 현재 사용할 API 키 가져오기 (라운드 로빈)
-  private getCurrentApiKey(): { clientId: string; clientSecret: string } {
-    if (this.naverApiKeys.length === 0) {
-      throw new Error('Naver API 키가 설정되지 않았습니다.');
-    }
-
-    const key = this.naverApiKeys[this.currentKeyIndex];
-    logger.debug(`[CRAWLER DEBUG] API Key #${this.currentKeyIndex + 1} 사용 중`);
-
-    // 다음 요청을 위해 인덱스 증가 (라운드 로빈)
-    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.naverApiKeys.length;
-
-    return key;
-  }
-  // 텍스트 정리 함수
-  // URL에서 언론사 추출
-  private extractMediaSourceFromUrl(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      const domain = urlObj.hostname.toLowerCase();
-
-      // 서브도메인 포함 패턴 체크
-      // 동아일보 (sports.donga.com, news.donga.com 등)
-      if (domain.endsWith('.donga.com') || domain === 'donga.com') {
-        return '동아일보';
-      }
-      // 조선일보 (biz.chosun.com, sports.chosun.com 등)
-      if (domain.endsWith('.chosun.com') || domain === 'chosun.com') {
-        return '조선일보';
-      }
-      // 한겨레
-      if (domain.endsWith('.hani.co.kr') || domain === 'hani.co.kr') {
-        return '한겨레';
-      }
-      // 경향신문 (sports.khan.co.kr, biz.khan.co.kr 등)
-      if (domain.endsWith('.khan.co.kr') || domain === 'khan.co.kr') {
-        return '경향신문';
-      }
-      // 중앙일보 (news.joins.com 등)
-      if (domain.endsWith('.joins.com') || domain === 'joins.com' ||
-          domain.endsWith('.joongang.co.kr') || domain === 'joongang.co.kr') {
-        return '중앙일보';
-      }
-      // 연합뉴스
-      if (domain.endsWith('.yna.co.kr') || domain === 'yna.co.kr' ||
-          domain.endsWith('.yonhapnews.co.kr') || domain === 'yonhapnews.co.kr') {
-        return '연합뉴스';
-      }
-      // 매일경제 (stock.mk.co.kr, news.mk.co.kr 등)
-      if (domain.endsWith('.mk.co.kr') || domain === 'mk.co.kr') {
-        return '매일경제';
-      }
-      // 한국경제 (news.hankyung.com, markets.hankyung.com 등)
-      if (domain.endsWith('.hankyung.com') || domain === 'hankyung.com') {
-        return '한국경제';
-      }
-      // 머니투데이 (news.mt.co.kr, stock.mt.co.kr 등)
-      if (domain.endsWith('.mt.co.kr') || domain === 'mt.co.kr') {
-        return '머니투데이';
-      }
-      // YTN (science.ytn.co.kr 등)
-      if (domain.endsWith('.ytn.co.kr') || domain === 'ytn.co.kr') {
-        return 'YTN';
-      }
-      // JTBC (news.jtbc.co.kr 등)
-      if (domain.endsWith('.jtbc.co.kr') || domain === 'jtbc.co.kr' ||
-          domain.endsWith('.jtbc.joins.com') || domain === 'jtbc.joins.com') {
-        return 'JTBC';
-      }
-      // 문화일보
-      if (domain.endsWith('.munhwa.com') || domain === 'munhwa.com') {
-        return '문화일보';
-      }
-      // 세계일보
-      if (domain.endsWith('.segye.com') || domain === 'segye.com') {
-        return '세계일보';
-      }
-      // 한국일보
-      if (domain.endsWith('.hankookilbo.com') || domain === 'hankookilbo.com') {
-        return '한국일보';
-      }
-
-      // 도메인 기반 언론사 매핑
-      const domainToMedia: { [key: string]: string } = {
-        'yna.co.kr': '연합뉴스',
-        'yonhapnews.co.kr': '연합뉴스',
-        'hankookilbo.com': '한국일보',
-        'sbs.co.kr': 'SBS',
-        'kbs.co.kr': 'KBS',
-        'mbc.co.kr': 'MBC',
-        'jtbc.co.kr': 'JTBC',
-        'mt.co.kr': '머니투데이',
-        'mk.co.kr': '매일경제',
-        'hankyung.com': '한국경제',
-        'wikitree.co.kr': '위키트리',
-        'news1.kr': '뉴스1',
-        'newsen.com': '뉴스엔',
-        'heraldcorp.com': '헤럴드경제',
-        'choicenews.co.kr': '초이스경제',
-        'ccnnews.co.kr': '충청뉴스',
-        'dailian.co.kr': '데일리안',
-        'sateconomy.co.kr': '새턴경제',
-        'biz.heraldcorp.com': '헤럴드경제',
-        'jmbc.co.kr': '전주MBC'
-      };
-
-      // 정확한 도메인 매치
-      if (domainToMedia[domain]) {
-        return domainToMedia[domain];
-      }
-
-      // 서브도메인 제거하고 매치 시도
-      const mainDomain = domain.split('.').slice(-2).join('.');
-      if (domainToMedia[mainDomain]) {
-        return domainToMedia[mainDomain];
-      }
-
-      // 부분 매치 시도
-      for (const [key, value] of Object.entries(domainToMedia)) {
-        if (domain.includes(key.split('.')[0])) {
-          return value;
-        }
-      }
-
-      return '';
-    } catch (error) {
-      logger.debug(`[DEBUG] URL 파싱 오류: ${url}`);
-      return '';
-    }
-  }
-
-  // 제목에서 언론사 추출 (개선된 버전)
-  private extractMediaSourceFromTitle(title: string): string {
-    // 제목 끝에 있는 언론사명 패턴들
-    const patterns = [
-      /\s-\s(.+)$/, // "제목 - 언론사"
-      /\s\|\s(.+)$/, // "제목 | 언론사"
-      /\s(.+)$/,     // "제목 언론사" (마지막 단어)
-    ];
-
-    for (const pattern of patterns) {
-      const match = title.match(pattern);
-      if (match) {
-        const candidate = match[1].trim();
-        // 언론사명으로 보이는 패턴인지 확인
-        if (candidate.length >= 2 && candidate.length <= 15 &&
-            !candidate.includes('http') &&
-            !candidate.match(/^\d+$/)) {
-          return candidate;
-        }
-      }
-    }
-
-    return '';
+    logger.debug('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨 - Daum News 크롤러');
   }
 
   private cleanText(text: string): string {
     if (!text) return '';
 
     return text
-      // HTML 태그 제거
       .replace(/<[^>]*>/g, '')
-      // CSS 스타일 제거
       .replace(/\{[^}]*\}/g, '')
-      // CSS 선택자 패턴 제거
       .replace(/[a-zA-Z-]+:\s*[^;]+;/g, '')
       .replace(/\.[a-zA-Z-]+\s*\{[^}]*\}/g, '')
       .replace(/#[a-zA-Z-]+\s*\{[^}]*\}/g, '')
-      // JavaScript 코드 제거
       .replace(/function\s*\([^)]*\)\s*\{[^}]*\}/g, '')
       .replace(/var\s+[^;]+;/g, '')
       .replace(/\$\([^)]*\)[^;]*;/g, '')
-      // 특수 문자 및 패턴 제거
       .replace(/margin-top:\s*\d+px/gi, '')
       .replace(/Item:not\([^)]*\)/gi, '')
       .replace(/\{[^}]*margin[^}]*\}/gi, '')
-      // 연속된 공백, 탭, 줄바꿈 정리
       .replace(/\s+/g, ' ')
       .replace(/\t+/g, ' ')
       .replace(/\n+/g, ' ')
-      // 특수문자 정리
       .replace(/[^\w\s가-힣.,!?""''()\-]/g, '')
-      // 앞뒤 공백 제거
       .trim();
   }
 
-  // 개선된 본문 정리 함수
   private cleanContent(text: string): string {
     if (!text) return '';
 
     return text
-      // HTML 태그 제거
       .replace(/<[^>]*>/g, '')
-      // CSS/JS 코드 제거 (강화)
       .replace(/\.(news_primary|title|content)\s*\{[^}]*\}/g, '')
       .replace(/font-family:[^;]+;/g, '')
       .replace(/font-size:[^;]+;/g, '')
       .replace(/font-weight:[^;]+;/g, '')
       .replace(/\{[^}]*font[^}]*\}/g, '')
-      // URL 패턴 제거 (http, https, doi 등)
       .replace(/https?:\/\/[^\s]+/g, '')
       .replace(/doi\.org\/[^\s]+/g, '')
       .replace(/www\.[^\s]+/g, '')
-      // 웹사이트 공통 요소들 제거
       .replace(/로그인|회원가입|구독|공유하기|페이스북|트위터|카카오톡/g, '')
       .replace(/SNS 퍼가기|URL 복사|글자크기 설정/g, '')
       .replace(/뉴스 요약쏙|AI 요약은|OpenAI의 최신 기술을/g, '')
@@ -278,36 +83,29 @@ class NewsCrawlerService {
       .replace(/웹 알림 동의|다양한 경제, 산업 현장의/g, '')
       .replace(/무단전재 및 재배포 금지|저작권자|ⓒ|Copyright|copyright/g, '')
       .replace(/기사입력|기사수정|최종수정|발행일|등록일|기사제보|보도자료/g, '')
-      // 연관기사 관련 텍스트 제거
       .replace(/관련기사|추천기사|인기기사|많이 본 뉴스|실시간 뉴스|HOT 클릭/g, '')
       .replace(/다른기사 보기|이 기사를|댓글|좋아요/g, '')
-      // 기자 서명 패턴 정리
       .replace(/기자\s*구독\s*공유하기/g, '')
       .replace(/\s*기자\s*수정\s*\d{4}-\d{2}-\d{2}/g, '')
       .replace(/등록\s*\d{4}-\d{2}-\d{2}/g, '')
-      .replace(/\s*기자\s*[a-zA-Z0-9._%+-]+@[^\s]*/g, '') // 기자 이메일
-      // 이메일 주소 제거
+      .replace(/\s*기자\s*[a-zA-Z0-9._%+-]+@[^\s]*/g, '')
       .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
-      // 한 줄 내에서 연속된 공백만 제거 (줄바꿈 유지!)
       .split('\n')
       .map(line => line.replace(/ +/g, ' ').trim())
       .join('\n')
-      // 3개 이상 연속 줄바꿈은 2개로 정리
       .replace(/\n\n\n+/g, '\n\n')
       .trim();
   }
 
-  // 유효한 본문 내용인지 검증하는 함수
   private isValidContent(text: string): boolean {
     if (!text || text.length < 50) return false;
 
-    // 실시간 검색어, 랭킹 등 내용 없는 기사 제외
     const emptyContentPatterns = [
       /실시간\s*(인기)?검색어/,
       /HOT\s*클릭/,
       /급상승\s*검색어/,
       /인기\s*검색어/,
-      /^\d+위\s+/,  // "1위 xxx" 형식
+      /^\d+위\s+/,
       /네이버\s*실시간/,
     ];
 
@@ -318,7 +116,6 @@ class NewsCrawlerService {
       }
     }
 
-    // 웹사이트 UI 요소들이 많이 포함된 경우 제외
     const uiKeywords = [
       '로그인', '회원가입', '구독', '공유하기',
       '페이스북', '트위터', '카카오톡', 'SNS',
@@ -330,72 +127,65 @@ class NewsCrawlerService {
       return count + (text.includes(keyword) ? 1 : 0);
     }, 0);
 
-    // UI 키워드가 5개 이상이면 본문이 아닌 것으로 판단
     if (uiKeywordCount >= 5) return false;
 
-    // 의미있는 한글 문장이 있는지 확인
     const koreanContent = text.match(/[가-힣]{5,}/g);
     if (!koreanContent || koreanContent.length === 0) return false;
 
-    // 전체 텍스트에서 한글 비율이 30% 이상이면 유효한 것으로 판단
     const koreanChars = (text.match(/[가-힣]/g) || []).length;
     const koreanRatio = koreanChars / text.length;
 
     logger.debug(`[DEBUG] 콘텐츠 유효성 검사: 길이=${text.length}, UI키워드=${uiKeywordCount}, 한글비율=${(koreanRatio*100).toFixed(1)}%`);
 
-    return koreanRatio >= 0.3; // 30% 이상 한글이면 유효
+    return koreanRatio >= 0.3;
   }
 
-  private readonly categories = [
-    { name: '정치', query: '정치' },
-    { name: '경제', query: '경제' },
-    { name: '사회', query: '사회' },
-    { name: '생활/문화', query: '생활 문화' },
-    { name: 'IT/과학', query: 'IT 과학 기술' },
-    { name: '세계', query: '세계 국제' },
-    { name: '스포츠', query: '스포츠' },
-    { name: '연예', query: '연예' }
-  ];
-
-  async fetchNewsFromNaver(query: string, display: number = 20): Promise<NaverNewsItem[]> {
+  async fetchNewsFromDaum(sectionUrl: string, limit: number = 20): Promise<DaumNewsItem[]> {
     try {
-      // 오늘 날짜를 검색어에 추가하여 최신 뉴스 우선 수집
-      const today = new Date();
-      const todayStr = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
-      const enhancedQuery = `${query} ${todayStr}`;
+      logger.debug(`[DAUM DEBUG] 섹션 페이지 요청: ${sectionUrl}`);
 
-      // 한글 쿼리를 URL 인코딩
-      const encodedQuery = encodeURIComponent(enhancedQuery);
-      const url = `https://openapi.naver.com/v1/search/news.json?query=${encodedQuery}&display=${display}&start=1&sort=date`;
-
-      logger.debug(`[API DEBUG] 검색어: "${enhancedQuery}"`);
-
-      // 라운드 로빈 방식으로 API 키 선택
-      const apiKey = this.getCurrentApiKey();
-
-      const response = await axios.get(url, {
+      const response = await axios.get(sectionUrl, {
         headers: {
-          'X-Naver-Client-Id': apiKey.clientId,
-          'X-Naver-Client-Secret': apiKey.clientSecret,
-        }
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+        },
+        timeout: 15000
       });
 
-      const data: NaverNewsApiResponse = response.data;
-      logger.debug(`[API DEBUG] 쿼리 "${query}" -> ${data.items.length}개 결과 반환 (total: ${data.total})`);
+      const $ = cheerio.load(response.data);
+      const articles: DaumNewsItem[] = [];
 
-      // 최신 뉴스만 필터링 (오늘, 어제 뉴스만)
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      // Daum 뉴스 리스트 추출
+      $('a[href*="v.daum.net/v/"]').each((_idx, el) => {
+        const $el = $(el);
+        const url = $el.attr('href');
+        if (!url || !url.includes('v.daum.net/v/')) return;
 
-      const recentItems = data.items.filter(item => {
-        const pubDate = new Date(item.pubDate);
-        return pubDate >= twoDaysAgo;
+        // 제목 추출
+        const title = $el.text().trim() || $el.find('.tit_main').text().trim();
+        if (!title || title.length < 10) return;
+
+        // 이미지 추출 (있는 경우)
+        const imageUrl = $el.find('img').attr('src') || '';
+
+        articles.push({
+          title: this.cleanText(title),
+          url: url.split('#')[0], // 해시 제거
+          imageUrl: imageUrl.startsWith('http') ? imageUrl : undefined
+        });
       });
 
-      logger.debug(`[API DEBUG] 최근 2일 내 뉴스 필터링: ${data.items.length}개 -> ${recentItems.length}개`);
-      return recentItems;
+      // 중복 제거 (URL 기준)
+      const uniqueArticles = Array.from(
+        new Map(articles.map(item => [item.url, item])).values()
+      );
+
+      logger.debug(`[DAUM DEBUG] ${sectionUrl}에서 ${uniqueArticles.length}개 기사 발견`);
+
+      return uniqueArticles.slice(0, limit);
     } catch (error) {
-      logger.error('네이버 뉴스 API 호출 실패:', error);
+      logger.error('Daum 뉴스 목록 조회 실패:', error);
       return [];
     }
   }
@@ -409,7 +199,6 @@ class NewsCrawlerService {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-          'Accept-Encoding': 'gzip, deflate'
         },
         timeout: 10000,
         responseType: 'arraybuffer'
@@ -417,421 +206,180 @@ class NewsCrawlerService {
 
       logger.debug(`[DEBUG] HTTP 응답 상태: ${response.status}`);
 
-      // 인코딩 처리 - 한글 깨짐 방지
       let html = '';
-      if (response.data instanceof Buffer || Buffer.isBuffer(response.data)) {
-        const buffer = Buffer.from(response.data);
+      const buffer = Buffer.from(response.data);
+      const contentType = response.headers['content-type'] || '';
 
-        logger.debug(`[DEBUG] 버퍼 크기: ${buffer.length} bytes`);
-
-        // Content-Type 헤더에서 charset 확인
-        const contentType = response.headers['content-type'] || '';
-        logger.debug(`[DEBUG] Content-Type: ${contentType}`);
-
-        let encoding = 'utf8';
-        if (contentType.includes('charset=euc-kr') || contentType.includes('charset=ks_c_5601-1987')) {
-          encoding = 'euc-kr';
-        } else if (contentType.includes('charset=utf-8')) {
-          encoding = 'utf8';
-        }
-
-        logger.debug(`[DEBUG] 감지된 인코딩: ${encoding}`);
-
-        // iconv-lite로 디코딩
-        try {
-          if (encoding === 'euc-kr') {
-            html = iconv.decode(buffer, 'euc-kr');
-          } else {
-            html = iconv.decode(buffer, 'utf8');
-            // UTF-8이 깨졌다면 EUC-KR로 재시도
-            if (html.includes('�') || html.includes('????')) {
-              html = iconv.decode(buffer, 'euc-kr');
-              logger.debug(`[DEBUG] EUC-KR로 재시도`);
-            }
-          }
-        } catch (error) {
-          logger.debug(`[DEBUG] 인코딩 실패, UTF-8 기본값 사용:`, error);
-          html = buffer.toString('utf8');
-        }
-      } else {
-        html = response.data;
+      let encoding = 'utf8';
+      if (contentType.includes('charset=euc-kr') || contentType.includes('charset=ks_c_5601-1987')) {
+        encoding = 'euc-kr';
       }
+
+      html = iconv.decode(buffer, encoding);
 
       const $ = cheerio.load(html, { xmlMode: false });
 
-      // 다양한 뉴스 사이트 구조에 맞게 파싱
-      const titleSelectors = [
-        'h2.media_end_head_headline',
-        'h3.tit_view',
-        '.article_header h3',
-        '.article-header h1',
-        '.article-title',
-        '.news-title',
-        '.post-title',
-        '.entry-title',
-        '.headline',
-        '.subject',
-        'title',
-        'h1',
-        'h2',
-        'h3',
-        '[class*="title"]',
-        '[class*="headline"]'
-      ];
+      // 광고, 스크립트 제거 (이미지는 보존)
+      $('script, style, .ad, .advertisement, .aside_g, .cmt_fold').remove();
 
+      // 제목 추출
       let title = '';
-      for (const selector of titleSelectors) {
-        const found = this.cleanText($(selector).first().text());
-        logger.debug(`[DEBUG] 제목 셀렉터 ${selector}: "${found}"`);
-        if (found && found.length > 5 && found.length < 200) {
-          title = found;
-          break;
-        }
+      const titleEl = $('h3.tit_view');
+      if (titleEl.length > 0) {
+        title = this.cleanText(titleEl.text());
       }
-      logger.debug(`[DEBUG] 최종 추출된 제목: ${title}`);
 
-      // 본문 추출 (개선된 버전)
-      let content = '';
-      const contentSelectors = [
-        // 네이버 뉴스
-        '#dic_area',
-        '#articleBodyContents',
-        // 네이버 스포츠
-        '.news_end_body_container',
-        // 쿠키뉴스, 일부 언론사
-        '#article',
-        '.newsview_content',
-        // 조선일보, 동아일보 등
-        '.article_body',
-        '.article_view .article_body',
-        // 한겨레, 경향신문 등
-        '.article-content',
-        '.article-body',
-        // 블로그형 언론사
-        '.post-content',
-        '.entry-content',
-        // 일반적인 뉴스 사이트
-        '.news-content',
-        '.text-content',
-        '.story-body',
-        '.article-text',
-        // 마지막 시도 (가장 안전한 것들만)
-        'article .content',
-        '.news-article .content'
+      // 이미지 추출 (본문 요소 제거 전에 먼저 추출)
+      let imageUrl = '';
+      const imageSelectors = [
+        '.thumb_g',                    // Daum 기사 메인 이미지
+        '.wrap_thumb img',             // 이미지 래퍼 안의 이미지
+        '.article_view img.thumb_g',   // 기사 본문 내 썸네일
+        '.article_view figure img',    // figure 태그 안의 이미지
+        '.article_view img'            // 기사 본문 내 모든 이미지
       ];
 
-      logger.debug(`[DEBUG] 본문 추출 시도 중...`);
-      for (const selector of contentSelectors) {
-        const element = $(selector);
-        if (element.length === 0) continue;
-
-        // 불필요한 요소 제거 (연관기사, 광고, 링크 등 강화)
-        element.find('script, style, .ad, .advertisement, .share, .social, .comment, .related, .sidebar, .header, .footer, .nav, .menu, .recommend, .more-news, .link-article, aside, [class*="relate"], [class*="recommend"], [class*="more"], [class*="popular"], [id*="popular"], [class*="ranking"], [id*="ranking"]').remove();
-
-        // 연관기사, 인기기사 등을 포함하는 ul, ol 리스트 제거
-        element.find('ul, ol').each((_idx, list) => {
-          const $list = $(list);
-          const listText = $list.text();
-          // 리스트가 링크만 있거나 제목 나열인 경우 제거
-          const linkCount = $list.find('a').length;
-          const itemCount = $list.find('li').length;
-          // 각 li가 짧은 텍스트(제목 같은)만 있으면 제거
-          if (linkCount > 2 || (itemCount > 2 && listText.length / itemCount < 50)) {
-            $list.remove();
+      for (const selector of imageSelectors) {
+        const imgEl = $(selector).first();
+        if (imgEl.length > 0) {
+          const src = imgEl.attr('src') || imgEl.attr('data-src') || '';
+          if (src && src.startsWith('http')) {
+            imageUrl = src;
+            logger.debug(`[이미지 추출] ${selector}에서 발견: ${src.substring(0, 80)}`);
+            break;
           }
-        });
-
-        // a 태그 완전 제거 (링크된 텍스트도 제거)
-        element.find('a').remove();
-
-        // p 태그마다 줄바꿈 추가 (문단 분리)
-        let found = '';
-        const pTags = element.find('p');
-        if (pTags.length > 0) {
-          pTags.each((_idx, p) => {
-            const $p = $(p);
-
-            // p 태그가 연관기사/인기기사 섹션에 있는지 체크
-            const parent = $p.parent();
-            const parentClass = parent.attr('class') || '';
-            const parentId = parent.attr('id') || '';
-
-            if (parentClass.match(/relat|recommend|popular|ranking|more|link|hot|trend/i) ||
-                parentId.match(/relat|recommend|popular|ranking|more|link|hot|trend/i)) {
-              return; // 이 p 태그는 스킵
-            }
-
-            const text = $p.text().trim();
-
-            // 연예 가십/클릭베이트 패턴 제외
-            const isCelebrityGossip = text.match(/^(임신|결혼|이혼|♥|비키니|탄수화물|과감|파격|깜짝|충격)/);
-            const hasEllipsis = text.endsWith('...');
-
-            // 본문 문단은 보통 80자 이상 (50->80으로 상향)
-            // 연예가십이나 요약형 제목은 제외
-            if (text && text.length > 80 && !isCelebrityGossip && !hasEllipsis) {
-              found += text + '\n\n';
-            }
-          });
-          logger.debug(`[DEBUG] Extracted from ${pTags.length} p-tags, length with newlines: ${found.length}`);
-        }
-
-        // p 태그가 없거나 추출 실패하면 기존 방식 사용
-        if (!found || found.length < 100) {
-          found = element.text();
-          logger.debug(`[DEBUG] P-tag extraction failed, using element.text()`);
-        }
-
-        found = this.cleanContent(found);
-
-        logger.debug(`[DEBUG] Selector ${selector}: after cleanContent ${found ? found.length : 0} chars`);
-        if (found && found.length > 100 && found.length < 10000 && this.isValidContent(found)) {
-          content = found;
-          logger.debug(`[DEBUG] 본문 추출 완료: ${content.substring(0, 100)}...`);
-          break;
         }
       }
 
-      // 대체 방법: 본문 p 태그들만 선별적으로 추출
-      if (!content) {
-        logger.debug(`[DEBUG] 대체 방법으로 본문 추출 시도...`);
+      // 본문 추출
+      let content = '';
+      const contentEl = $('.article_view');
+      if (contentEl.length > 0) {
+        // 불필요한 요소 제거
+        contentEl.find('.ad, .advertisement, .link_figure, figure, .btn_fold, .alex_area, .layer_video').remove();
+
+        // p 태그들을 수집
         const paragraphs: string[] = [];
-        $('p').each((_index, el) => {
-          const $el = $(el);
-          const parent = $el.parent();
-
-          // 헤더, 네비게이션, 광고, 사이드바 등 제외
-          if (parent.hasClass('header') || parent.hasClass('nav') ||
-              parent.hasClass('sidebar') || parent.hasClass('ad') ||
-              parent.hasClass('footer') || parent.hasClass('menu') ||
-              parent.hasClass('share') || parent.hasClass('social')) {
-            return;
-          }
-
-          const text = this.cleanContent($el.text());
-          if (text && text.length > 20 && text.length < 1000) {
+        contentEl.find('p').each((_idx, p) => {
+          const text = $(p).text().trim();
+          if (text && text.length > 30) {
             paragraphs.push(text);
           }
         });
 
         if (paragraphs.length > 0) {
-          const allText = paragraphs.join(' ');
-          if (allText.length > 100 && this.isValidContent(allText)) {
-            content = allText;
-            logger.debug(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);
-          }
+          content = paragraphs.join('\n\n');
+        } else {
+          content = contentEl.text();
         }
+
+        content = this.cleanContent(content);
       }
 
-      // 기자 정보 추출 (개선된 버전)
+      // 언론사 추출
+      let mediaSource = '';
+      const sourceEl = $('#kakaoServiceLogo');
+      if (sourceEl.length > 0) {
+        mediaSource = sourceEl.text().trim();
+      }
+
+      // 기자 추출
       let journalist = '';
-
-      // 기자 이름 정리 함수
-      const cleanJournalistName = (name: string): string => {
-        if (!name) return '';
-
-        // 이메일 주소, 전화번호, 기타 불필요한 정보 제거
-        name = name
-          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '') // 이메일 제거
-          .replace(/\d{2,4}-\d{2,4}-\d{4}/g, '') // 전화번호 제거
-          .replace(/\d{3}-\d{3,4}-\d{4}/g, '') // 전화번호 제거
-          .replace(/\([^)]*\)/g, '') // 괄호와 내용 제거
-          .replace(/\[[^\]]*\]/g, '') // 대괄호와 내용 제거
-          .replace(/기자|reporter|작성자|글쓴이|입력|수정|승인|배포|송고|편집|교정|교열/gi, '') // 불필요한 단어 제거
-          .replace(/\d{4}[-.년년]\d{1,2}[-.월월]\d{1,2}/g, '') // 날짜 제거
-          .replace(/\d{1,2}:\d{2}/g, '') // 시간 제거
-          .replace(/[^\w\s가-힣]/g, ' ') // 특수문자를 공백으로
-          .replace(/\s+/g, ' ') // 연속 공백 제거
-          .trim();
-
-        // 한글 이름만 추출 (2-4글자)
-        const koreanNameMatch = name.match(/[가-힣]{2,4}/);
-        if (koreanNameMatch) {
-          const extractedName = koreanNameMatch[0];
-          // 일반적이지 않은 이름 패턴 필터링
-          if (!extractedName.match(/^(뉴스|기사|제공|출처|언론|매체|신문|방송|통신|미디어|편집|부서|팀장|대표|위원|의원|장관|차관|실장|국장|과장|부장|센터|연구소|대학교|교수|박사|석사|학사)$/)) {
-            return extractedName;
-          }
+      const infoEl = $('.txt_info');
+      if (infoEl.length > 0) {
+        const match = infoEl.text().match(/([가-힣]{2,4})\s*기자/);
+        if (match) {
+          journalist = match[1];
         }
+      }
 
-        return '';
-      };
+      // 발행일 추출
+      let pubDate = new Date();
+      const dateEl = $('.num_date');
+      if (dateEl.length > 0) {
+        const dateStr = dateEl.text().trim();
+        const parsedDate = new Date(dateStr);
+        if (!isNaN(parsedDate.getTime())) {
+          pubDate = parsedDate;
+        }
+      }
 
-      // 1단계: 다양한 셀렉터로 기자 정보 추출
-      const journalistSelectors = [
-        '.media_end_head_journalist .name',
-        '.article_reporter .reporter_name',
-        '.reporter .name',
-        '.byline_p',
-        '.reporter',
-        '.author',
-        '.writer',
-        '.byline',
-        '[class*="reporter"]',
-        '[class*="author"]',
-        '[class*="writer"]',
-        '[class*="journalist"]'
+      // 실제 카테고리 추출 (기사 페이지에서)
+      let actualCategory = '';
+
+      // 방법 1: 상단 카테고리 링크에서 추출
+      const categoryLinkSelectors = [
+        'a.link_txt[href*="/news/"]',  // Daum 카테고리 링크
+        '.head_view a[href*="news.daum.net"]',
+        '.head_view a[href*="sports.daum.net"]',
+        '.head_view a[href*="entertain.daum.net"]',
+        'a[data-category]'
       ];
 
-      for (const selector of journalistSelectors) {
-        const found = $(selector).text().trim();
-        if (found && found.length > 1 && found.length < 100) {
-          const cleanedName = cleanJournalistName(found);
-          if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
-            journalist = cleanedName;
-            logger.debug(`[DEBUG] 셀렉터로 기자 추출: ${selector} -> "${found}" -> "${journalist}"`);
+      for (const selector of categoryLinkSelectors) {
+        const catLink = $(selector).first();
+        if (catLink.length > 0) {
+          const catText = catLink.text().trim();
+          const catHref = catLink.attr('href') || '';
+
+          // URL에서 카테고리 추출
+          if (catHref.includes('/politics')) actualCategory = '정치';
+          else if (catHref.includes('/economy') || catHref.includes('/economic')) actualCategory = '경제';
+          else if (catHref.includes('/society')) actualCategory = '사회';
+          else if (catHref.includes('/world') || catHref.includes('/foreign')) actualCategory = '세계';
+          else if (catHref.includes('/tech') || catHref.includes('/digital')) actualCategory = 'IT/과학';
+          else if (catHref.includes('/culture')) actualCategory = '생활/문화';
+          else if (catHref.includes('sports.daum.net')) actualCategory = '스포츠';
+          else if (catHref.includes('entertain.daum.net')) actualCategory = '연예';
+
+          // 텍스트에서 카테고리 추출
+          if (!actualCategory && catText) {
+            if (catText.includes('정치')) actualCategory = '정치';
+            else if (catText.includes('경제')) actualCategory = '경제';
+            else if (catText.includes('사회')) actualCategory = '사회';
+            else if (catText.includes('세계') || catText.includes('국제')) actualCategory = '세계';
+            else if (catText.includes('IT') || catText.includes('과학') || catText.includes('기술')) actualCategory = 'IT/과학';
+            else if (catText.includes('문화') || catText.includes('생활')) actualCategory = '생활/문화';
+            else if (catText.includes('스포츠') || catText.includes('체육')) actualCategory = '스포츠';
+            else if (catText.includes('연예')) actualCategory = '연예';
+          }
+
+          if (actualCategory) {
+            logger.debug(`[카테고리 추출] ${selector}에서 발견: ${actualCategory} (텍스트: ${catText}, URL: ${catHref})`);
             break;
           }
         }
       }
 
-      // 2단계: 본문에서 기자 정보 추출 (패턴 매칭)
-      if (!journalist && content) {
-        const reporterPatterns = [
-          /([가-힣]{2,4})\s*기자/g,
-          /기자\s*([가-힣]{2,4})/g,
-          /\[([가-힣]{2,4})\s*기자\]/g,
-          /=\s*([가-힣]{2,4})\s*기자/g
-        ];
-
-        for (const pattern of reporterPatterns) {
-          const matches = [...content.matchAll(pattern)];
-          if (matches && matches.length > 0) {
-            for (const match of matches) {
-              const extractedName = match[1] ? match[1].trim() : '';
-              const cleanedName = cleanJournalistName(extractedName);
-              if (cleanedName && cleanedName.length >= 2 && cleanedName.length <= 4) {
-                journalist = cleanedName;
-                logger.debug(`[DEBUG] 본문 패턴으로 기자 추출: "${match[0]}" -> "${journalist}"`);
-                break;
-              }
-            }
-            if (journalist) break;
-          }
+      // 방법 2: meta 태그에서 추출
+      if (!actualCategory) {
+        const metaCategory = $('meta[property="daumNewsCategory"]').attr('content') ||
+                            $('meta[name="category"]').attr('content');
+        if (metaCategory) {
+          actualCategory = metaCategory;
+          logger.debug(`[카테고리 추출] meta 태그에서 발견: ${actualCategory}`);
         }
       }
 
-      // 1단계: URL에서 언론사 추출
-      let mediaSource = this.extractMediaSourceFromUrl(url);
-
-      // 2단계: HTML에서 언론사 정보 추출 (URL에서 추출 못한 경우)
-      if (!mediaSource) {
-        const mediaSelectors = [
-          '.media_end_head_top .media_logo img',
-          '.article_header .press_logo img',
-          '.media_logo img',
-          '.press_name',
-          '.source',
-          '.publisher',
-          '[class*="press"]',
-          '[class*="media"]',
-          '[class*="source"]'
-        ];
-
-        for (const selector of mediaSelectors) {
-          const element = $(selector);
-          if (element.is('img')) {
-            mediaSource = element.attr('alt') || element.attr('title') || '';
-          } else {
-            mediaSource = element.text().trim();
-          }
-          if (mediaSource && mediaSource.length > 1 && mediaSource.length < 50) {
-            mediaSource = mediaSource.replace(/로고|logo|신문사|뉴스|news/gi, '').trim();
-            if (mediaSource) break;
-          }
-        }
+      // 방법 3: URL 패턴 분석
+      if (!actualCategory) {
+        if (url.includes('sports.daum.net')) actualCategory = '스포츠';
+        else if (url.includes('entertain.daum.net')) actualCategory = '연예';
       }
 
-      // 3단계: 제목에서 언론사 추출 (마지막 방법)
-      if (!mediaSource) {
-        mediaSource = this.extractMediaSourceFromTitle(title);
+      if (actualCategory) {
+        logger.info(`[실제 카테고리 파싱 성공] ${actualCategory}`);
+      } else {
+        logger.warn(`[실제 카테고리 파싱 실패] URL: ${url}`);
       }
-
-      // 이미지 URL 추출 - 본문 이미지 우선 (로고 제외)
-      const imageSelectors = [
-        '#articleBodyContents img',
-        '.article_body img',
-        '.news_end_body_container img',
-        'div.article img',
-        'div.content img',
-        '.post-content img',
-        'article p img',
-        'article div img',
-        '.news-article img',
-        '.story-body img',
-        '.entry-content img',
-        'main img',
-        'section img',
-        'img[src*=".jpg"]',
-        'img[src*=".jpeg"]',
-        'img[src*=".png"]',
-        'img[src*=".gif"]',
-        'img[src*=".webp"]'
-      ];
-
-      let imageUrl = '';
-      logger.debug(`[DEBUG] 이미지 추출 시도 중...`);
-      for (const selector of imageSelectors) {
-        const images = $(selector);
-        for (let i = 0; i < images.length; i++) {
-          const src = $(images[i]).attr('src') || '';
-          const alt = $(images[i]).attr('alt') || '';
-          const className = $(images[i]).attr('class') || '';
-
-          logger.debug(`[DEBUG] 이미지 셀렉터 ${selector}[${i}]: ${src} (alt: ${alt})`);
-
-          // 로고나 아이콘 이미지 제외 (더 강화)
-          const isLogo = src ? (
-            alt.toLowerCase().includes('logo') ||
-            className.toLowerCase().includes('logo') ||
-            src.toLowerCase().includes('logo') ||
-            src.toLowerCase().includes('banner') ||
-            src.toLowerCase().includes('ad') ||
-            src.toLowerCase().includes('icon') ||
-            alt.toLowerCase().includes('아이콘') ||
-            alt.toLowerCase().includes('로고') ||
-            alt.toLowerCase().includes('배너') ||
-            src.includes('/logo/') ||
-            src.includes('/icon/') ||
-            src.includes('/banner/')
-          ) : true;
-
-          // 이미지 크기도 확인 (너무 작은 이미지 제외)
-          const width = parseInt($(images[i]).attr('width') || '0');
-          const height = parseInt($(images[i]).attr('height') || '0');
-          const isTooSmall = (width > 0 && width < 100) || (height > 0 && height < 100);
-
-          if (src && (src.startsWith('http') || src.startsWith('//')) && !isLogo && !isTooSmall) {
-            imageUrl = src.startsWith('//') ? 'https:' + src : src;
-            logger.debug(`[DEBUG] 이미지 URL 발견: ${imageUrl} (크기: ${width}x${height})`);
-            break;
-          } else if (src) {
-            logger.debug(`[DEBUG] 이미지 제외됨 - 로고: ${isLogo}, 작음: ${isTooSmall}, URL: ${src}`);
-          }
-        }
-        if (imageUrl) break;
-      }
-
-      // 발행 시간 추출
-      const timeSelectors = [
-        '.media_end_head_info_datestamp_time',
-        '.article_info .date',
-        '.date_time'
-      ];
-
-      let pubDateString = '';
-      for (const selector of timeSelectors) {
-        const found = $(selector).text().trim();
-        if (found) {
-          pubDateString = found;
-          break;
-        }
-      }
-
-      const pubDate = pubDateString ? new Date(pubDateString) : new Date();
 
       if (!title || !content) {
         logger.info('파싱 실패: 제목 또는 내용이 없음', { title: !!title, content: !!content });
+        return null;
+      }
+
+      if (!this.isValidContent(content)) {
+        logger.info('파싱 실패: 유효하지 않은 콘텐츠');
         return null;
       }
 
@@ -841,7 +389,8 @@ class NewsCrawlerService {
         journalist: journalist || undefined,
         mediaSource: mediaSource || undefined,
         pubDate,
-        imageUrl: imageUrl || undefined
+        imageUrl: imageUrl || undefined,
+        actualCategory: actualCategory || undefined
       };
 
     } catch (error) {
@@ -850,116 +399,55 @@ class NewsCrawlerService {
     }
   }
 
-  async saveNewsToDatabase(parsedNews: ParsedNews, categoryName: string, originalUrl: string): Promise<NewsArticle | null> {
+  async saveNewsToDatabase(parsedNews: ParsedNews, categoryName: string, originalUrl: string): Promise<RawNewsArticle | null> {
     try {
-      const newsRepo = AppDataSource.getRepository(NewsArticle);
+      const rawNewsRepo = AppDataSource.getRepository(RawNewsArticle);
 
-      // 중복 체크
+      // 중복 체크 (raw_news_articles에서)
+      const existingRawNews = await rawNewsRepo.findOne({ where: { url: originalUrl } });
+      if (existingRawNews) {
+        logger.info('[RAW] 이미 존재하는 원본 기사:', originalUrl);
+        return existingRawNews;
+      }
+
+      // 중복 체크 (news_articles에서도 확인 - 이미 처리된 기사인지)
+      const newsRepo = AppDataSource.getRepository(NewsArticle);
       const existingNews = await newsRepo.findOne({ where: { url: originalUrl } });
       if (existingNews) {
-        logger.info('이미 존재하는 뉴스:', originalUrl);
-
-        // 이미 존재하는 기사도 분석이 없으면 분석 실행
-        const biasRepo = AppDataSource.getRepository('BiasAnalysis');
-        const existingAnalysis = await biasRepo.findOne({ where: { articleId: existingNews.id } });
-
-        if (!existingAnalysis && existingNews.content) {
-          try {
-            await analyzeBias(existingNews.id, existingNews.content);
-            logger.info(`[기존 기사 분석 완료] 기사 ID ${existingNews.id}`);
-          } catch (biasError) {
-            logger.error(`[기존 기사 분석 실패] 기사 ID ${existingNews.id}:`, biasError);
-          }
-        }
-
-        return existingNews;
+        logger.info('[RAW] 이미 분류된 기사 (news_articles에 존재):', originalUrl);
+        return null;
       }
 
-      // 카테고리 ID 매핑
-      const categoryIdMap: { [key: string]: number } = {
-        '정치': 1,
-        '경제': 2,
-        '사회': 3,
-        '연예': 4,
-        '생활/문화': 5,
-        'IT/과학': 6,
-        '세계': 7,
-        '스포츠': 8
-      };
+      // raw_news_articles에 저장
+      // actualCategory가 있으면 그것을 사용, 없으면 섹션 기반 categoryName 사용
+      const finalCategory = parsedNews.actualCategory || categoryName;
 
-      // 언론사 ID 매핑 (실제 DB ID 기준)
-      const sourceIdMap: { [key: string]: number } = {
-        '연합뉴스': 1, '동아일보': 20, '문화일보': 21,
-        '세계일보': 22, '조선일보': 23, '중앙일보': 25,
-        '한겨레': 28, '경향신문': 32, '한국일보': 55,
-        '매일경제': 56, '한국경제': 214, '머니투데이': 421,
-        'YTN': 437, 'JTBC': 448,
-        '기타': 449  // 목록에 없는 언론사는 기타로 분류
-      };
-
-      // URL과 제목에서 언론사 추출 (RSS 크롤러와 동일한 방식)
-      let extractedSource = this.extractSourceFromURL(originalUrl) || '';
-
-      if (!extractedSource && parsedNews.mediaSource) {
-        extractedSource = parsedNews.mediaSource;
-      }
-
-      if (!extractedSource) {
-        // 제목에서 언론사 추출 (예: "뉴스 제목 - 조선일보" 형태)
-        const titleMatch = parsedNews.title.match(/\-\s*([가-힣]+(?:신문|일보|경제|투데이|뉴스|방송|TV)?)\s*$/);
-        if (titleMatch) {
-          extractedSource = titleMatch[1];
-        }
-      }
-
-      // 추출된 언론사명으로 sourceId 결정
-      // 매핑에 없는 언론사는 '기타'(449)로 분류
-      const sourceId = sourceIdMap[extractedSource] || 449;
-
-      logger.debug(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId} ${sourceId === 449 ? '(기타)' : ''}`);
-
-      // ✅ 모든 뉴스를 저장 (목록에 없으면 '기타'로 저장)
-
-      // NewsArticle 생성 (새 스키마)
-      const article = newsRepo.create({
+      const rawArticle = rawNewsRepo.create({
         title: parsedNews.title,
         content: parsedNews.content,
         url: originalUrl,
         imageUrl: parsedNews.imageUrl,
         journalist: parsedNews.journalist,
-        sourceId: sourceId,
-        categoryId: categoryIdMap[categoryName] || 1, // 기본값: 정치
-        pubDate: parsedNews.pubDate
+        pubDate: parsedNews.pubDate,
+        originalSource: parsedNews.mediaSource, // 텍스트로 저장
+        originalCategory: finalCategory, // 기사 페이지에서 파싱한 실제 카테고리 또는 섹션 카테고리
+        processed: false // 아직 분류되지 않음
       });
 
-      const savedArticle = await newsRepo.save(article);
+      const savedRawArticle = await rawNewsRepo.save(rawArticle);
 
-      // AI 요약 자동 실행
-      try {
-        await summarizeArticle(savedArticle.id, parsedNews.content);
-      } catch (summaryError) {
-        logger.error(`[AI 요약 실패] 기사 ID ${savedArticle.id}:`, summaryError);
-      }
+      logger.info(`[RAW 저장 완료] "${savedRawArticle.title.substring(0, 50)}..." (카테고리: ${finalCategory})`);
+      logger.debug(`[RAW] 원본 언론사: ${parsedNews.mediaSource}, 실제 카테고리: ${finalCategory}`);
 
-      // AI 편향성 분석 자동 실행
-      try {
-        await analyzeBias(savedArticle.id, parsedNews.content);
-      } catch (biasError) {
-        logger.error(`[편향성 분석 실패] 기사 ID ${savedArticle.id}:`, biasError);
-        // 편향성 분석 실패해도 기사는 저장됨
-      }
-
-      return savedArticle;
+      return savedRawArticle;
 
     } catch (error) {
-      logger.error('뉴스 저장 실패:', error);
+      logger.error('[RAW] 원본 기사 저장 실패:', error);
       return null;
     }
   }
 
-  // AI 요약 기능 제거 - 크롤러에서는 기본 크롤링만 수행
-
-  async crawlNewsByCategory(categoryName: string, limit: number = 10): Promise<NewsArticle[]> {
+  async crawlNewsByCategory(categoryName: string, limit: number = 10): Promise<RawNewsArticle[]> {
     const category = this.categories.find(cat => cat.name === categoryName);
     if (!category) {
       throw new Error(`지원하지 않는 카테고리: ${categoryName}`);
@@ -967,31 +455,27 @@ class NewsCrawlerService {
 
     logger.info(`${categoryName} 카테고리 뉴스 수집 시작...`);
 
-    const naverNews = await this.fetchNewsFromNaver(category.query, limit);
-    const results: NewsArticle[] = [];
+    const daumNews = await this.fetchNewsFromDaum(category.sectionUrl, limit);
+    const results: RawNewsArticle[] = [];
 
-    for (const item of naverNews) {
+    for (const item of daumNews) {
       try {
-        // HTML 태그 제거
-        const title = item.title.replace(/<[^>]*>/g, '');
-        logger.info(`파싱 중: ${title}`);
+        logger.info(`파싱 중: ${item.title}`);
 
-        const parsed = await this.parseNewsContent(item.originallink || item.link);
+        const parsed = await this.parseNewsContent(item.url);
         if (parsed) {
-          const saved = await this.saveNewsToDatabase(parsed, categoryName, item.originallink || item.link);
+          const saved = await this.saveNewsToDatabase(parsed, categoryName, item.url);
           if (saved) {
             results.push(saved);
-            logger.info(`저장 완료: ${saved.title}`);
+            logger.info(`[RAW 저장] ${saved.title}`);
           } else {
-            logger.info(`[파싱 실패] 저장 실패: ${title}`);
+            logger.info(`[파싱 실패] 저장 실패: ${item.title}`);
           }
         } else {
-          logger.info(`[파싱 실패] 내용 파싱 실패: ${title}`);
+          logger.info(`[파싱 실패] 내용 파싱 실패: ${item.title}`);
         }
 
-        // 🕒 개별 뉴스 기사 간 요청 간격 조절
-        // 네이버 API 부하 방지를 위한 딜레이 (밀리초 단위)
-        // 1000ms = 1초, 500ms = 0.5초, 2000ms = 2초
+        // 요청 간격 조절 (1초)
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
@@ -999,22 +483,19 @@ class NewsCrawlerService {
       }
     }
 
-    logger.info(`${categoryName} 카테고리 수집 완료: ${results.length}개`);
+    logger.info(`[RAW] ${categoryName} 카테고리 수집 완료: ${results.length}개 (분류 대기 중)`);
     return results;
   }
 
-  async crawlAllCategories(limitPerCategory: number = 5): Promise<{ [category: string]: NewsArticle[] }> {
-    const results: { [category: string]: NewsArticle[] } = {};
+  async crawlAllCategories(limitPerCategory: number = 5): Promise<{ [category: string]: RawNewsArticle[] }> {
+    const results: { [category: string]: RawNewsArticle[] } = {};
 
     for (const category of this.categories) {
       try {
         const articles = await this.crawlNewsByCategory(category.name, limitPerCategory);
         results[category.name] = articles;
 
-        // 🕒 카테고리 간 요청 간격 조절
-        // 각 카테고리 크롤링 완료 후 다음 카테고리로 넘어가기 전 대기 시간
-        // 2000ms = 2초, 1000ms = 1초, 3000ms = 3초
-        // 값을 줄이면 더 빠르게, 늘리면 더 안전하게 크롤링됩니다
+        // 카테고리 간 요청 간격 조절 (2초)
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
         logger.error(`${category.name} 카테고리 수집 실패:`, error);
@@ -1022,121 +503,12 @@ class NewsCrawlerService {
       }
     }
 
+    logger.info(`[RAW] 전체 카테고리 크롤링 완료. Spark 분류 대기 중...`);
     return results;
   }
 
   getSupportedCategories(): string[] {
     return this.categories.map(cat => cat.name);
-  }
-
-  // URL에서 언론사 추출 (RSS 크롤러와 동일한 로직)
-  private extractSourceFromURL(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      const domain = urlObj.hostname.toLowerCase();
-
-      // 서브도메인 포함 패턴 체크
-      // 동아일보 (sports.donga.com, news.donga.com 등)
-      if (domain.endsWith('.donga.com') || domain === 'donga.com') {
-        return '동아일보';
-      }
-      // 조선일보 (biz.chosun.com, sports.chosun.com 등)
-      if (domain.endsWith('.chosun.com') || domain === 'chosun.com') {
-        return '조선일보';
-      }
-      // 한겨레
-      if (domain.endsWith('.hani.co.kr') || domain === 'hani.co.kr') {
-        return '한겨레';
-      }
-      // 경향신문 (sports.khan.co.kr, biz.khan.co.kr 등)
-      if (domain.endsWith('.khan.co.kr') || domain === 'khan.co.kr') {
-        return '경향신문';
-      }
-      // 중앙일보 (news.joins.com 등)
-      if (domain.endsWith('.joins.com') || domain === 'joins.com' ||
-          domain.endsWith('.joongang.co.kr') || domain === 'joongang.co.kr') {
-        return '중앙일보';
-      }
-      // 연합뉴스
-      if (domain.endsWith('.yna.co.kr') || domain === 'yna.co.kr' ||
-          domain.endsWith('.yonhapnews.co.kr') || domain === 'yonhapnews.co.kr') {
-        return '연합뉴스';
-      }
-      // 매일경제 (stock.mk.co.kr, news.mk.co.kr 등)
-      if (domain.endsWith('.mk.co.kr') || domain === 'mk.co.kr') {
-        return '매일경제';
-      }
-      // 한국경제 (news.hankyung.com, markets.hankyung.com 등)
-      if (domain.endsWith('.hankyung.com') || domain === 'hankyung.com') {
-        return '한국경제';
-      }
-      // 머니투데이 (news.mt.co.kr, stock.mt.co.kr 등)
-      if (domain.endsWith('.mt.co.kr') || domain === 'mt.co.kr') {
-        return '머니투데이';
-      }
-      // YTN (science.ytn.co.kr 등)
-      if (domain.endsWith('.ytn.co.kr') || domain === 'ytn.co.kr') {
-        return 'YTN';
-      }
-      // JTBC (news.jtbc.co.kr 등)
-      if (domain.endsWith('.jtbc.co.kr') || domain === 'jtbc.co.kr' ||
-          domain.endsWith('.jtbc.joins.com') || domain === 'jtbc.joins.com') {
-        return 'JTBC';
-      }
-      // 문화일보
-      if (domain.endsWith('.munhwa.com') || domain === 'munhwa.com') {
-        return '문화일보';
-      }
-      // 세계일보
-      if (domain.endsWith('.segye.com') || domain === 'segye.com') {
-        return '세계일보';
-      }
-      // 한국일보
-      if (domain.endsWith('.hankookilbo.com') || domain === 'hankookilbo.com') {
-        return '한국일보';
-      }
-
-      // 도메인 기반 언론사 매핑
-      const domainToSource: { [key: string]: string } = {
-        'mk.co.kr': '매일경제',
-        'star.mt.co.kr': '머니투데이',
-        'stardailynews.co.kr': '스타투데이',
-        'yna.co.kr': '연합뉴스',
-        'yonhapnews.co.kr': '연합뉴스',
-        'hankyung.com': '한국경제',
-        'mt.co.kr': '머니투데이',
-        'kmib.co.kr': '국민일보',
-        'munhwa.com': '문화일보',
-        'segye.com': '세계일보',
-        'hankookilbo.com': '한국일보',
-        'ytn.co.kr': 'YTN',
-        'jtbc.co.kr': 'JTBC'
-      };
-
-      // 정확한 도메인 매치
-      if (domainToSource[domain]) {
-        return domainToSource[domain];
-      }
-
-      // 서브도메인 제거하고 매치 시도
-      const mainDomain = domain.split('.').slice(-2).join('.');
-      if (domainToSource[mainDomain]) {
-        return domainToSource[mainDomain];
-      }
-
-      // 부분 매치 시도
-      for (const [key, value] of Object.entries(domainToSource)) {
-        if (domain.includes(key.split('.')[0])) {
-          return value;
-        }
-      }
-
-      logger.debug(`[API DEBUG] 알 수 없는 도메인: ${domain}`);
-      return '';
-    } catch (error) {
-      logger.debug(`[API DEBUG] URL 파싱 오류: ${url}`);
-      return '';
-    }
   }
 
   // 기존 기사 중 분석되지 않은 기사들을 분석
@@ -1148,7 +520,6 @@ class NewsCrawlerService {
   }> {
     const newsRepo = AppDataSource.getRepository('NewsArticle');
 
-    // 분석되지 않은 기사 조회
     const articles = await newsRepo
       .createQueryBuilder('article')
       .leftJoin('bias_analysis', 'ba', 'ba.article_id = article.id')
@@ -1174,7 +545,6 @@ class NewsCrawlerService {
         await analyzeBias(article.id, article.content);
         analyzed++;
 
-        // 과부하 방지를 위한 딜레이
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         logger.error(`[기존 기사 분석 실패] 기사 ID ${article.id}:`, error);

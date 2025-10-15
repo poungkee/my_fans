@@ -135,5 +135,70 @@ class AIModule:
         result = self.summarizer.summarize_news("", text, max_length)
         return result["summary"]
 
+class NewsCategoryClassifier:
+    """뉴스 카테고리 분류기"""
+
+    def __init__(self):
+        """카테고리 키워드 맵 초기화"""
+        self.category_keywords = {
+            '정치': ['정부', '국회', '의원', '대통령', '장관', '정당', '민주당', '국민의힘', '선거',
+                   '법안', '정책', '행정', '여당', '야당', '의회', '입법', '총리', '청와대', '국정'],
+            '경제': ['경제', '금융', '증시', '주식', '코스피', '달러', '환율', '기업', '은행',
+                   '투자', '부동산', '시장', '매출', '수익', '금리', '채권', '펀드', '재계', '상장', '거래'],
+            '사회': ['경찰', '사건', '사고', '재판', '법원', '검찰', '범죄', '화재', '교통',
+                   '안전', '복지', '교육', '학교', '학생', '의료', '병원', '환경', '재난', '피해'],
+            'IT/과학': ['AI', '인공지능', '기술', '과학', '연구', '개발', 'IT', '소프트웨어',
+                      '하드웨어', '반도체', '전자', '로봇', '우주', '바이오', '의학', '실험', '혁신'],
+            '세계': ['미국', '중국', '일본', '러시아', '유럽', '트럼프', '바이든', '국제',
+                   '외교', '전쟁', '분쟁', '유엔', 'NATO', 'G7', '정상회담', '해외', '글로벌'],
+            '연예': ['배우', '가수', '아이돌', 'K-POP', '영화', '드라마', 'MV', '음악',
+                   '방송', '연예인', '스타', '엔터', '걸그룹', '보이그룹', '데뷔', '컴백'],
+            '스포츠': ['야구', '축구', '농구', '배구', '골프', '올림픽', 'MLB', 'NBA',
+                    '선수', '경기', '우승', '감독', '구단', '리그', '월드컵', '승리', '패배'],
+            '생활/문화': ['여행', '맛집', '레시피', '패션', '뷰티', '문화', '전시', '공연',
+                       '축제', '요리', '건강', '다이어트', '운동', '취미', '책', '미술', '음악회']
+        }
+
+    def classify(self, title: str, content: str = "") -> str:
+        """기사 제목과 내용을 분석하여 카테고리 분류"""
+        try:
+            # 제목과 내용 결합
+            text = f"{title} {content}".lower()
+
+            # 각 카테고리별 점수 계산
+            scores = {}
+            for category, keywords in self.category_keywords.items():
+                score = sum(1 for keyword in keywords if keyword.lower() in text)
+                if score > 0:
+                    scores[category] = score
+
+            # 점수가 가장 높은 카테고리 반환
+            if scores:
+                best_category = max(scores, key=scores.get)
+                # 최소 2개 이상의 키워드가 매칭되어야 함
+                if scores[best_category] >= 2:
+                    return best_category
+
+            # 분류 불가능한 경우 기타
+            return '기타'
+
+        except Exception as e:
+            print(f"[AI] 카테고리 분류 실패: {e}")
+            return '기타'
+
+    def classify_batch(self, articles: list) -> list:
+        """여러 기사 일괄 분류"""
+        results = []
+        for article in articles:
+            title = article.get('title', '')
+            content = article.get('content', '')
+            category = self.classify(title, content)
+            results.append({
+                'title': title,
+                'category': category
+            })
+        return results
+
 # 전역 인스턴스
 ai_summarizer = NewsAISummarizer()
+category_classifier = NewsCategoryClassifier()

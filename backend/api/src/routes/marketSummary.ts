@@ -10,13 +10,12 @@ router.get("/summary", async (_req, res) => {
     res.json({
       ok: true,
       items: marketData.map(data => ({
-        symbol: data.symbol,
+        marketType: data.marketType,
         name: data.name,
-        price: data.price,
-        change: data.change,
-        changePercent: data.changePercent,
-        currency: data.currency,
-        market: data.market
+        currentValue: Number(data.currentValue),
+        changeValue: Number(data.changeValue),
+        changePercent: Number(data.changePercent),
+        updatedAt: data.updatedAt
       })),
       updatedAt: new Date().toISOString(),
       source: "database + live feeds",

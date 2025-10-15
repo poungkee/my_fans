@@ -44,7 +44,7 @@
 
 .stock-ticker-track {
   display: flex;
-  animation: scroll-left 60s linear infinite;
+  animation: scroll-left 120s linear infinite;
   white-space: nowrap;
   height: 100%;
   align-items: center;

@@ -16,6 +16,8 @@ import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
 import subscriptionRoutes from './routes/subscription';
 import commentsRoutes from './routes/comments';
+import activityRoutes from './routes/activity';
+import recommendationsRoutes from './routes/recommendations';
 const envPath = path.resolve(__dirname, '../.env');
 logger.debug(`Loading .env from: ${envPath}`);
 const dotenvResult = dotenv.config({ path: envPath });
@@ -91,6 +93,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userInteractionsRoutes);
 app.use('/api/user', subscriptionRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', commonRoutes);
 app.use('/api', newsRoutes);

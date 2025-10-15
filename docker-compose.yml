@@ -87,32 +87,6 @@ services:
   # 크롤러 서비스들
   # ================================
 
-  # RSS Crawler Service (Port: 4002)
-  rss-crawler:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./rss-crawler/Dockerfile
-    container_name: fans_rss_crawler
-    ports:
-      - "${RSS_CRAWLER_PORT:-4002}:4002"
-    env_file:
-      - .env
-    environment:
-      - RSS_CRAWLER_PORT=${RSS_CRAWLER_PORT:-4002}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    volumes:
-      - ./backend/crawler/rss-crawler/src:/app/src
-      - ./backend/crawler/rss-crawler/package.json:/app/package.json
-      - ./backend/crawler/rss-crawler/package-lock.json:/app/package-lock.json
-      - ./backend/crawler/rss-crawler/tsconfig.json:/app/tsconfig.json
-      - /app/node_modules
-      - /app/dist
-    restart: unless-stopped
-
   # API Crawler Service (Port: 4003)
   api-crawler:
     build:
@@ -157,99 +131,100 @@ services:
   # ================================
   # Puppeteer Crawler - 방법 1: 환경변수 기반 (완벽한 시간차 분산)
   # ================================
+  # 현재 사용 안함 - 네이버 API 크롤러만 사용
 
-  puppeteer-crawler-1:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_1
-    ports:
-      - "4004:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=0
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-1:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_1
+  #   ports:
+  #     - "4004:4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=0
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
-  puppeteer-crawler-2:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_2
-    ports:
-      - "4005:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=1
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-2:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_2
+  #   ports:
+  #     - "4005:4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=1
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
-  puppeteer-crawler-3:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_3
-    ports:
-      - "4006:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=2
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-3:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_3
+  #   ports:
+  #     - "4006:4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=2
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
   # ================================
   # Puppeteer Crawler - 방법 2: 랜덤 지연 (자동 확장)
@@ -305,8 +280,6 @@ services:
         condition: service_healthy
       summarize-ai:
         condition: service_healthy
-      rss-crawler:
-        condition: service_started
       api-crawler:
         condition: service_started
     networks:
@@ -343,8 +316,186 @@ services:
       - main-api
     restart: unless-stopped
 
+  # ================================
+  # 데이터 파이프라인 - Kafka, Spark, Airflow
+  # ================================
+
+  # Zookeeper (Kafka dependency)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: fans_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+  # Kafka Broker (Port: 9092)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: fans_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+  # Spark Master (Port: 7077, UI: 8080)
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: fans_spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/recommendation:/app
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    restart: unless-stopped
+
+  # Spark Worker
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: fans_spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_WEBUI_PORT=8081
+    depends_on:
+      - spark-master
+    ports:
+      - "8082:8081"
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/recommendation:/app
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    restart: unless-stopped
+
+  # Redis (캐싱)
+  redis:
+    image: redis:7-alpine
+    container_name: fans_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+  # Spark ML Classification API (Port: 5000)
+  classification-api:
+    build: ./backend/recommendation
+    container_name: fans_classification_api
+    ports:
+      - "5000:5000"
+    environment:
+      - CLASSIFICATION_API_PORT=5000
+      - SPARK_MASTER=spark://spark-master:7077
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - spark-master
+      - spark-worker
+      - postgres
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/recommendation:/app
+      - classification_models:/app/models
+    restart: unless-stopped
+
+  # Airflow Postgres (메타데이터 저장)
+  airflow-postgres:
+    image: postgres:15
+    container_name: fans_airflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+  # Airflow Webserver (Port: 8081)
+  airflow-webserver:
+    image: apache/airflow:2.8.0
+    container_name: fans_airflow_webserver
+    depends_on:
+      - airflow-postgres
+      - kafka
+      - spark-master
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      - AIRFLOW__CORE__FERNET_KEY=''
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__WEBSERVER__SECRET_KEY=airflow_secret_key
+      - _AIRFLOW_DB_MIGRATE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./backend/airflow/dags:/opt/airflow/dags
+      - ./backend/airflow/logs:/opt/airflow/logs
+      - ./backend/recommendation:/opt/airflow/recommendation
+    networks:
+      - fans_network
+    command: >
+      bash -c "airflow db migrate &&
+               airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+               airflow webserver"
+    restart: unless-stopped
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    image: apache/airflow:2.8.0
+    container_name: fans_airflow_scheduler
+    depends_on:
+      - airflow-postgres
+      - airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      - AIRFLOW__CORE__FERNET_KEY=''
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./backend/airflow/dags:/opt/airflow/dags
+      - ./backend/airflow/logs:/opt/airflow/logs
+      - ./backend/recommendation:/opt/airflow/recommendation
+    networks:
+      - fans_network
+    command: scheduler
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  airflow_postgres_data:
+  classification_models:
 
 networks:
   fans_network:

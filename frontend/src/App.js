@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from
 
 import Header from './components/Header';
 import StockSection from './components/StockSection';
+import RecommendationsSection from './components/RecommendationsSection';
 import NewsGrid from './components/NewsGrid';
 import AdSidebar from './components/AdSidebar';
 import Footer from './components/Footer';
@@ -37,6 +38,9 @@ function HomePageWrapper() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 페이지 로드 타입 감지 (새로고침 vs 뒤로가기)
+  const [isPageRefresh, setIsPageRefresh] = useState(false);
+
   // 주식 데이터
   const [stockData, setStockData] = useState([]);
   const [stockError, setStockError] = useState(null);
@@ -44,6 +48,23 @@ function HomePageWrapper() {
 
   // API 베이스 (프록시 사용 시 빈 문자열)
   const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
+
+  /* -------------------- 새로고침 감지 및 카테고리 복원 -------------------- */
+  useEffect(() => {
+    // 새로고침 감지
+    const navigationEntries = performance.getEntriesByType('navigation');
+    const isRefresh = navigationEntries.length > 0 &&
+      navigationEntries[0].type === 'reload';
+
+    if (isRefresh) {
+      // 새로고침 시 카테고리 상태 초기화
+      sessionStorage.removeItem('selectedCategory');
+      setIsPageRefresh(true);
+    } else {
+      // 뒤로가기 또는 일반 네비게이션
+      setIsPageRefresh(false);
+    }
+  }, []);
 
   // URL 검색 매개변수 처리 (handleCategoryFilter, handleSourceFilter 정의 후 실행하도록 아래로 이동)
 
@@ -65,18 +86,14 @@ function HomePageWrapper() {
 
   /* -------------------- 데이터 로드: 홈 피드 -------------------- */
   useEffect(() => {
-    // 강제 상태 초기화
     console.log('🔄 피드 데이터 로드 시작');
-    setCategoryFilteredNews(null);
-    setSourceFilteredNews(null);
-    setFeedNews([]); // feedNews도 초기화
 
     const controller = new AbortController();
     // topics는 없어도 동작하도록 파라미터 분리
     const params = new URLSearchParams({
       limit: '60',
       sort: 'created_at',
-      topics: '정치,경제,사회,세계,IT/과학,생활/문화',
+      topics: '정치,경제,사회,세계,IT/과학,생활/문화,스포츠,연예',
       _t: Date.now() // 캐시 무효화용 타임스탬프
     });
     const url = `${API_BASE}/api/feed?${params.toString()}`;
@@ -96,6 +113,20 @@ function HomePageWrapper() {
         const allSources = [...new Set(data.items?.map(item => item.source) || [])];
         console.log('- 받은 모든 소스들:', allSources);
         console.log('- 한겨레 상세:', hankyoreh.map(item => ({id: item.id, title: item.title})));
+
+        // 카테고리 확인 추가
+        const allCategories = [...new Set(data.items?.map(item => item.category) || [])];
+        console.log('📊 받은 모든 카테고리들:', allCategories);
+        const entertainmentArticles = data.items?.filter(item => item.category === '연예') || [];
+        console.log('📺 연예 기사 수:', entertainmentArticles.length);
+        if (entertainmentArticles.length > 0) {
+          console.log('📺 연예 기사 상세:', entertainmentArticles.map(item => ({
+            id: item.id,
+            title: item.title?.substring(0, 50),
+            category: item.category
+          })));
+        }
+
         setFeedNews(Array.isArray(data.items) ? data.items : []);
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -107,6 +138,19 @@ function HomePageWrapper() {
 
     return () => controller.abort();
   }, [API_BASE]); // 의존성은 그대로 두고
+
+  /* -------------------- 카테고리 상태 복원 (뒤로가기 시) -------------------- */
+  useEffect(() => {
+    // 새로고침이 아니고, feedNews가 로드되었을 때만 실행
+    if (!isPageRefresh && feedNews.length > 0) {
+      const savedCategory = sessionStorage.getItem('selectedCategory');
+      if (savedCategory && savedCategory !== '전체') {
+        const filtered = feedNews.filter((n) => n.category === savedCategory);
+        setCategoryFilteredNews(filtered);
+        console.log(`🔄 카테고리 복원: ${savedCategory} (${filtered.length}개 기사)`);
+      }
+    }
+  }, [feedNews, isPageRefresh]);
 
   /* -------------------- 데이터 로드: 검색 -------------------- */
   useEffect(() => {
@@ -168,6 +212,8 @@ function HomePageWrapper() {
 
         const json = await res.json();
         const items = Array.isArray(json.items) ? json.items : [];
+        console.log('[App.js] 백엔드에서 받은 market summary 데이터:', items);
+        console.log('[App.js] 첫 번째 항목:', items[0]);
         setStockData(items);
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -239,8 +285,8 @@ function HomePageWrapper() {
   });
 
   const currentList = isSearching
-    ? (sourceFilteredNews ?? categoryFilteredNews ?? searchResults)
-    : (sourceFilteredNews ?? categoryFilteredNews ?? feedNews);
+    ? (sourceFilteredNews || categoryFilteredNews || searchResults)
+    : (sourceFilteredNews || categoryFilteredNews || feedNews);
 
   // 디버깅: currentList 상태 확인
   useEffect(() => {
@@ -256,12 +302,16 @@ function HomePageWrapper() {
     if (!category || category === '전체') {
       setCategoryFilteredNews(null);
       setSourceFilteredNews(null);
+      sessionStorage.removeItem('selectedCategory');
       return;
     }
     const base = isSearching ? searchResults : feedNews;
     const filtered = base.filter((n) => n.category === category);
     setCategoryFilteredNews(filtered);
     setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
+
+    // 카테고리 상태를 sessionStorage에 저장 (뒤로가기 시 복원용)
+    sessionStorage.setItem('selectedCategory', category);
   };
 
   const handleSourceFilter = async (sourceName) => {
@@ -395,6 +445,13 @@ function HomePageWrapper() {
       <main className="main">
         <div className="main-content">
           <div className="content-area">
+            {/* 맞춤 추천 뉴스 섹션 (로그인 사용자만) */}
+            <RecommendationsSection
+              onNavigateToDetail={(articleId) => {
+                window.location.href = `/news/${articleId}`;
+              }}
+            />
+
             <NewsGrid
               newsData={currentList}
               searchQuery={isSearching ? searchQuery : ''}
