@@ -185,9 +185,9 @@ CREATE TABLE bias_analysis (
     article_id BIGINT NOT NULL REFERENCES news_articles(id) ON DELETE CASCADE,
 
     -- 편향성 분석 데이터 (AI 자동 분석)
-    bias_score NUMERIC(3,2),
+    bias_score NUMERIC(5,2),
     political_leaning VARCHAR(50),
-    confidence NUMERIC(3,2),
+    confidence NUMERIC(5,2),
 
     -- 전체 분석 데이터 (JSON)
     analysis_data JSONB,
@@ -416,6 +416,146 @@ CREATE INDEX idx_market_summary_type ON market_summary(market_type);
 CREATE INDEX idx_market_summary_updated ON market_summary(updated_at DESC);
 
 -- ================================
+-- 추가: Raw News Articles (크롤링 원본 저장)
+-- ================================
+
+-- Raw News Articles Table (크롤링 원본 저장)
+CREATE TABLE raw_news_articles (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    content TEXT,
+    url VARCHAR(1000) UNIQUE,
+    image_url VARCHAR(1000),
+    journalist VARCHAR(100),
+    pub_date TIMESTAMPTZ,
+
+    -- 원본 데이터 (텍스트 형태로 저장)
+    original_source VARCHAR(200),  -- 크롤링한 원본 언론사명 (분류 전)
+    original_category VARCHAR(100), -- 크롤링한 원본 카테고리명 (분류 전)
+
+    -- 처리 상태
+    processed BOOLEAN DEFAULT FALSE,
+    processed_at TIMESTAMPTZ,
+    processing_error TEXT,
+
+    -- 타임스탬프
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Raw News Articles 인덱스
+CREATE INDEX idx_raw_news_processed ON raw_news_articles(processed);
+CREATE INDEX idx_raw_news_created_at ON raw_news_articles(created_at DESC);
+CREATE INDEX idx_raw_news_url ON raw_news_articles(url);
+
+-- Raw News Articles updated_at 트리거
+CREATE TRIGGER trigger_raw_news_updated
+    BEFORE UPDATE ON raw_news_articles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ================================
+-- 추가: 추천 시스템 관련 테이블
+-- ================================
+
+-- 사용자 행동 로그 (조회, 좋아요, 북마크, 공유)
+CREATE TABLE user_activity_log (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    article_id BIGINT NOT NULL REFERENCES news_articles(id) ON DELETE CASCADE,
+    activity_type VARCHAR(20) NOT NULL CHECK (activity_type IN ('view', 'like', 'dislike', 'bookmark', 'share', 'click')),
+    reading_time_seconds INTEGER DEFAULT 0,
+    device_type VARCHAR(50),
+    ip_address VARCHAR(45),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_activity ON user_activity_log(user_id, created_at);
+CREATE INDEX idx_article_activity ON user_activity_log(article_id, created_at);
+CREATE INDEX idx_activity_type ON user_activity_log(activity_type);
+
+-- 기사 신뢰도 점수
+CREATE TABLE article_credibility (
+    article_id BIGINT PRIMARY KEY REFERENCES news_articles(id) ON DELETE CASCADE,
+    credibility_score NUMERIC(3,2) DEFAULT 0.50 CHECK (credibility_score >= 0 AND credibility_score <= 1),
+    source_reliability_score NUMERIC(3,2) DEFAULT 0.50,
+    cross_verification_count INTEGER DEFAULT 0,
+    fake_news_probability NUMERIC(3,2) DEFAULT 0.00,
+    user_report_count INTEGER DEFAULT 0,
+    fact_check_status VARCHAR(20) DEFAULT 'unverified' CHECK (fact_check_status IN ('verified', 'disputed', 'unverified', 'false')),
+    verification_sources TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_credibility_score ON article_credibility(credibility_score DESC);
+CREATE INDEX idx_fact_check_status ON article_credibility(fact_check_status);
+
+-- 기사 감성 분석 결과
+CREATE TABLE article_sentiment (
+    article_id BIGINT PRIMARY KEY REFERENCES news_articles(id) ON DELETE CASCADE,
+    positive_score NUMERIC(3,2) DEFAULT 0.33 CHECK (positive_score >= 0 AND positive_score <= 1),
+    negative_score NUMERIC(3,2) DEFAULT 0.33 CHECK (negative_score >= 0 AND negative_score <= 1),
+    neutral_score NUMERIC(3,2) DEFAULT 0.34 CHECK (neutral_score >= 0 AND neutral_score <= 1),
+    overall_sentiment VARCHAR(20) DEFAULT 'neutral' CHECK (overall_sentiment IN ('positive', 'negative', 'neutral', 'mixed')),
+    sentiment_magnitude NUMERIC(3,2) DEFAULT 0.00,
+    key_phrases TEXT,
+    analyzed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_overall_sentiment ON article_sentiment(overall_sentiment);
+
+-- 기사 임베딩 (벡터 유사도 계산용)
+CREATE TABLE article_embeddings (
+    article_id BIGINT PRIMARY KEY REFERENCES news_articles(id) ON DELETE CASCADE,
+    title_embedding BYTEA,
+    content_embedding BYTEA,
+    combined_embedding BYTEA,
+    embedding_model VARCHAR(100) DEFAULT 'word2vec',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 추천 성능 메트릭
+CREATE TABLE recommendation_metrics (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    article_id BIGINT REFERENCES news_articles(id) ON DELETE CASCADE,
+    recommendation_score NUMERIC(5,4),
+    was_clicked BOOLEAN DEFAULT FALSE,
+    was_liked BOOLEAN DEFAULT FALSE,
+    reading_time_seconds INTEGER DEFAULT 0,
+    recommended_at TIMESTAMPTZ DEFAULT NOW(),
+    clicked_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_rec_performance ON recommendation_metrics(user_id, was_clicked);
+CREATE INDEX idx_rec_article ON recommendation_metrics(article_id, was_clicked);
+
+-- 사용자 프로필 임베딩 (추천 시스템용)
+CREATE TABLE IF NOT EXISTS user_profile_embeddings (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    total_interactions INTEGER DEFAULT 0,
+    last_updated TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 사용자 프로필 업데이트 트리거 (user_activity_log 기반)
+CREATE OR REPLACE FUNCTION update_user_profile_embedding()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO user_profile_embeddings (user_id, total_interactions, last_updated)
+    VALUES (NEW.user_id, 1, NOW())
+    ON CONFLICT (user_id)
+    DO UPDATE SET
+        total_interactions = user_profile_embeddings.total_interactions + 1,
+        last_updated = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_user_profile
+    AFTER INSERT ON user_activity_log
+    FOR EACH ROW
+    EXECUTE FUNCTION update_user_profile_embedding();
+
+-- ================================
 -- 9. 뷰 생성 (편의성)
 -- ================================
 
@@ -476,6 +616,38 @@ SELECT
 FROM users u
 LEFT JOIN user_actions ua ON u.id = ua.user_id
 GROUP BY u.id, u.username;
+
+-- 사용자별 활동 요약 (user_activity_log 기반)
+CREATE OR REPLACE VIEW user_activity_summary AS
+SELECT
+    user_id,
+    COUNT(*) as total_activities,
+    COUNT(DISTINCT article_id) as unique_articles_viewed,
+    COUNT(CASE WHEN activity_type = 'view' THEN 1 END) as view_count,
+    COUNT(CASE WHEN activity_type = 'like' THEN 1 END) as like_count,
+    COUNT(CASE WHEN activity_type = 'bookmark' THEN 1 END) as bookmark_count,
+    AVG(reading_time_seconds) as avg_reading_time,
+    MAX(created_at) as last_activity_at
+FROM user_activity_log
+GROUP BY user_id;
+
+-- 기사별 인기도 점수 (user_activity_log 기반)
+CREATE OR REPLACE VIEW article_popularity AS
+SELECT
+    a.id as article_id,
+    a.title,
+    COUNT(DISTINCT ual.user_id) as unique_viewers,
+    COUNT(CASE WHEN ual.activity_type = 'view' THEN 1 END) as view_count,
+    COUNT(CASE WHEN ual.activity_type = 'like' THEN 1 END) as like_count,
+    COUNT(CASE WHEN ual.activity_type = 'bookmark' THEN 1 END) as bookmark_count,
+    COUNT(CASE WHEN ual.activity_type = 'share' THEN 1 END) as share_count,
+    (COUNT(CASE WHEN ual.activity_type = 'like' THEN 1 END) * 2.0 +
+     COUNT(CASE WHEN ual.activity_type = 'bookmark' THEN 1 END) * 3.0 +
+     COUNT(CASE WHEN ual.activity_type = 'share' THEN 1 END) * 4.0 +
+     COUNT(DISTINCT ual.user_id) * 1.0) as popularity_score
+FROM news_articles a
+LEFT JOIN user_activity_log ual ON a.id = ual.article_id
+GROUP BY a.id, a.title;
 
 -- ================================
 -- 9. 초기 데이터 (선택)

@@ -970,9 +970,12 @@ function NewsDetailPage() {
 
             <div className="article-content-text">
               {article?.content && article.content.trim().length > 0 ? (
-                article.content.split('\n').map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))
+                article.content
+                  .split(/\n+/)
+                  .filter(paragraph => paragraph.trim().length > 0)
+                  .map((paragraph, index) => (
+                    <p key={index}>{paragraph.trim()}</p>
+                  ))
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
                   <p>기사 본문을 불러올 수 없습니다.</p>

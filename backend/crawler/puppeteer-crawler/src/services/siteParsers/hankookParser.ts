@@ -52,10 +52,43 @@ export class HankookParser implements SiteParser {
         const contentEl = document.querySelector('.article-body') || document.querySelector('.editor-p');
         const content = contentEl?.textContent?.trim() || '';
 
-        const imageEl = document.querySelector('.article-body img') || document.querySelector('meta[property="og:image"]');
-        const imageUrl = imageEl
-          ? (imageEl as HTMLImageElement).src || (imageEl as HTMLMetaElement).content
-          : undefined;
+        // Enhanced image extraction
+        let imageUrl = '';
+        const imageSelectors = [
+          '.article-body img',
+          '.editor-p img',
+          'article img',
+          'figure img',
+          'meta[property="og:image"]',
+          'meta[name="twitter:image"]',
+          'img',
+        ];
+
+        for (const selector of imageSelectors) {
+          const imgEl = document.querySelector(selector);
+          if (imgEl) {
+            let src = '';
+
+            if (selector.startsWith('meta')) {
+              src = imgEl.getAttribute('content') || '';
+            } else {
+              src = imgEl.getAttribute('src') ||
+                    imgEl.getAttribute('data-src') ||
+                    imgEl.getAttribute('data-lazy-src') ||
+                    imgEl.getAttribute('data-original') || '';
+            }
+
+            if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
+              const width = imgEl.getAttribute('width');
+              const height = imgEl.getAttribute('height');
+              if (width && height && (parseInt(width) < 50 || parseInt(height) < 50)) {
+                continue;
+              }
+              imageUrl = src;
+              break;
+            }
+          }
+        }
 
         const journalistEl = document.querySelector('.byline .name') || document.querySelector('.reporter');
         const journalist = journalistEl?.textContent?.trim().replace(/기자/g, '').trim() || undefined;
@@ -63,7 +96,7 @@ export class HankookParser implements SiteParser {
         const dateEl = document.querySelector('.byline time') || document.querySelector('.date-time');
         const dateStr = dateEl?.textContent?.trim() || (dateEl as HTMLTimeElement)?.dateTime || '';
 
-        return { title, content, imageUrl, journalist, dateStr };
+        return { title, content, imageUrl: imageUrl || undefined, journalist, dateStr };
       });
 
       if (!article.title || !article.content) {

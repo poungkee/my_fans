@@ -8,13 +8,13 @@ export class BiasAnalysis {
     @Column({ type: 'bigint', name: 'article_id' })
     articleId!: number;
 
-    @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true, name: 'bias_score' })
+    @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'bias_score' })
     biasScore?: number;
 
     @Column({ type: 'varchar', length: 50, nullable: true, name: 'political_leaning' })
     politicalLeaning?: string;
 
-    @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
+    @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
     confidence?: number;
 
     @Column({ type: 'jsonb', nullable: true, name: 'analysis_data' })

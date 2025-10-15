@@ -129,13 +129,46 @@ export class DaumParser implements SiteParser {
           }
         }
 
-        // 이미지: article_view 내의 첫 번째 img
+        // 이미지: 여러 셀렉터로 시도
         let imageUrl = '';
-        const imgEl = document.querySelector('div.article_view img');
-        if (imgEl) {
-          const src = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
-          if (src && src.startsWith('http')) {
-            imageUrl = src;
+        const imageSelectors = [
+          'div.article_view img.thumb_g',
+          'div.article_view .wrap_thumb img',
+          'div.article_view figure img',
+          'div.article_view img',
+          'meta[property="og:image"]',
+          'meta[name="twitter:image"]',
+          'img.thumb_g',
+        ];
+
+        for (const selector of imageSelectors) {
+          const imgEl = document.querySelector(selector);
+          if (imgEl) {
+            let src = '';
+
+            // meta 태그인 경우
+            if (selector.startsWith('meta')) {
+              src = imgEl.getAttribute('content') || '';
+            } else {
+              // img 태그인 경우 여러 속성 확인
+              src = imgEl.getAttribute('src') ||
+                    imgEl.getAttribute('data-src') ||
+                    imgEl.getAttribute('data-lazy-src') ||
+                    imgEl.getAttribute('data-original') || '';
+            }
+
+            // 유효한 URL인지 확인
+            if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
+              // 너무 작은 이미지 제외
+              const width = imgEl.getAttribute('width');
+              const height = imgEl.getAttribute('height');
+              if (width && height && (parseInt(width) < 50 || parseInt(height) < 50)) {
+                continue;
+              }
+
+              imageUrl = src;
+              break;
+            }
           }
         }
 

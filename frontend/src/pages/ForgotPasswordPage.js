@@ -69,9 +69,9 @@ const ForgotPasswordPage = () => {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ 
-          email: formData.email, 
-          code: formData.code 
+        body: JSON.stringify({
+          email: formData.email,
+          code: formData.code
         })
       });
 

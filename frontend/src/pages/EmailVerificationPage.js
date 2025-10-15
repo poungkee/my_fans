@@ -52,9 +52,9 @@ const EmailVerificationPage = () => {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ 
-          email: email, 
-          code: code 
+        body: JSON.stringify({
+          email: email,
+          code: code
         })
       });
 

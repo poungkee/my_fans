@@ -12,28 +12,16 @@ const SocialLogin = ({ type = "login" }) => {
     const fromEnv = (process.env.REACT_APP_API_BASE || '').trim();
     if (fromEnv) return fromEnv;
 
-    try {
-      return new URL(window.location.origin).toString();
-    } catch {
-      return 'http://localhost:3000';
-    }
+    // 백엔드 API는 항상 3000번 포트 사용
+    return 'http://localhost:3000';
   };
 
   const go = async (provider) => {
     setLoadingStates(prev => ({ ...prev, [provider]: true }));
 
-    const candidates = [];
-    try {
-      const sameOrigin = window.location.origin;
-      if (sameOrigin) candidates.push(sameOrigin);
-    } catch (err) {
-      console.warn('[WARN] Failed to read window.location.origin', err);
-    }
-
-    const envBase = resolveApiBase();
-    if (envBase && !candidates.includes(envBase)) {
-      candidates.push(envBase);
-    }
+    // 백엔드 API 베이스 URL (3000번 포트 고정)
+    const apiBase = resolveApiBase();
+    const candidates = [apiBase];
 
     let lastError;
     for (const base of candidates) {

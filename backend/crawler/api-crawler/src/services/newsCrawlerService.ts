@@ -232,23 +232,54 @@ class NewsCrawlerService {
       // 이미지 추출 (본문 요소 제거 전에 먼저 추출)
       let imageUrl = '';
       const imageSelectors = [
-        '.thumb_g',                    // Daum 기사 메인 이미지
-        '.wrap_thumb img',             // 이미지 래퍼 안의 이미지
-        '.article_view img.thumb_g',   // 기사 본문 내 썸네일
-        '.article_view figure img',    // figure 태그 안의 이미지
-        '.article_view img'            // 기사 본문 내 모든 이미지
+        '.thumb_g',                     // Daum 기사 메인 이미지
+        '.wrap_thumb img',              // 이미지 래퍼 안의 이미지
+        '.article_view img.thumb_g',    // 기사 본문 내 썸네일
+        '.article_view figure img',     // figure 태그 안의 이미지
+        '.article_view .wrap_thumb img',// wrap_thumb 내부 이미지
+        'article figure img',           // article 태그 내 figure
+        'meta[property="og:image"]',    // Open Graph 이미지
+        'meta[name="twitter:image"]',   // Twitter Card 이미지
+        '.article_view img',            // 기사 본문 내 모든 이미지
+        'img.thumb',                    // 썸네일 이미지
+        '.img_thumb',                   // 썸네일 이미지 (class 변형)
       ];
 
       for (const selector of imageSelectors) {
         const imgEl = $(selector).first();
         if (imgEl.length > 0) {
-          const src = imgEl.attr('src') || imgEl.attr('data-src') || '';
-          if (src && src.startsWith('http')) {
+          let src = '';
+
+          // meta 태그의 경우 content 속성 사용
+          if (selector.startsWith('meta')) {
+            src = imgEl.attr('content') || '';
+          } else {
+            // img 태그의 경우 src, data-src, data-lazy-src 등 확인
+            src = imgEl.attr('src') ||
+                  imgEl.attr('data-src') ||
+                  imgEl.attr('data-lazy-src') ||
+                  imgEl.attr('data-original') || '';
+          }
+
+          // 유효한 이미지 URL인지 확인
+          if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
+            // 너무 작은 이미지는 제외 (1x1 픽셀 추적 이미지 등)
+            const width = imgEl.attr('width');
+            const height = imgEl.attr('height');
+            if (width && height && (parseInt(width) < 50 || parseInt(height) < 50)) {
+              continue;
+            }
+
             imageUrl = src;
-            logger.debug(`[이미지 추출] ${selector}에서 발견: ${src.substring(0, 80)}`);
+            logger.debug(`[이미지 추출] ${selector}에서 발견: ${src.substring(0, 100)}`);
             break;
           }
         }
+      }
+
+      // 이미지를 찾지 못한 경우 로그
+      if (!imageUrl) {
+        logger.warn(`[이미지 없음] URL: ${url}`);
       }
 
       // 본문 추출
