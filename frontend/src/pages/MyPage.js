@@ -178,11 +178,50 @@ const MyPage = () => {
 
   // 로그인 방식 표시 함수
   const getProviderDisplay = (provider) => {
-    switch(provider) {
-      case 'local': return '일반 로그인';
-      case 'kakao': return '카카오 로그인';
-      case 'naver': return '네이버 로그인';
-      default: return '일반 로그인';
+    const providers = provider.split(',');
+    const displays = providers.map(p => {
+      switch(p) {
+        case 'local': return '일반 로그인';
+        case 'kakao': return '카카오';
+        case 'naver': return '네이버';
+        default: return p;
+      }
+    });
+    return displays.join(' + ');
+  };
+
+  // 연동 해제 함수
+  const handleUnlinkAccount = async (providerToUnlink) => {
+    if (!confirm(`${providerToUnlink === 'kakao' ? '카카오' : '네이버'} 계정 연동을 해제하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+      }
+
+      const response = await fetch('/api/auth/unlink-account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ provider: providerToUnlink })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        // 사용자 정보 새로고침
+        window.location.reload();
+      } else {
+        alert(data.error || '연동 해제에 실패했습니다.');
+      }
+    } catch (err) {
+      alert('서버 연결에 실패했습니다.');
     }
   };
 
@@ -863,8 +902,41 @@ const MyPage = () => {
               </div>
             )}
 
+            {/* 계정 연동 관리 */}
+            {(user.provider.includes('local') && (user.provider.includes('kakao') || user.provider.includes('naver'))) && (
+              <div className="account-card">
+                <h3>🔗 계정 연동 관리</h3>
+                <p>연동된 소셜 계정을 해제할 수 있습니다.</p>
+
+                <div className="linked-accounts">
+                  {user.provider.includes('kakao') && (
+                    <div className="linked-account-item">
+                      <span className="provider-badge kakao">카카오 연동됨</span>
+                      <button
+                        className="unlink-btn"
+                        onClick={() => handleUnlinkAccount('kakao')}
+                      >
+                        연동 해제
+                      </button>
+                    </div>
+                  )}
+                  {user.provider.includes('naver') && (
+                    <div className="linked-account-item">
+                      <span className="provider-badge naver">네이버 연동됨</span>
+                      <button
+                        className="unlink-btn"
+                        onClick={() => handleUnlinkAccount('naver')}
+                      >
+                        연동 해제
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 소셜 로그인 비밀번호 설정/변경 */}
-            {(user.provider === 'kakao' || user.provider === 'naver') && (
+            {(user.provider.includes('kakao') || user.provider.includes('naver')) && (
               <div className="account-card">
                 <h3>비밀번호 {user.hasPassword ? '변경' : '설정'}</h3>
                 <p>

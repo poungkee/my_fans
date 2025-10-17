@@ -93,14 +93,20 @@ const RegisterPage = () => {
   };
 
   const validateForm = () => {
-    if (formData.password.length < 8) {
-      setError('비밀번호는 최소 8자 이상이어야 합니다.');
-      return false;
+    const isSocialSignup = kakaoData || naverData;
+
+    // 소셜 가입이 아닌 경우에만 비밀번호 검증
+    if (!isSocialSignup) {
+      if (formData.password.length < 8) {
+        setError('비밀번호는 최소 8자 이상이어야 합니다.');
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('비밀번호가 일치하지 않습니다.');
+        return false;
+      }
     }
-    if (formData.password !== formData.confirmPassword) {
-      setError('비밀번호가 일치하지 않습니다.');
-      return false;
-    }
+
     if (formData.username.length < 3) {
       setError('아이디는 최소 3자 이상이어야 합니다.');
       return false;
@@ -130,14 +136,21 @@ const RegisterPage = () => {
     try {
       // 소셜 회원가입인 경우 추가 데이터 포함
       const socialData = kakaoData || naverData;
-      const submitData = socialData
-        ? {
-            ...formData,
-            provider: socialData.provider,
-            socialToken: socialData.socialToken,
-            profileImage: socialData.profileImage
-          }
-        : formData;
+      let submitData;
+
+      if (socialData) {
+        // 소셜 가입: password 필드 제거
+        const { password, confirmPassword, ...restData } = formData;
+        submitData = {
+          ...restData,
+          provider: socialData.provider,
+          socialToken: socialData.socialToken,
+          profileImage: socialData.profileImage
+        };
+      } else {
+        // 일반 가입: 모든 필드 포함
+        submitData = formData;
+      }
 
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -149,6 +162,14 @@ const RegisterPage = () => {
       });
 
       const data = await response.json();
+
+      // 에러 디버깅을 위한 로그
+      if (!data.success) {
+        console.error('회원가입 실패:', data);
+        if (data.details) {
+          console.error('검증 오류:', data.details);
+        }
+      }
 
       if (data.success) {
         // 토큰을 sessionStorage에 저장 (회원가입 후 자동 로그인은 임시)
@@ -185,7 +206,7 @@ const RegisterPage = () => {
         <div className="auth-form">
           <div className="auth-header">
             <h2>{kakaoData ? '카카오 계정으로 회원가입' : naverData ? '네이버 계정으로 회원가입' : '회원가입'}</h2>
-            <p>{kakaoData ? '카카오 정보를 확인하고 비밀번호를 설정해주세요' : naverData ? '네이버 정보를 확인하고 비밀번호를 설정해주세요' : '뉴스 포털에 가입하고 맞춤 뉴스를 받아보세요'}</p>
+            <p>{kakaoData ? '카카오 정보를 확인하고 아이디를 설정해주세요' : naverData ? '네이버 정보를 확인하고 아이디를 설정해주세요' : '뉴스 포털에 가입하고 맞춤 뉴스를 받아보세요'}</p>
             {(kakaoData || naverData) && (
               <div className="kakao-info">
                 <div className="kakao-profile">
@@ -284,34 +305,46 @@ const RegisterPage = () => {
               />
             </div>
 
-            
-            <div className="form-group">
-              <label htmlFor="password">비밀번호</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="비밀번호를 입력하세요 (최소 8자)"
-                required
-                disabled={loading}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="confirmPassword">비밀번호 확인</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="비밀번호를 다시 입력하세요"
-                required
-                disabled={loading}
-              />
-            </div>
+            {/* 소셜 가입이 아닌 경우에만 비밀번호 필드 표시 */}
+            {!kakaoData && !naverData && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="password">비밀번호</label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="비밀번호를 입력하세요 (최소 8자)"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">비밀번호 확인</label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="비밀번호를 다시 입력하세요"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* 소셜 가입인 경우 안내 메시지 */}
+            {(kakaoData || naverData) && (
+              <div className="form-note-box">
+                <p>✓ 비밀번호 없이 소셜 로그인만으로 가입됩니다.</p>
+                <p>✓ 나중에 마이페이지에서 비밀번호를 설정하면 일반 로그인도 가능합니다.</p>
+              </div>
+            )}
             
             {/* 약관 동의 섹션 */}
             <div className="agreement-section">

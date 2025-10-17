@@ -4,21 +4,28 @@ export const CATEGORIES = [
 ];
 
 export const MEDIA_SOURCES = [
-  '조선일보', 'KBS', 'SBS', 'MBC', '한겨레', '중앙일보', '동아일보', '경향신문', '연합뉴스', 'YTN'
+  '연합뉴스', '동아일보', '문화일보', '세계일보', '조선일보',
+  '중앙일보', '한겨레', '경향신문', '한국일보', '매일경제',
+  '한국경제', '머니투데이', 'YTN', 'JTBC', '기타'
 ];
 
 // 메인페이지 헤더에서 사용할 언론사 정보 (도메인 포함)
 export const MEDIA_SOURCES_WITH_DOMAIN = [
-  { name: '조선일보', domain: 'chosun.com' },
-  { name: 'KBS', domain: 'kbs.co.kr' },
-  { name: 'SBS', domain: 'sbs.co.kr' },
-  { name: 'MBC', domain: 'mbc.co.kr' },
-  { name: '한겨레', domain: 'hani.co.kr' },
-  { name: '중앙일보', domain: 'joongang.co.kr' },
-  { name: '동아일보', domain: 'donga.com' },
-  { name: '경향신문', domain: 'khan.co.kr' },
   { name: '연합뉴스', domain: 'yna.co.kr' },
-  { name: 'YTN', domain: 'ytn.co.kr' }
+  { name: '동아일보', domain: 'donga.com' },
+  { name: '문화일보', domain: 'munhwa.com' },
+  { name: '세계일보', domain: 'segye.com' },
+  { name: '조선일보', domain: 'chosun.com' },
+  { name: '중앙일보', domain: 'joongang.co.kr' },
+  { name: '한겨레', domain: 'hani.co.kr' },
+  { name: '경향신문', domain: 'khan.co.kr' },
+  { name: '한국일보', domain: 'hankookilbo.com' },
+  { name: '매일경제', domain: 'mk.co.kr' },
+  { name: '한국경제', domain: 'hankyung.com' },
+  { name: '머니투데이', domain: 'mt.co.kr' },
+  { name: 'YTN', domain: 'ytn.co.kr' },
+  { name: 'JTBC', domain: 'jtbc.co.kr' },
+  { name: '기타', domain: 'etc.com' }
 ];
 
 // 메인페이지에서 사용할 카테고리 (전체 포함)

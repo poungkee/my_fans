@@ -9,6 +9,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+import requests
 
 # 로깅 설정
 logging.basicConfig(
@@ -18,6 +19,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Summarize AI URL (카테고리 분류용)
+SUMMARIZE_AI_URL = os.getenv('SUMMARIZE_AI_URL', 'http://summarize-ai:8000')
 
 def get_db_connection():
     """PostgreSQL 데이터베이스 연결"""
@@ -29,14 +33,23 @@ def get_db_connection():
         database=os.getenv('POSTGRES_DB', 'fans_db')
     )
 
-# 언론사 매핑
+# 언론사 매핑 (주요 언론사만 개별 ID로 관리)
+# 나머지는 "기타"(449)로 통합되지만, raw_news_articles.original_source에는 원본 이름이 저장되어
+# 편향성 분석 등에서는 정확한 언론사 정보 사용 가능
 SOURCE_MAP = {
+    # 주요 언론사
     '연합뉴스': 1, '동아일보': 20, '문화일보': 21,
     '세계일보': 22, '조선일보': 23, '중앙일보': 25,
     '한겨레': 28, '경향신문': 32, '한국일보': 55,
     '매일경제': 56, '한국경제': 214, '머니투데이': 421,
     'YTN': 437, 'JTBC': 448,
-    '기타': 449
+    '기타': 449,
+
+    # 추가 주요 언론사 (450-460)
+    '전자신문': 450, '파이낸셜뉴스': 451, '헤럴드경제': 452,
+    '서울경제': 453, 'KBS': 454, 'SBS': 455,
+    '아시아경제': 456, '디지털타임스': 457, 'MBC': 458,
+    '대전일보': 459, '부산일보': 460,
 }
 
 def classify_source(original_source):
@@ -54,6 +67,35 @@ def classify_source(original_source):
             return source_id
 
     return 449  # 기타
+
+def classify_category_with_ai(title, content):
+    """AI를 사용한 카테고리 분류"""
+    try:
+        # Summarize AI의 카테고리 분류 엔드포인트 호출
+        response = requests.post(
+            f"{SUMMARIZE_AI_URL}/ai/classify-category",
+            json={
+                "title": title or "",
+                "content": content or ""
+            },
+            timeout=5
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            category = result.get('category', '기타')
+            logger.debug(f"✅ AI 카테고리 분류: {title[:30]}... -> {category}")
+            return category
+        else:
+            logger.warning(f"⚠️ AI 카테고리 분류 API 오류 (status: {response.status_code})")
+            return None
+
+    except requests.exceptions.Timeout:
+        logger.warning("⚠️ AI 카테고리 분류 타임아웃")
+        return None
+    except Exception as e:
+        logger.error(f"❌ AI 카테고리 분류 실패: {e}")
+        return None
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -125,14 +167,24 @@ def process_raw_news():
 
         for raw_article in raw_articles:
             try:
-                # ⚠️ Spark ML 사용 안함! 기사 페이지에서 파싱한 원본 카테고리 사용
-                original_category = raw_article['original_category'] or '사회'
-                category_id = category_map.get(original_category, 3)  # 기본값: 사회(3)
+                # AI 기반 카테고리 분류
+                ai_category = classify_category_with_ai(
+                    raw_article['title'],
+                    raw_article['content']
+                )
+
+                # AI 분류 결과가 있으면 사용, 없으면 원본 카테고리 사용
+                if ai_category:
+                    final_category = ai_category
+                else:
+                    final_category = raw_article['original_category'] or '사회'
+
+                category_id = category_map.get(final_category, 3)  # 기본값: 사회(3)
 
                 # 언론사 분류
                 source_id = classify_source(raw_article['original_source'])
 
-                logger.info(f"✅ 카테고리 확정: {raw_article['title'][:50]}... -> {original_category} (언론사: {source_id})")
+                logger.info(f"✅ 카테고리 확정: {raw_article['title'][:50]}... -> {final_category} (언론사: {source_id})")
 
                 # news_articles에 삽입
                 cursor.execute("""

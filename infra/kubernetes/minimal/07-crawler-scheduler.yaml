@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: api-crawler
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-api-crawler:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-api-crawler:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 4003
@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
       - name: scheduler
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-scheduler:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-scheduler:latest
         imagePullPolicy: Always
 
         envFrom:

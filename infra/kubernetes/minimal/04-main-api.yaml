@@ -37,7 +37,7 @@ spec:
 
       containers:
       - name: main-api
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-main-api:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-main-api:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-frontend:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3001

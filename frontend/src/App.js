@@ -20,6 +20,7 @@ import LoginSuccessPage from './pages/LoginSuccessPage';
 import LoginErrorPage from './pages/LoginErrorPage';
 import ActivityLog from './pages/ActivityLog';
 import NewsDetailPage from './pages/NewsDetailPage';
+import AccountLinkPage from './pages/AccountLinkPage';
 
 
 function HomePageWrapper() {
@@ -627,6 +628,7 @@ function App() {
         <Route path="/news/:id" element={<NewsDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/account-link" element={<AccountLinkPage />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/email-verification" element={<EmailVerificationPage />} />

@@ -24,7 +24,7 @@ export async function analyzeBias(): Promise<void> {
   const client = await getDbClient();
 
   try {
-    // 1. 편향 분석이 없는 정치 기사 조회
+    // 1. 편향 분석이 없는 정치 기사 조회 (AI 분류 개선으로 정치 카테고리만 필터링)
     const result = await client.query(`
       SELECT na.id, na.title, na.content, c.name as category_name
       FROM news_articles na

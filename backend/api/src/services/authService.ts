@@ -115,23 +115,31 @@ export class AuthService {
   async register(registerData: RegisterDto): Promise<{ user: User; token: string; message: string }> {
     const { name, username, email, password, confirmPassword, phone, age, gender, location, provider, socialToken, profileImage } = registerData;
 
-    if (password !== confirmPassword) throw new Error('비밀번호가 일치하지 않습니다.');
+    const isSocialSignup = provider === 'kakao' || provider === 'naver';
 
+    // 일반 가입인 경우에만 비밀번호 체크
+    if (!isSocialSignup) {
+      if (!password || !confirmPassword) throw new Error('비밀번호를 입력해주세요.');
+      if (password !== confirmPassword) throw new Error('비밀번호가 일치하지 않습니다.');
+    }
+
+    // username과 email 중복 체크
     const existingUser = await this.userRepository.findOne({
       where: [{ username }, { email }],
     });
     if (existingUser) {
       if (existingUser.username === username) throw new Error('이미 사용 중인 아이디입니다.');
-      if (existingUser.email === email) throw new Error('이미 사용 중인 이메일입니다.');
+      if (existingUser.email === email) throw new Error('사용할 수 없는 이메일입니다.');
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    // 소셜 가입은 비밀번호 없이, 일반 가입은 비밀번호 해시화
+    const passwordHash = isSocialSignup ? null : await bcrypt.hash(password, 12);
 
     const user = this.userRepository.create({
       userName: name,
       username,
       email,
-      passwordHash: passwordHash,
+      passwordHash: passwordHash || undefined,
       tel: phone,
       provider: provider || 'local',
       socialToken: socialToken || undefined,
@@ -172,6 +180,12 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({ where: { username, active: true } });
     if (!user) throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
+
+    // provider에 'local'이 포함되어 있는지 체크
+    if (!user.provider.includes('local')) {
+      throw new Error('소셜 로그인 전용 계정입니다. 소셜 로그인을 이용해주세요.');
+    }
+
     if (!user.passwordHash) throw new Error('일반 로그인을 사용할 수 없는 계정입니다.');
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
@@ -229,26 +243,43 @@ export class AuthService {
       kakaoProf.thumbnail_image_url ||
       null;
 
+    // 1) 카카오 토큰으로 기존 계정 찾기
     let user = await this.userRepository.findOne({
       where: { provider: 'kakao', socialToken: providerId },
     });
 
+    // 2) provider가 'local,kakao'인 계정도 찾기 (이미 연동된 계정)
     if (!user && email) {
-      const existing = await this.userRepository.findOne({ where: { email } });
-      if (existing) {
-        existing.provider = 'kakao';
-        existing.socialToken = providerId;
-        existing.userName = name || existing.userName;
+      const localKakaoUser = await this.userRepository.findOne({
+        where: { email, provider: 'local,kakao', active: true }
+      });
+      if (localKakaoUser) {
+        user = localKakaoUser;
+      }
+    }
 
-        // 프로필 이미지를 로컬에 다운로드하여 저장
-        if (profileImage) {
-          const localImagePath = await this.downloadProfileImage(profileImage, existing.id);
-          if (localImagePath) {
-            existing.profileImage = localImagePath;
-          }
+    // 3) 같은 이메일의 다른 계정이 있으면 연동 동의 요청
+    if (!user && email) {
+      const existing = await this.userRepository.findOne({ where: { email, active: true } });
+      if (existing) {
+        // 카카오-네이버 간 연동은 불가
+        if (existing.provider === 'naver' || existing.provider === 'local,naver') {
+          throw new Error('사용할 수 없는 이메일입니다.');
         }
 
-        user = await this.userRepository.save(existing);
+        // local 계정이면 연동 동의 필요 (프론트로 전달)
+        if (existing.provider === 'local') {
+          throw new Error(`ACCOUNT_LINK_REQUIRED:${JSON.stringify({
+            existingUserId: existing.id,
+            existingUsername: existing.username,
+            existingEmail: existing.email,
+            existingProvider: existing.provider,
+            newProvider: 'kakao',
+            socialToken: providerId,
+            name: name,
+            profileImage: profileImage || null
+          })}`);
+        }
       }
     }
 
@@ -323,26 +354,43 @@ export class AuthService {
     const name: string = profile.name || '네이버사용자';
     const profileImage: string | null = profile.profileImage || null;
 
+    // 1) 네이버 토큰으로 기존 계정 찾기
     let user = await this.userRepository.findOne({
       where: { provider: 'naver', socialToken: providerId },
     });
 
+    // 2) provider가 'local,naver'인 계정도 찾기 (이미 연동된 계정)
     if (!user && email) {
-      const existing = await this.userRepository.findOne({ where: { email } });
-      if (existing) {
-        existing.provider = 'naver';
-        existing.socialToken = providerId;
-        existing.userName = name || existing.userName;
+      const localNaverUser = await this.userRepository.findOne({
+        where: { email, provider: 'local,naver', active: true }
+      });
+      if (localNaverUser) {
+        user = localNaverUser;
+      }
+    }
 
-        // 프로필 이미지를 로컬에 다운로드하여 저장
-        if (profileImage) {
-          const localImagePath = await this.downloadProfileImage(profileImage, existing.id);
-          if (localImagePath) {
-            existing.profileImage = localImagePath;
-          }
+    // 3) 같은 이메일의 다른 계정이 있으면 연동 동의 요청
+    if (!user && email) {
+      const existing = await this.userRepository.findOne({ where: { email, active: true } });
+      if (existing) {
+        // 네이버-카카오 간 연동은 불가
+        if (existing.provider === 'kakao' || existing.provider === 'local,kakao') {
+          throw new Error('사용할 수 없는 이메일입니다.');
         }
 
-        user = await this.userRepository.save(existing);
+        // local 계정이면 연동 동의 필요 (프론트로 전달)
+        if (existing.provider === 'local') {
+          throw new Error(`ACCOUNT_LINK_REQUIRED:${JSON.stringify({
+            existingUserId: existing.id,
+            existingUsername: existing.username,
+            existingEmail: existing.email,
+            existingProvider: existing.provider,
+            newProvider: 'naver',
+            socialToken: providerId,
+            name: name,
+            profileImage: profileImage || null
+          })}`);
+        }
       }
     }
 
@@ -649,10 +697,22 @@ export class AuthService {
     // 새 비밀번호 해시화
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
-    // 비밀번호 저장
+    // 비밀번호 설정 시 provider에 'local' 추가
+    let newProvider = user.provider;
+    if (!user.passwordHash) {
+      // 비밀번호가 없었던 경우 (최초 설정)
+      if (user.provider === 'kakao') {
+        newProvider = 'local,kakao';
+      } else if (user.provider === 'naver') {
+        newProvider = 'local,naver';
+      }
+    }
+
+    // 비밀번호와 provider 업데이트
     await this.userRepository.update(userId, {
       passwordHash: newPasswordHash,
-      previousPw: user.passwordHash || undefined
+      previousPw: user.passwordHash || undefined,
+      provider: newProvider
     });
 
     const action = user.passwordHash ? '변경' : '설정';
@@ -697,5 +757,112 @@ export class AuthService {
     await this.userRepository.update(userId, { active: false });
 
     return { message: '소셜 로그인 계정이 성공적으로 삭제되었습니다.' };
+  }
+
+  // ---------- 계정 연동 ----------
+  async linkAccount(
+    userId: number,
+    password: string,
+    provider: 'kakao' | 'naver',
+    socialToken: string,
+    profileImage?: string
+  ): Promise<{ user: User; token: string; message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 비밀번호 확인 (보안)
+    if (!user.passwordHash) {
+      throw new Error('비밀번호가 설정되지 않은 계정입니다.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new Error('비밀번호가 올바르지 않습니다.');
+    }
+
+    // 이미 연동된 계정인지 확인
+    if (user.provider.includes(provider)) {
+      throw new Error(`이미 ${provider} 계정이 연동되어 있습니다.`);
+    }
+
+    // 카카오-네이버 간 연동 차단
+    if (
+      (provider === 'kakao' && user.provider.includes('naver')) ||
+      (provider === 'naver' && user.provider.includes('kakao'))
+    ) {
+      throw new Error('카카오와 네이버는 함께 연동할 수 없습니다.');
+    }
+
+    // provider 업데이트
+    const newProvider = user.provider === 'local' ? `local,${provider}` : `${user.provider},${provider}`;
+
+    // 프로필 이미지 다운로드 (있는 경우)
+    let newProfileImage = user.profileImage;
+    if (profileImage && !user.profileImage) {
+      const localImagePath = await this.downloadProfileImage(profileImage, user.id);
+      if (localImagePath) {
+        newProfileImage = localImagePath;
+      }
+    }
+
+    // 연동 정보 업데이트
+    await this.userRepository.update(userId, {
+      provider: newProvider,
+      socialToken: socialToken,
+      profileImage: newProfileImage || user.profileImage
+    });
+
+    const updatedUser = await this.userRepository.findOne({ where: { id: userId } });
+    if (!updatedUser) throw new Error('사용자를 찾을 수 없습니다.');
+
+    const jwtToken = this.generateJwtToken(updatedUser, true);
+
+    return {
+      user: updatedUser,
+      token: jwtToken,
+      message: `${provider} 계정이 성공적으로 연동되었습니다.`
+    };
+  }
+
+  // ---------- 연동 해제 ----------
+  async unlinkAccount(userId: number, provider: 'kakao' | 'naver'): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId, active: true } });
+    if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+
+    // 연동되어 있는지 확인
+    if (!user.provider.includes(provider)) {
+      throw new Error(`${provider} 계정이 연동되어 있지 않습니다.`);
+    }
+
+    // local 계정이 없으면 연동 해제 불가 (최소 1개 로그인 방법 필요)
+    if (!user.provider.includes('local')) {
+      throw new Error('일반 로그인이 설정되어 있지 않아 연동 해제할 수 없습니다. 먼저 비밀번호를 설정해주세요.');
+    }
+
+    // provider에서 해당 소셜 로그인 제거
+    let newProvider = user.provider;
+    if (newProvider === provider) {
+      // provider가 단독인 경우 (예: 'kakao')
+      throw new Error('마지막 로그인 방법은 해제할 수 없습니다.');
+    } else if (newProvider === `local,${provider}`) {
+      // 'local,kakao' → 'local'
+      newProvider = 'local';
+    } else if (newProvider.startsWith(`${provider},`)) {
+      // 'kakao,local' → 'local' (이 케이스는 발생하지 않지만 방어 코드)
+      newProvider = newProvider.replace(`${provider},`, '');
+    } else if (newProvider.includes(`,${provider}`)) {
+      // 'local,kakao' → 'local'
+      newProvider = newProvider.replace(`,${provider}`, '');
+    }
+
+    // 소셜 토큰 제거 (단, 다른 소셜 로그인도 있으면 유지)
+    const shouldRemoveSocialToken = newProvider === 'local';
+
+    await this.userRepository.update(userId, {
+      provider: newProvider,
+      socialToken: shouldRemoveSocialToken ? null : user.socialToken
+    });
+
+    return { message: `${provider} 계정 연동이 해제되었습니다.` };
   }
 }

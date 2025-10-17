@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: summarize-ai
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-summarize-ai:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-summarize-ai:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -99,7 +99,7 @@ spec:
     spec:
       containers:
       - name: bias-analysis-ai
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-bias-analysis-ai:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-bias-analysis-ai:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8002
@@ -163,7 +163,7 @@ spec:
     spec:
       containers:
       - name: classification-api
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-classification-api:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-classification-api:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
