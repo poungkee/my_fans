@@ -25,7 +25,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
           return; // 비로그인 사용자는 추천 섹션 숨김
         }
 
-        const response = await fetch('/api/recommendations?limit=10', {
+        const response = await fetch('/api/recommendations?limit=20', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -71,7 +71,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       });
 
       // 새로운 추천 가져오기
-      const response = await fetch('/api/recommendations?limit=10', {
+      const response = await fetch('/api/recommendations?limit=20', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -210,7 +210,8 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
                   journalist: article.journalist,
                   pub_date: article.published_at || article.published_date,
                   category: article.category_name,
-                  url: article.url
+                  url: article.url,
+                  recommendation_type: article.recommendation_type // 추천 타입 추가
                 }}
                 onDetail={() => onNavigateToDetail && onNavigateToDetail(article.id)}
               />

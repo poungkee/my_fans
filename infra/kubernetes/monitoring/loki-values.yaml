@@ -1,0 +1,129 @@
+# ========================================
+# Loki 설정 (CloudWatch Logs 대체)
+# helm install loki grafana/loki-stack \
+#   -n monitoring -f loki-values.yaml
+# ========================================
+
+loki:
+  enabled: true
+
+  # 리소스 제한
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # 영구 스토리지
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 20Gi
+
+  # 로그 보관 설정
+  config:
+    auth_enabled: false
+
+    ingester:
+      chunk_idle_period: 3m
+      chunk_block_size: 262144
+      chunk_retain_period: 1m
+      max_transfer_retries: 0
+      lifecycler:
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
+
+    limits_config:
+      enforce_metric_name: false
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h  # 7일
+      ingestion_rate_mb: 10
+      ingestion_burst_size_mb: 20
+
+    schema_config:
+      configs:
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+
+    server:
+      http_listen_port: 3100
+
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /data/loki/boltdb-shipper-active
+        cache_location: /data/loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: filesystem
+      filesystem:
+        directory: /data/loki/chunks
+
+    chunk_store_config:
+      max_look_back_period: 168h  # 7일
+
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 168h  # 7일
+
+# Promtail 설정 (로그 수집기)
+promtail:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  config:
+    lokiAddress: http://loki:3100/loki/api/v1/push
+
+    snippets:
+      pipelineStages:
+        - cri: {}
+        - regex:
+            expression: '^(?P<time>\S+) (?P<stream>\S+) (?P<flags>\S+) (?P<log>.*)$'
+        - labels:
+            stream:
+        - timestamp:
+            source: time
+            format: RFC3339Nano
+        - output:
+            source: log
+
+      # Kubernetes 메타데이터 추가
+      common:
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_pod_node_name
+          target_label: node_name
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_namespace
+          target_label: namespace
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_pod_name
+          target_label: pod
+        - action: replace
+          source_labels:
+            - __meta_kubernetes_pod_container_name
+          target_label: container
+
+# Grafana (이미 prometheus-values.yaml에서 설치됨)
+grafana:
+  enabled: false
+
+# Fluent Bit (선택, Promtail 대신)
+fluent-bit:
+  enabled: false

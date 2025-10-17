@@ -1,0 +1,50 @@
+# ========================================
+# ConfigMap - 환경 변수
+# ========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fans-config
+  namespace: fans
+data:
+  # 공통 설정
+  NODE_ENV: "production"
+  TZ: "Asia/Seoul"
+
+  # 포트 설정
+  PORT: "3000"
+  API_CRAWLER_PORT: "4003"
+  CLASSIFICATION_API_PORT: "5000"
+  SUMMARIZE_AI_PORT: "8000"
+  BIAS_ANALYSIS_AI_PORT: "8002"
+
+  # 데이터베이스 (RDS)
+  DB_HOST: "REPLACE_WITH_RDS_ENDPOINT"  # Terraform output에서 가져올 것
+  DB_PORT: "5432"
+  POSTGRES_DB: "fans_db"
+  POSTGRES_USER: "fans_admin"
+
+  # Redis (Pod 내부)
+  REDIS_HOST: "redis-service.fans.svc.cluster.local"
+  REDIS_PORT: "6379"
+
+  # 서비스 URL (클러스터 내부)
+  SUMMARIZE_AI_URL: "http://summarize-ai:8000"
+  BIAS_ANALYSIS_AI_URL: "http://bias-analysis-ai:8002"
+  CLASSIFICATION_API_URL: "http://classification-api:5000"
+
+  # 크롤러 설정
+  AUTO_CRAWL: "true"
+  CRAWL_INTERVAL_MINUTES: "5"
+  CRAWL_LIMIT_PER_CATEGORY: "5"
+
+  # 스케줄러 설정
+  SCHEDULE_INTERVAL: "*/10 * * * *"
+  RUN_ON_START: "false"
+  RAW_NEWS_BATCH_SIZE: "100"
+  SUMMARY_BATCH_SIZE: "50"
+  LOG_LEVEL: "info"
+
+  # AI 모델 설정
+  MODEL_NAME: "facebook/bart-large-cnn"
+  MAX_SUMMARY_LENGTH: "150"

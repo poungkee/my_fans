@@ -1,0 +1,251 @@
+---
+# API Crawler
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-crawler
+  namespace: fans
+  labels:
+    app: api-crawler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-crawler
+  template:
+    metadata:
+      labels:
+        app: api-crawler
+    spec:
+      containers:
+      - name: api-crawler
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-api-crawler:latest
+        ports:
+        - containerPort: 4003
+        env:
+        - name: API_CRAWLER_PORT
+          value: "4003"
+        - name: CRAWLER_SCHEDULE
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: CRAWLER_SCHEDULE
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        - name: CLASSIFICATION_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: CLASSIFICATION_API_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-crawler-service
+  namespace: fans
+spec:
+  selector:
+    app: api-crawler
+  ports:
+  - protocol: TCP
+    port: 4003
+    targetPort: 4003
+  type: ClusterIP
+---
+# Classification API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: classification-api
+  namespace: fans
+  labels:
+    app: classification-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: classification-api
+  template:
+    metadata:
+      labels:
+        app: classification-api
+    spec:
+      containers:
+      - name: classification-api
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-classification-api:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: CLASSIFICATION_API_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: CLASSIFICATION_API_PORT
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: classification-api-service
+  namespace: fans
+spec:
+  selector:
+    app: classification-api
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP
+---
+# Scheduler
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: fans
+  labels:
+    app: scheduler
+spec:
+  replicas: 1  # 스케줄러는 1개만
+  selector:
+    matchLabels:
+      app: scheduler
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      containers:
+      - name: scheduler
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-scheduler:latest
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: SCHEDULE_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: SCHEDULE_INTERVAL
+        - name: RUN_ON_START
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: RUN_ON_START
+        - name: SUMMARY_BATCH_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: SUMMARY_BATCH_SIZE
+        - name: KEYWORD_BATCH_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: KEYWORD_BATCH_SIZE
+        - name: BIAS_BATCH_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: BIAS_BATCH_SIZE
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        - name: SUMMARIZE_AI_URL
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: SUMMARIZE_AI_URL
+        - name: BIAS_ANALYSIS_AI_URL
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: BIAS_ANALYSIS_AI_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

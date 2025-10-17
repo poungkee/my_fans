@@ -91,7 +91,7 @@ function HomePageWrapper() {
     const controller = new AbortController();
     // topics는 없어도 동작하도록 파라미터 분리
     const params = new URLSearchParams({
-      limit: '60',
+      limit: '200',
       sort: 'created_at',
       topics: '정치,경제,사회,세계,IT/과학,생활/문화,스포츠,연예',
       _t: Date.now() // 캐시 무효화용 타임스탬프
@@ -167,7 +167,7 @@ function HomePageWrapper() {
     const params = new URLSearchParams({
       q,
       sort: searchSortKey,
-      limit: '60',
+      limit: '200',
     });
     const url = `${API_BASE}/api/search?${params.toString()}`;
 
@@ -323,7 +323,7 @@ function HomePageWrapper() {
 
     // 언론사별 전용 API 호출
     try {
-      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceName)}?page=1&limit=50&days=7&sort=created_at`;
+      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceName)}?page=1&limit=100&days=7&sort=created_at`;
       console.log('- API URL:', url);
 
       const res = await fetch(url);
@@ -361,7 +361,7 @@ function HomePageWrapper() {
 
     try {
       const nextPage = sourceLoadingState.page + 1;
-      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceLoadingState.sourceName)}?page=${nextPage}&limit=20&days=7&sort=created_at`;
+      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceLoadingState.sourceName)}?page=${nextPage}&limit=50&days=7&sort=created_at`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

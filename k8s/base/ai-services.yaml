@@ -1,0 +1,138 @@
+---
+# Summarize AI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summarize-ai
+  namespace: fans
+  labels:
+    app: summarize-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: summarize-ai
+  template:
+    metadata:
+      labels:
+        app: summarize-ai
+    spec:
+      nodeSelector:
+        workload: ai
+      containers:
+      - name: summarize-ai
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-summarize-ai:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: SUMMARIZE_AI_PORT
+          value: "8000"
+        - name: HF_HOME
+          value: "/app/models"
+        - name: HUGGING_FACE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: HUGGING_FACE_API_KEY
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summarize-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: summarize-ai
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+# Bias Analysis AI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+  labels:
+    app: bias-analysis-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+    spec:
+      nodeSelector:
+        workload: ai
+      containers:
+      - name: bias-analysis-ai
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-bias-analysis-ai:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: BIAS_ANALYSIS_AI_PORT
+          value: "8002"
+        - name: HF_HOME
+          value: "/app/models"
+        - name: HUGGING_FACE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: HUGGING_FACE_API_KEY
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: bias-analysis-ai
+  ports:
+  - protocol: TCP
+    port: 8002
+    targetPort: 8002
+  type: ClusterIP

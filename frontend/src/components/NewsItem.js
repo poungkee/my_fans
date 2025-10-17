@@ -11,6 +11,22 @@ const NewsItem = ({
     setThumb(news.image_url || null);
   }, [news.image_url]);
 
+  // 추천 타입에 따른 배지 정보
+  const getRecommendationBadge = (type) => {
+    const badges = {
+      'most_viewed': { label: '🔥 인기', color: '#FF6B6B', bg: '#FFE5E5' },
+      'collaborative': { label: '👥 협업 필터링', color: '#4ECDC4', bg: '#E0F7F6' },
+      'content_based': { label: '📚 맞춤형', color: '#95E1D3', bg: '#E8F8F5' },
+      'keyword_based': { label: '🔑 키워드', color: '#F38181', bg: '#FFE8E8' },
+      'bias_based': { label: '⚖️ 편향 분석', color: '#AA96DA', bg: '#F0EBFA' },
+      'trending': { label: '📈 트렌딩', color: '#FCBAD3', bg: '#FFF0F6' },
+      'hybrid': { label: '✨ 하이브리드', color: '#A8D8EA', bg: '#E8F6FA' }
+    };
+    return badges[type] || null;
+  };
+
+  const badge = news.recommendation_type ? getRecommendationBadge(news.recommendation_type) : null;
+
   return (
     <article
       className="news-item"
@@ -45,6 +61,21 @@ const NewsItem = ({
       </div>
 
       <div className="news-content">
+        {badge && (
+          <div style={{
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '11px',
+            fontWeight: '600',
+            color: badge.color,
+            backgroundColor: badge.bg,
+            marginBottom: '8px',
+            border: `1px solid ${badge.color}30`
+          }}>
+            {badge.label}
+          </div>
+        )}
         <h2
           className="news-title"
           onClick={onDetail}

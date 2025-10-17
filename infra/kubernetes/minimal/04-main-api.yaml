@@ -1,0 +1,161 @@
+# ========================================
+# Main API Deployment (Node.js)
+# 포트: 3000
+# ========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-api
+  namespace: fans
+  labels:
+    app: main-api
+    tier: backend
+spec:
+  replicas: 2  # 최소 2개 (가용성)
+  selector:
+    matchLabels:
+      app: main-api
+  template:
+    metadata:
+      labels:
+        app: main-api
+        tier: backend
+    spec:
+      # Pod Anti-Affinity (여러 노드에 분산)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - main-api
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: main-api
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/fans-main-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+
+        # 환경 변수
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+
+        # 리소스 제한 (최적화)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+        # Health Check
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+
+        # 볼륨 마운트 (업로드 파일용)
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: uploads-pvc
+
+---
+# Main API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-api
+  namespace: fans
+  labels:
+    app: main-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  selector:
+    app: main-api
+
+---
+# HPA (Horizontal Pod Autoscaler)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: main-api-hpa
+  namespace: fans
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: main-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+
+---
+# PVC for Uploads
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads-pvc
+  namespace: fans
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: efs-sc  # EFS 사용 (여러 Pod 공유)
+  resources:
+    requests:
+      storage: 10Gi

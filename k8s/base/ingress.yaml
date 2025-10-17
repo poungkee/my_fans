@@ -1,0 +1,77 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fans-ingress
+  namespace: fans
+  annotations:
+    # AWS ALB 설정
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # HTTPS 설정 (ACM 인증서)
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: ${CERTIFICATE_ARN}
+
+    # 헬스 체크
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+
+    # 보안 헤더
+    alb.ingress.kubernetes.io/security-groups: ${SECURITY_GROUP_ID}
+
+    # 로그
+    alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=${S3_BUCKET_NAME}
+spec:
+  rules:
+  # Frontend: fans.ai.kr
+  - host: fans.ai.kr
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3001
+
+  # Main API: api.fans.ai.kr
+  - host: api.fans.ai.kr
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api-service
+            port:
+              number: 3000
+
+  # AI Services: ai.fans.ai.kr
+  - host: ai.fans.ai.kr
+    http:
+      paths:
+      # Summarize AI
+      - path: /summarize
+        pathType: Prefix
+        backend:
+          service:
+            name: summarize-ai-service
+            port:
+              number: 8000
+
+      # Bias Analysis AI
+      - path: /bias-analysis
+        pathType: Prefix
+        backend:
+          service:
+            name: bias-analysis-ai-service
+            port:
+              number: 8002

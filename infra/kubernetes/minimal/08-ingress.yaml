@@ -1,0 +1,153 @@
+# ========================================
+# NGINX Ingress Controller 설치 (헬름으로)
+# helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+# helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+# ========================================
+
+# Ingress Resource
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fans-ingress
+  namespace: fans
+  annotations:
+    # NGINX 설정
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # CORS 설정
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://fans.ai.kr"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+
+    # 타임아웃 설정
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # 업로드 크기 제한
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+    # cert-manager (무료 SSL)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Rate Limiting (선택)
+    # nginx.ingress.kubernetes.io/limit-rps: "100"
+
+spec:
+  tls:
+  - hosts:
+    - fans.ai.kr
+    - api.fans.ai.kr
+    - ai.fans.ai.kr
+    secretName: fans-tls-cert  # cert-manager가 자동 생성
+
+  rules:
+  # Frontend (fans.ai.kr)
+  - host: fans.ai.kr
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 3001
+
+  # Main API (api.fans.ai.kr)
+  - host: api.fans.ai.kr
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api
+            port:
+              number: 3000
+
+  # AI Services (ai.fans.ai.kr)
+  - host: ai.fans.ai.kr
+    http:
+      paths:
+      - path: /summarize
+        pathType: Prefix
+        backend:
+          service:
+            name: summarize-ai
+            port:
+              number: 8000
+
+      - path: /bias
+        pathType: Prefix
+        backend:
+          service:
+            name: bias-analysis-ai
+            port:
+              number: 8002
+
+---
+# ========================================
+# cert-manager ClusterIssuer (무료 SSL)
+# ========================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Let's Encrypt 프로덕션 서버
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com  # 변경 필요
+
+    # 인증서 저장
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+
+    # DNS-01 Challenge (Route53)
+    solvers:
+    - dns01:
+        route53:
+          region: ap-northeast-2
+          # hostedZoneID: "YOUR_ROUTE53_ZONE_ID"  # Route53 Zone ID
+
+---
+# ========================================
+# NLB 설정 (NGINX Ingress Controller용)
+# ========================================
+# NGINX Ingress Controller Service 수정
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+  annotations:
+    # NLB 설정 (ALB보다 저렴)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+    # SSL 인증서 (ACM)
+    # service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:ap-northeast-2:ACCOUNT_ID:certificate/CERT_ID"
+    # service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: https
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/component: controller
