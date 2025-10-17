@@ -1,0 +1,44 @@
+# EBS를 사용한 PersistentVolume (업로드 파일용)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fans-ebs-sc
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fans-uploads-pvc
+  namespace: fans
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fans-ebs-sc
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Main API에 PVC 마운트
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-api
+  namespace: fans
+spec:
+  template:
+    spec:
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: fans-uploads-pvc
+      containers:
+      - name: main-api
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads

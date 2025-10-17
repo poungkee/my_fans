@@ -160,6 +160,12 @@ router.get('/kakao/callback', async (req, res) => {
   } catch (e: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
+    // 계정 연동 동의 필요
+    if (e.message.startsWith('ACCOUNT_LINK_REQUIRED:')) {
+      const linkData = e.message.substring(22); // 'ACCOUNT_LINK_REQUIRED:' 제거
+      return res.redirect(`${frontendUrl}/account-link?data=${encodeURIComponent(linkData)}`);
+    }
+
     // 신규 사용자인 경우 등록 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {
       const userData = e.message.substring(9); // 'NEW_USER:' 제거
@@ -203,6 +209,12 @@ router.get('/naver/callback', async (req, res) => {
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+
+    // 계정 연동 동의 필요
+    if (e.message.startsWith('ACCOUNT_LINK_REQUIRED:')) {
+      const linkData = e.message.substring(22); // 'ACCOUNT_LINK_REQUIRED:' 제거
+      return res.redirect(`${frontendUrl}/account-link?data=${encodeURIComponent(linkData)}`);
+    }
 
     // 신규 네이버 사용자인 경우 회원가입 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {
@@ -468,6 +480,51 @@ router.post('/set-social-password', authenticateToken, async (req: Authenticated
     return res.json({ success: true, message: result.message });
   } catch (e: any) {
     return res.status(400).json({ success: false, error: e.message || '비밀번호 설정/변경 실패' });
+  }
+});
+
+/* ==================== 계정 연동/해제 ==================== */
+router.post('/link-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { password, provider, socialToken, profileImage } = req.body;
+
+    if (!password || !provider || !socialToken) {
+      return res.status(400).json({ success: false, error: '필수 정보가 누락되었습니다.' });
+    }
+
+    if (provider !== 'kakao' && provider !== 'naver') {
+      return res.status(400).json({ success: false, error: '유효하지 않은 소셜 로그인 제공자입니다.' });
+    }
+
+    const result = await authService.linkAccount(userId, password, provider, socialToken, profileImage);
+    return res.json({
+      success: true,
+      message: result.message,
+      data: { user: result.user, token: result.token }
+    });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '계정 연동 실패' });
+  }
+});
+
+router.delete('/unlink-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { provider } = req.body;
+
+    if (!provider) {
+      return res.status(400).json({ success: false, error: '제공자 정보가 필요합니다.' });
+    }
+
+    if (provider !== 'kakao' && provider !== 'naver') {
+      return res.status(400).json({ success: false, error: '유효하지 않은 소셜 로그인 제공자입니다.' });
+    }
+
+    const result = await authService.unlinkAccount(userId, provider);
+    return res.json({ success: true, message: result.message });
+  } catch (e: any) {
+    return res.status(400).json({ success: false, error: e.message || '연동 해제 실패' });
   }
 });
 

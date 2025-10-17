@@ -1,4 +1,20 @@
 """
+⚠️ 이 파일은 더 이상 사용되지 않습니다 ⚠️
+
+Spark ML API → Simple Classifier API(backend/simple-classifier)로 대체됨
+
+실제로 이 API도 Spark ML을 사용하지 않고 있었습니다 (286줄 참조).
+원본 카테고리를 그대로 사용하는 방식이었으므로,
+Spark 의존성만 제거한 경량 버전으로 대체했습니다.
+
+아래 코드는 참고용으로 주석 처리되었습니다.
+필요 시 복구 가능하도록 코드를 삭제하지 않았습니다.
+"""
+
+'''
+# ===== 아래 코드는 주석 처리됨 (Spark 대체) =====
+
+"""
 Spark ML 카테고리 분류 API 서비스
 크롤러가 호출할 수 있는 REST API 제공
 """
@@ -359,3 +375,6 @@ if __name__ == '__main__':
     port = int(os.getenv('CLASSIFICATION_API_PORT', 5000))
     logger.info(f"🌐 Classification API 서버 시작: 포트 {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+
+# ===== 주석 처리 끝 =====
+'''

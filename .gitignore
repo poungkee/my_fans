@@ -145,6 +145,19 @@ backend/ai/bias-analysis-ai/ai-training/
 
 # === Infrastructure (Terraform) ===
 infrastructure/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/secret.tfvars
+infra/terraform/*.auto.tfvars
+infra/terraform/terraform.tfvars
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+infra/terraform/*_override.tf
+infra/terraform/*_override.tf.json
+infra/terraform/.terraformrc
+infra/terraform/terraform.rc
 
 # === Work Log (개인 작업 기록) ===
 work_log.md
@@ -161,3 +174,4 @@ backend/crawler/puppeteer-crawler/*.tsbuildinfo
 *.tar.gz
 *.zip
 *_backup.tar.gz
+backend/airflow/logs/

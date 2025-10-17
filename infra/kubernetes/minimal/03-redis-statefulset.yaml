@@ -1,0 +1,143 @@
+# ========================================
+# Redis StatefulSet with Persistent Volume
+# ElastiCache 대신 Pod로 실행 (비용 절감)
+# ========================================
+
+# StorageClass (gp3 사용)
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: redis-gp3
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+---
+# Redis StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: fans
+  labels:
+    app: redis
+spec:
+  serviceName: redis-service
+  replicas: 1  # 단일 인스턴스 (비용 절감)
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+
+        # 리소스 제한 (최소화)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # 볼륨 마운트
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /usr/local/etc/redis
+
+        # Redis 설정
+        command:
+        - redis-server
+        - /usr/local/etc/redis/redis.conf
+
+        # Health Check
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+
+  # PVC 템플릿
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: redis-gp3
+      resources:
+        requests:
+          storage: 5Gi
+
+---
+# Redis ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: fans
+data:
+  redis.conf: |
+    # Redis 최적화 설정
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+
+    # 지속성 설정 (AOF)
+    appendonly yes
+    appendfsync everysec
+
+    # 보안
+    protected-mode yes
+    bind 0.0.0.0
+
+    # 성능
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: fans
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+  clusterIP: None  # Headless service for StatefulSet

@@ -214,27 +214,29 @@ export class RecommendationService {
     }
 
     const result = await AppDataSource.query(
-      `SELECT DISTINCT na.*,
-        s.name as source_name,
-        c.name as category_name,
-        CASE
-          WHEN c.name = ANY($3::text[]) THEN 2
-          ELSE 1
-        END as category_match_score,
-        CASE
-          WHEN s.name = ANY($4::text[]) THEN 2
-          ELSE 1
-        END as source_match_score
-      FROM news_articles na
-      LEFT JOIN sources s ON na.source_id = s.id
-      LEFT JOIN categories c ON na.category_id = c.id
-      WHERE (c.name = ANY($3::text[]) OR s.name = ANY($4::text[]))
-        AND na.id NOT IN (
-          SELECT article_id FROM user_activity_log
-          WHERE user_id = $1 AND activity_type IN ('view', 'like', 'bookmark')
-        )
-        AND na.pub_date > NOW() - INTERVAL '7 days'
-      ORDER BY (category_match_score + source_match_score) DESC, na.pub_date DESC
+      `SELECT * FROM (
+        SELECT DISTINCT na.*,
+          s.name as source_name,
+          c.name as category_name,
+          CASE
+            WHEN c.name = ANY($3::text[]) THEN 2
+            ELSE 1
+          END as category_match_score,
+          CASE
+            WHEN s.name = ANY($4::text[]) THEN 2
+            ELSE 1
+          END as source_match_score
+        FROM news_articles na
+        LEFT JOIN sources s ON na.source_id = s.id
+        LEFT JOIN categories c ON na.category_id = c.id
+        WHERE (c.name = ANY($3::text[]) OR s.name = ANY($4::text[]))
+          AND na.id NOT IN (
+            SELECT article_id FROM user_activity_log
+            WHERE user_id = $1 AND activity_type IN ('view', 'like', 'bookmark')
+          )
+          AND na.pub_date > NOW() - INTERVAL '7 days'
+      ) scored_articles
+      ORDER BY (category_match_score + source_match_score) DESC, pub_date DESC
       LIMIT $2`,
       [userId, limit, categories.length > 0 ? categories : [''], sources.length > 0 ? sources : ['']]
     );
@@ -391,7 +393,7 @@ export class RecommendationService {
       LEFT JOIN user_activity_log ual ON na.id = ual.article_id
       WHERE na.pub_date > NOW() - INTERVAL '24 hours'
       GROUP BY na.id, s.name, c.name
-      ORDER BY (view_count + like_count * 2) DESC
+      ORDER BY COUNT(DISTINCT ual.user_id) + COUNT(CASE WHEN ual.activity_type = 'like' THEN 1 END) * 2 DESC
       LIMIT $1`,
       [limit]
     );

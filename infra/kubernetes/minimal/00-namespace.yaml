@@ -1,0 +1,10 @@
+# ========================================
+# Namespace
+# ========================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fans
+  labels:
+    name: fans
+    environment: production

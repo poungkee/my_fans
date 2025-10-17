@@ -1,4 +1,17 @@
 """
+⚠️ 이 파일은 더 이상 사용되지 않습니다 ⚠️
+
+Airflow → Node.js 스케줄러(backend/scheduler)로 대체됨
+Spark ML → Simple Classifier API(backend/simple-classifier)로 대체됨
+
+아래 코드는 참고용으로 주석 처리되었습니다.
+필요 시 복구 가능하도록 코드를 삭제하지 않았습니다.
+"""
+
+'''
+# ===== 아래 코드는 주석 처리됨 (Airflow 대체) =====
+
+"""
 원본 기사 처리 파이프라인 DAG
 raw_news_articles -> Spark ML 분류 -> news_articles
 """
@@ -193,3 +206,6 @@ summarize_task = PythonOperator(
 
 # Task 순서: 확인 -> 처리 -> 요약
 check_task >> process_task >> summarize_task
+
+# ===== 주석 처리 끝 =====
+'''

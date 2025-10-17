@@ -45,8 +45,14 @@ router.get('/common/media-sources', async (req: Request, res: Response) => {
       order: { id: 'ASC' }
     });
 
+    // 주요 14개 언론사 + 기타 (15개)
+    const targetSourceIds = [1, 20, 21, 22, 23, 25, 28, 32, 55, 56, 214, 421, 437, 448, 449];
+    const mainSources = sources.filter(source =>
+      targetSourceIds.includes(source.id)
+    );
+
     // 프론트엔드에서 기대하는 형태로 변환 (name, domain, logo_url 포함)
-    const sourcesWithDomain = sources.map(source => ({
+    const sourcesWithDomain = mainSources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, // 임시 도메인 생성
       oid: source.id.toString(),
@@ -90,8 +96,14 @@ router.get('/common/all', async (req: Request, res: Response) => {
       sourceRepository.find({ order: { id: 'ASC' } })
     ]);
 
+    // 주요 14개 언론사 + 기타 (15개)
+    const targetSourceIds = [1, 20, 21, 22, 23, 25, 28, 32, 55, 56, 214, 421, 437, 448, 449];
+    const mainSources = sources.filter(source =>
+      targetSourceIds.includes(source.id)
+    );
+
     const categoryNames = categories.map(category => category.name);
-    const sourcesWithDomain = sources.map(source => ({
+    const sourcesWithDomain = mainSources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
       oid: source.id.toString(),

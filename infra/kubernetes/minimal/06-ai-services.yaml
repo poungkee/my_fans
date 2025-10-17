@@ -1,0 +1,205 @@
+# ========================================
+# AI Services Deployments
+# - Summarize AI (8000)
+# - Bias Analysis AI (8002)
+# - Classification API (5000)
+# ========================================
+
+# Summarize AI
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summarize-ai
+  namespace: fans
+  labels:
+    app: summarize-ai
+    tier: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summarize-ai
+  template:
+    metadata:
+      labels:
+        app: summarize-ai
+        tier: ai
+    spec:
+      containers:
+      - name: summarize-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-summarize-ai:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summarize-ai
+  namespace: fans
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+  selector:
+    app: summarize-ai
+
+---
+# Bias Analysis AI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+  labels:
+    app: bias-analysis-ai
+    tier: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+        tier: ai
+    spec:
+      containers:
+      - name: bias-analysis-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-bias-analysis-ai:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8002
+          name: http
+
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8002
+    targetPort: 8002
+  selector:
+    app: bias-analysis-ai
+
+---
+# Classification API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: classification-api
+  namespace: fans
+  labels:
+    app: classification-api
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: classification-api
+  template:
+    metadata:
+      labels:
+        app: classification-api
+        tier: backend
+    spec:
+      containers:
+      - name: classification-api
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans-classification-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          name: http
+
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: classification-api
+  namespace: fans
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: classification-api
