@@ -1,0 +1,241 @@
+# ========================================
+# Summarize AI Service
+# ========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summarize-ai
+  labels:
+    app: summarize-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: summarize-ai
+  template:
+    metadata:
+      labels:
+        app: summarize-ai
+    spec:
+      containers:
+      - name: summarize-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/summarize-ai:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+        - name: MODEL_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: MODEL_NAME
+        - name: MAX_SUMMARY_LENGTH
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: MAX_SUMMARY_LENGTH
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summarize-ai-service
+spec:
+  selector:
+    app: summarize-ai
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# ========================================
+# Bias Analysis AI Service
+# ========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  labels:
+    app: bias-analysis-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+    spec:
+      containers:
+      - name: bias-analysis-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/bias-analysis-ai:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: PORT
+          value: "8002"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: DB_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai-service
+spec:
+  selector:
+    app: bias-analysis-ai
+  ports:
+  - protocol: TCP
+    port: 8002
+    targetPort: 8002
+  type: ClusterIP
+
+---
+# ========================================
+# Classification API Service
+# ========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: classification-api
+  labels:
+    app: classification-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: classification-api
+  template:
+    metadata:
+      labels:
+        app: classification-api
+    spec:
+      containers:
+      - name: classification-api
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/classification-api:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: CLASSIFICATION_API_PORT
+          value: "5000"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: DB_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: classification-api-service
+spec:
+  selector:
+    app: classification-api
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP
