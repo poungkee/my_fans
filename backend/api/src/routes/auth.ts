@@ -245,7 +245,6 @@ router.post('/verify-token', async (req: Request, res: Response) => {
           name: user.userName,
           phone: user.tel,
           profileImage: user.profileImage,
-          emailVerified: user.emailVerified,
           provider: user.provider,
           socialToken: user.socialToken,
           createdAt: user.createdAt,

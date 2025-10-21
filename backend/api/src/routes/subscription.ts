@@ -10,7 +10,7 @@ const router = Router();
 // 사용자의 구독 목록 조회
 router.get('/subscriptions', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user!.userId;
 
         const userPreference = await AppDataSource.getRepository(UserPreference)
             .findOne({ where: { userId } });
@@ -52,8 +52,8 @@ router.get('/subscriptions', authenticateToken, async (req: AuthenticatedRequest
             subscriptions: sources.map(source => ({
                 id: source.id,
                 name: source.name,
-                url: source.url || `https://www.${source.name}.com`, // 기본 URL 제공
-                logoUrl: source.logoUrl,
+                url: `https://www.${source.name}.com`, // 기본 URL 제공
+                logoUrl: source.logo_url || '',
                 created_at: userPreference.updatedAt // 구독 정보 업데이트 시간
             }))
         });
@@ -67,7 +67,7 @@ router.get('/subscriptions', authenticateToken, async (req: AuthenticatedRequest
 // 언론사 구독하기
 router.post('/subscribe', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user!.userId;
         const { sourceName } = req.body;
 
         if (!sourceName) {
@@ -112,8 +112,8 @@ router.post('/subscribe', authenticateToken, async (req: AuthenticatedRequest, r
             source: {
                 id: source.id,
                 name: source.name,
-                url: source.url,
-                logoUrl: source.logoUrl
+                url: `https://www.${source.name}.com`,
+                logoUrl: source.logo_url || ''
             }
         });
 
@@ -126,7 +126,7 @@ router.post('/subscribe', authenticateToken, async (req: AuthenticatedRequest, r
 // 언론사 구독 취소하기
 router.delete('/unsubscribe', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user!.userId;
         const { sourceName } = req.body;
 
         if (!sourceName) {
@@ -178,7 +178,7 @@ router.delete('/unsubscribe', authenticateToken, async (req: AuthenticatedReques
 // 구독 상태 확인
 router.get('/status/:sourceName', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user!.userId;
         const { sourceName } = req.params;
 
         // 언론사 찾기

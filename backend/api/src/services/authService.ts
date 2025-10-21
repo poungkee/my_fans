@@ -133,7 +133,7 @@ export class AuthService {
     }
 
     // 소셜 가입은 비밀번호 없이, 일반 가입은 비밀번호 해시화
-    const passwordHash = isSocialSignup ? null : await bcrypt.hash(password, 12);
+    const passwordHash = isSocialSignup ? undefined : await bcrypt.hash(password!, 12);
 
     const user = this.userRepository.create({
       userName: name,
@@ -860,7 +860,7 @@ export class AuthService {
 
     await this.userRepository.update(userId, {
       provider: newProvider,
-      socialToken: shouldRemoveSocialToken ? null : user.socialToken
+      socialToken: shouldRemoveSocialToken ? undefined : user.socialToken
     });
 
     return { message: `${provider} 계정 연동이 해제되었습니다.` };
