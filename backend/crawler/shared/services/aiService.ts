@@ -40,7 +40,12 @@ export async function summarizeArticle(articleId: number, content: string): Prom
 /**
  * AI 편향성 분석 서비스
  */
-export async function analyzeBias(articleId: number, content: string): Promise<void> {
+export async function analyzeBias(
+  articleId: number,
+  content: string,
+  sourceName?: string,
+  categoryName?: string
+): Promise<void> {
   if (!content || content.length < 100) {
     logger.info(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
     return;
@@ -52,7 +57,9 @@ export async function analyzeBias(articleId: number, content: string): Promise<v
     // bias-analysis-ai 서비스 호출
     const response = await axios.post(`${BIAS_AI_URL}/analyze/full`, {
       text: content,
-      article_id: articleId
+      article_id: articleId,
+      source_name: sourceName || '기타',
+      category: categoryName || '기타'
     }, {
       timeout: 30000 // 30초 타임아웃
     });
@@ -61,17 +68,21 @@ export async function analyzeBias(articleId: number, content: string): Promise<v
       // BiasAnalysis 엔티티에 저장
       const biasRepo = AppDataSource.getRepository('BiasAnalysis');
 
-      const political = response.data.political;
+      // API 응답 구조에 맞게 수정
+      const biasScore = response.data.bias_score || 0;
+      const politicalLeaning = response.data.political_leaning || 'neutral';
+      const confidence = response.data.confidence || response.data.sentiment?.confidence || 0;
+
       const biasAnalysis = biasRepo.create({
         articleId: articleId,
-        biasScore: political?.bias_score || 0,
-        politicalLeaning: political?.leaning || 'neutral',
-        confidence: response.data.sentiment?.confidence || 0,
+        biasScore: biasScore,
+        politicalLeaning: politicalLeaning,
+        confidence: confidence,
         analysisData: response.data
       });
 
       await biasRepo.save(biasAnalysis);
-      logger.info(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
+      logger.info(`[편향성 분석 완료] 기사 ${articleId}: ${politicalLeaning} (점수: ${biasScore}, 신뢰도: ${confidence})`);
     }
   } catch (error: any) {
     logger.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ArticleAnalysis.css';
 
-function ArticleAnalysis({ articleId, articleContent }) {
+function ArticleAnalysis({ articleId, articleContent, biasAnalysis }) {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,6 +10,13 @@ function ArticleAnalysis({ articleId, articleContent }) {
 
   // 컴포넌트 마운트 시 자동으로 저장된 분석 데이터 불러오기
   useEffect(() => {
+    // biasAnalysis prop이 있으면 그것을 사용
+    if (biasAnalysis) {
+      setAnalysisData(biasAnalysis);
+      setLoading(false);
+      return;
+    }
+
     const fetchAnalysis = async () => {
       if (!articleId) {
         setError('기사 ID가 없습니다');
@@ -36,7 +43,7 @@ function ArticleAnalysis({ articleId, articleContent }) {
     };
 
     fetchAnalysis();
-  }, [articleId, API_BASE]);
+  }, [articleId, API_BASE, biasAnalysis]);
 
   // 감성 라벨 한글 변환
   const getSentimentLabel = (sentiment) => {

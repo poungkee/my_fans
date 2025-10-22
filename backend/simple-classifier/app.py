@@ -33,39 +33,31 @@ def get_db_connection():
         database=os.getenv('POSTGRES_DB', 'fans_db')
     )
 
-# 언론사 매핑 (주요 언론사만 개별 ID로 관리)
+# 언론사 매핑 (sources 테이블에 실제로 존재하는 언론사만)
 # 나머지는 "기타"(449)로 통합되지만, raw_news_articles.original_source에는 원본 이름이 저장되어
 # 편향성 분석 등에서는 정확한 언론사 정보 사용 가능
 SOURCE_MAP = {
-    # 주요 언론사
+    # DB에 실제로 존재하는 주요 언론사만 매핑
     '연합뉴스': 1, '동아일보': 20, '문화일보': 21,
     '세계일보': 22, '조선일보': 23, '중앙일보': 25,
     '한겨레': 28, '경향신문': 32, '한국일보': 55,
     '매일경제': 56, '한국경제': 214, '머니투데이': 421,
     'YTN': 437, 'JTBC': 448,
-    '기타': 449,
-
-    # 추가 주요 언론사 (450-460)
-    '전자신문': 450, '파이낸셜뉴스': 451, '헤럴드경제': 452,
-    '서울경제': 453, 'KBS': 454, 'SBS': 455,
-    '아시아경제': 456, '디지털타임스': 457, 'MBC': 458,
-    '대전일보': 459, '부산일보': 460,
+    '기타': 449
 }
 
 def classify_source(original_source):
-    """언론사 텍스트를 source_id로 매핑"""
+    """언론사 텍스트를 source_id로 매핑 (없으면 무조건 기타)"""
     if not original_source:
         return 449  # 기타
 
-    # 완전 일치 검색
+    # 완전 일치 검색만 수행 (부분 일치 제거로 안정성 확보)
     if original_source in SOURCE_MAP:
         return SOURCE_MAP[original_source]
 
-    # 부분 일치 검색
-    for source_name, source_id in SOURCE_MAP.items():
-        if source_name in original_source or original_source in source_name:
-            return source_id
-
+    # 매핑되지 않으면 무조건 기타(449)
+    # raw_news_articles.original_source에는 원본 언론사명이 보존되어 있어
+    # 편향 분석 등에서 정확한 언론사 정보 사용 가능
     return 449  # 기타
 
 def classify_category_with_ai(title, content):

@@ -6,7 +6,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false); // 기본값: 접힌 상태
+  const [isExpanded, setIsExpanded] = useState(true); // 기본값: 펼쳐진 상태로 변경
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -25,6 +25,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
           return; // 비로그인 사용자는 추천 섹션 숨김
         }
 
+        // 초기 로드 시에는 캐시 삭제 안 함 (기존 추천 사용)
         const response = await fetch('/api/recommendations?limit=20', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -147,18 +148,22 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
         </div>
         {isExpanded && (
           <div className="recommendations-empty">
-            아직 추천할 뉴스가 없습니다. 더 많은 기사를 읽어보세요!
+            기사를 읽거나 프로필 등록을 해서 맞춤 추천 뉴스 보기가 가능합니다
           </div>
         )}
       </section>
     );
   }
 
+  // 프로필 미설정 사용자인지 확인 (모든 기사가 most_viewed 타입인 경우)
+  const isNewUser = recommendations.length > 0 &&
+    recommendations.every(article => article.recommendation_type === 'most_viewed');
+
   return (
     <section className={`recommendations-section ${isExpanded ? 'expanded' : 'collapsed'}`}>
       <div className="recommendations-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="recommendations-title-wrapper">
-          <h2>🎯 맞춤 추천 뉴스</h2>
+          <h2>{isNewUser ? '🔥 현재 인기 기사' : '🎯 맞춤 추천 뉴스'}</h2>
           <span className="recommendations-count">
             ({recommendations.length}개)
           </span>
@@ -195,7 +200,9 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       {isExpanded && (
         <>
           <div className="recommendations-subtitle">
-            당신의 관심사를 기반으로 선별한 뉴스입니다
+            {isNewUser
+              ? '기사를 읽거나 프로필 등록을 해서 맞춤 추천 뉴스 보기가 가능합니다'
+              : '당신의 관심사를 기반으로 선별한 뉴스입니다'}
           </div>
 
           <div className="recommendations-grid">

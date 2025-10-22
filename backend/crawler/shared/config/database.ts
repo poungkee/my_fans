@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { NewsArticle } from '../entities/NewsArticle';
 import { RawNewsArticle } from '../entities/RawNewsArticle';

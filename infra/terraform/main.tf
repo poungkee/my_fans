@@ -1,12 +1,12 @@
 # FANS AWS Infrastructure - Terraform Configuration
-# 기존 VPC (10.0.30.0/24) 활용
+# VPC: FANS_VPC_EKS (172.16.0.0/16)
 
 terraform {
   required_version = ">= 1.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "= 5.0.0"
     }
   }
 }
@@ -16,22 +16,29 @@ provider "aws" {
 }
 
 # ============================================
-# 기존 리소스 Import (Data Source)
+# VPC 생성
 # ============================================
 
-# 기존 VPC
-data "aws_vpc" "existing" {
-  id = var.existing_vpc_id # vpc-0fa60f4833b7932ad
+# VPC
+resource "aws_vpc" "main" {
+  cidr_block           = "172.16.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "eks-FANS-VPC"
+    Environment = var.environment
+    Project     = var.project_name
+  }
 }
 
-# Internet Gateway (생성)
+# Internet Gateway
 resource "aws_internet_gateway" "main" {
-  vpc_id = data.aws_vpc.existing.id
+  vpc_id = aws_vpc.main.id
 
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-igw"
-    }
-  )
+  tags = {
+    Name        = "eks-FANS-IGW"
+    Environment = var.environment
+    Project     = var.project_name
+  }
 }

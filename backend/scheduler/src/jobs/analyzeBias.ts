@@ -52,18 +52,35 @@ export async function analyzeBias(): Promise<void> {
     // 2. 각 기사에 대해 편향 분석
     for (const article of articles) {
       try {
-        // Bias Analysis AI 호출
+        // 언론사 정보 가져오기
+        const sourceResult = await client.query(`
+          SELECT s.name as source_name
+          FROM news_articles na
+          LEFT JOIN sources s ON na.source_id = s.id
+          WHERE na.id = $1
+        `, [article.id]);
+
+        const sourceName = sourceResult.rows[0]?.source_name || '기타';
+
+        // Bias Analysis AI 호출 - /analyze/full 사용
         const response = await axios.post(
-          `${BIAS_ANALYSIS_AI_URL}/analyze/political`,
+          `${BIAS_ANALYSIS_AI_URL}/analyze/full`,
           {
             text: `${article.title}\n\n${article.content}`,
-            article_id: article.id
+            article_id: article.id,
+            source_name: sourceName,
+            category: '정치'
           },
           { timeout: 15000 }
         );
 
         if (response.data) {
           const biasData = response.data;
+
+          // /analyze/full 응답에서 필드 추출
+          const biasScore = biasData.bias_score || 0;
+          const politicalLeaning = biasData.political_leaning || '중립';
+          const confidence = biasData.confidence || 0.8;
 
           // 3. bias_analysis 테이블에 저장
           await client.query(
@@ -72,29 +89,26 @@ export async function analyzeBias(): Promise<void> {
               political_leaning,
               bias_score,
               confidence,
-              sentiment,
               analysis_data
-            ) VALUES ($1, $2, $3, $4, $5, $6)
+            ) VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (article_id)
             DO UPDATE SET
               political_leaning = EXCLUDED.political_leaning,
               bias_score = EXCLUDED.bias_score,
               confidence = EXCLUDED.confidence,
-              sentiment = EXCLUDED.sentiment,
               analysis_data = EXCLUDED.analysis_data,
-              analyzed_at = NOW()`,
+              updated_at = NOW()`,
             [
               article.id,
-              biasData.stance || '중립',
-              biasData.bias_score || 0,
-              0.8, // confidence - 고정값 (API에서 제공하지 않는 경우)
-              'neutral', // sentiment - 기본값
-              JSON.stringify(biasData.party_analysis || {})
+              politicalLeaning,
+              biasScore,
+              confidence,
+              JSON.stringify(biasData)
             ]
           );
 
           successCount++;
-          logger.debug(`✅ 기사 ID ${article.id} 편향 분석 완료: ${biasData.stance}`);
+          logger.debug(`✅ 기사 ID ${article.id} 편향 분석 완료: ${politicalLeaning} (점수: ${biasScore})`);
         } else {
           throw new Error('편향 분석 결과가 없습니다');
         }

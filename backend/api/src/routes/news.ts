@@ -11,7 +11,7 @@ import logger from "../config/logger";
 const router = Router();
 
 /** 응답 형태로 매핑 */
-async function mapArticle(a: NewsArticle) {
+async function mapArticle(a: NewsArticle, includeBias: boolean = false) {
   // 통계 정보 가져오기
   const statRepo = AppDataSource.getRepository(ArticleStat);
   const stats = await statRepo.findOne({ where: { articleId: a.id } });
@@ -28,7 +28,7 @@ async function mapArticle(a: NewsArticle) {
     (a.content || "").replace(/\s+/g, " ").slice(0, 160) +
     ((a.content || "").length > 160 ? "…" : "");
 
-  return {
+  const result: any = {
     id: a.id,
     title: a.title,
     url: a.url,
@@ -60,6 +60,29 @@ async function mapArticle(a: NewsArticle) {
     // 키워드 정보 (기본값)
     keywords: [] as any[]
   };
+
+  // 편향성 분석 정보 포함 (상세 조회 시에만)
+  if (includeBias) {
+    try {
+      const biasRepo = AppDataSource.getRepository('BiasAnalysis');
+      const biasAnalysis = await biasRepo.findOne({
+        where: { articleId: a.id }
+      });
+
+      if (biasAnalysis) {
+        result.bias_analysis = {
+          bias_score: biasAnalysis.biasScore,
+          political_leaning: biasAnalysis.politicalLeaning,
+          confidence: biasAnalysis.confidence,
+          analysis_data: biasAnalysis.analysisData
+        };
+      }
+    } catch (biasError) {
+      logger.warn(`편향성 분석 조회 실패 (기사 ${a.id}):`, biasError);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -279,7 +302,7 @@ router.get("/news/:id", async (req: Request, res: Response) => {
     }
     await statRepo.save(stats);
 
-    const result = await mapArticle(article);
+    const result = await mapArticle(article, true);
 
     // 키워드 별도 조회 (옵셔널)
     try {

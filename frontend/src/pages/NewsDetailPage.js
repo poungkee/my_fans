@@ -1138,16 +1138,22 @@ function NewsDetailPage() {
                     </div>
                   </div>
 
-                  {/* 언론사 편향성 차트 추가 */}
-                  <div className="media-bias-section">
-                    <SourceBiasChart articleSource={article.source || article.agency} />
-                  </div>
+                  {/* 언론사 편향성 차트 - 정치 기사일 때만 표시 */}
+                  {article.category === '정치' && (
+                    <div className="media-bias-section">
+                      <SourceBiasChart articleSource={article.source || article.agency} />
+                    </div>
+                  )}
                 </div>
               )}
 
               {activeTab === 'analysis' && (
                 <div className="analysis-info">
-                  <ArticleAnalysis articleId={id} articleContent={article.content} />
+                  <ArticleAnalysis
+                    articleId={id}
+                    articleContent={article.content}
+                    biasAnalysis={article.bias_analysis}
+                  />
                 </div>
               )}
             </div>

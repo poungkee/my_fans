@@ -87,142 +87,35 @@ services:
   # 크롤러 서비스들
   # ================================
 
-  # API Crawler Service (Port: 4003)
-  api-crawler:
+  # ================================
+  # Unified Crawler v2 (통합 크롤러)
+  # ================================
+
+  # Unified Crawler v2 Service (Port: 4007)
+  unified-crawler:
     build:
       context: ./backend/crawler
-      dockerfile: ./api-crawler/Dockerfile
-    container_name: fans_api_crawler
+      dockerfile: ./crawler-v2/Dockerfile
+    container_name: fans_unified_crawler
     ports:
-      - "${API_CRAWLER_PORT:-4003}:4003"
+      - "4007:4005"
     env_file:
       - .env
     environment:
-      - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
+      - UNIFIED_CRAWLER_PORT=4005
       - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
-      - CRAWL_LIMIT_PER_CATEGORY=${CRAWL_LIMIT_PER_CATEGORY:-5}
-      - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
-      - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
-      - NAVER_CLIENT_ID_2=${NAVER_CLIENT_ID_2}
-      - NAVER_CLIENT_SECRET_2=${NAVER_CLIENT_SECRET_2}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
     depends_on:
       postgres:
-        condition: service_healthy
-      bias-analysis-ai:
         condition: service_healthy
     networks:
       - fans_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:4005/health"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 30s
-    # volumes:
-    #   - ./backend/crawler/api-crawler/src:/app/src
-    #   - ./backend/crawler/api-crawler/package.json:/app/package.json
-    #   - ./backend/crawler/api-crawler/package-lock.json:/app/package-lock.json
-    #   - ./backend/crawler/api-crawler/tsconfig.json:/app/tsconfig.json
-    #   - /app/node_modules
-    #   - /app/dist
-    restart: unless-stopped
-
-  # ================================
-  # Puppeteer Crawler - 3개 인스턴스
-  # ================================
-
-  puppeteer-crawler-1:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_1
-    ports:
-      - "4004:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=0
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-
-  puppeteer-crawler-2:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_2
-    ports:
-      - "4005:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=1
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-
-  puppeteer-crawler-3:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_3
-    ports:
-      - "4006:4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=2
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   # ================================
@@ -280,8 +173,6 @@ services:
         condition: service_healthy
       summarize-ai:
         condition: service_healthy
-      api-crawler:
-        condition: service_started
     networks:
       - fans_network
     volumes:

@@ -42,50 +42,57 @@ export class RecommendationService {
     // 1. 사용자 선호도 분석
     const userPreferences = await this.getUserPreferences(userId);
 
-    // 2. 활동 기록이 없는 경우 (Cold Start) - 실시간 인기 기사 5개만 반환
-    const hasActivity = userPreferences.total_read > 0 ||
-                       userPreferences.total_likes > 0 ||
-                       userPreferences.preferred_categories.length > 0 ||
-                       userPreferences.preferred_sources.length > 0;
+    // 2. 프로필 설정 여부 확인 (선호 카테고리 또는 언론사 설정 여부)
+    const hasProfile = userPreferences.preferred_categories.length > 0 ||
+                      userPreferences.preferred_sources.length > 0;
 
-    if (!hasActivity) {
-      logger.info(`No activity for user ${userId}, returning top 5 trending articles`);
-      return await this.getMostViewedArticles(5);
+    // 3. 활동 기록 확인 (기사 읽기, 좋아요 등)
+    const hasActivity = userPreferences.total_read > 0 ||
+                       userPreferences.total_likes > 0;
+
+    // 4. 프로필 미설정 사용자 (Cold Start) - 인기 기사 6개 반환
+    if (!hasProfile && !hasActivity) {
+      logger.info(`No profile set for user ${userId}, returning top 6 popular articles`);
+      return await this.getMostViewedArticles(6);
     }
 
-    // 3. 협업 필터링 - 유사한 사용자 찾기
+    // 5. 프로필 설정 사용자 - 맞춤 추천 + 인기 기사 3개
+    // 협업 필터링 - 유사한 사용자 찾기
     const similarUsers = await this.findSimilarUsers(userId, 10);
 
-    // 4. 유사 사용자가 좋아한 기사
+    // 유사 사용자가 좋아한 기사
     const collaborativeArticles = await this.getArticlesFromSimilarUsers(
       userId,
       similarUsers,
       limit * 2
     );
 
-    // 5. 콘텐츠 기반 추천 - 사용자가 읽은 기사와 유사한 기사
+    // 콘텐츠 기반 추천 - 사용자가 읽은 기사와 유사한 기사
     const contentBasedArticles = await this.getSimilarArticles(
       userId,
       userPreferences,
       limit * 2
     );
 
-    // 6. 키워드 기반 추천 - 사용자가 읽은 기사의 키워드와 유사한 기사
+    // 키워드 기반 추천 - 사용자가 읽은 기사의 키워드와 유사한 기사
     const keywordBasedArticles = await this.getKeywordBasedArticles(
       userId,
       limit * 2
     );
 
-    // 7. 정치 편향 기반 추천 - 사용자의 정치 성향에 맞는 기사
+    // 정치 편향 기반 추천 - 사용자의 정치 성향에 맞는 기사
     const biasBasedArticles = await this.getBiasBasedArticles(
       userId,
       limit
     );
 
-    // 8. 트렌딩 기사
+    // 트렌딩 기사
     const trendingArticles = await this.getTrendingArticles(limit);
 
-    // 9. 하이브리드 점수 계산 및 병합
+    // 인기 기사 3개 추가 (프로필 설정 사용자용)
+    const popularArticles = await this.getMostViewedArticles(3);
+
+    // 하이브리드 점수 계산 및 병합
     const scoredArticles = this.mergeAndScoreArticles(
       collaborativeArticles,
       contentBasedArticles,
@@ -95,8 +102,16 @@ export class RecommendationService {
       userPreferences
     );
 
-    // 10. 상위 N개 반환
-    return scoredArticles.slice(0, limit);
+    // 인기 기사를 맨 앞에 추가
+    const finalRecommendations = [
+      ...popularArticles,
+      ...scoredArticles.filter(article =>
+        !popularArticles.some(popular => popular.id === article.id)
+      )
+    ];
+
+    // 상위 N개 반환
+    return finalRecommendations.slice(0, limit);
   }
 
   /**
@@ -408,6 +423,7 @@ export class RecommendationService {
   /**
    * 실시간 가장 많이 조회되는 기사 (Cold Start용)
    * 최근 24시간 내에 가장 많이 조회된 기사 반환
+   * 조회 기록이 없을 경우 최신 기사 반환
    */
   private async getMostViewedArticles(limit: number): Promise<any[]> {
     const result = await AppDataSource.query(
@@ -421,9 +437,8 @@ export class RecommendationService {
       LEFT JOIN sources s ON na.source_id = s.id
       LEFT JOIN categories c ON na.category_id = c.id
       LEFT JOIN user_activity_log ual ON na.id = ual.article_id
-      WHERE na.pub_date > NOW() - INTERVAL '24 hours'
+      WHERE na.pub_date > NOW() - INTERVAL '3 days'
       GROUP BY na.id, s.name, c.name
-      HAVING COUNT(DISTINCT CASE WHEN ual.activity_type = 'view' THEN ual.user_id END) > 0
       ORDER BY
         COUNT(DISTINCT CASE WHEN ual.activity_type = 'view' THEN ual.user_id END) DESC,
         COUNT(DISTINCT CASE WHEN ual.activity_type = 'like' THEN ual.user_id END) DESC,
@@ -460,6 +475,7 @@ export class RecommendationService {
       const id = article.id;
       articleMap.set(id, {
         ...article,
+        recommendation_type: 'collaborative',
         final_score: article.score * 0.25
       });
     });
@@ -470,10 +486,11 @@ export class RecommendationService {
       if (articleMap.has(id)) {
         const existing = articleMap.get(id);
         existing.final_score += article.score * 0.2;
-        existing.recommendation_type = 'hybrid';
+        // 이미 존재하는 기사는 첫 번째 추천 타입 유지
       } else {
         articleMap.set(id, {
           ...article,
+          recommendation_type: 'content_based',
           final_score: article.score * 0.2
         });
       }
@@ -485,10 +502,11 @@ export class RecommendationService {
       if (articleMap.has(id)) {
         const existing = articleMap.get(id);
         existing.final_score += article.score * 0.3;
-        existing.recommendation_type = 'hybrid';
+        // 이미 존재하는 기사는 첫 번째 추천 타입 유지
       } else {
         articleMap.set(id, {
           ...article,
+          recommendation_type: 'keyword_based',
           final_score: article.score * 0.3
         });
       }
@@ -500,10 +518,11 @@ export class RecommendationService {
       if (articleMap.has(id)) {
         const existing = articleMap.get(id);
         existing.final_score += article.score * 0.15;
-        existing.recommendation_type = 'hybrid';
+        // 이미 존재하는 기사는 첫 번째 추천 타입 유지
       } else {
         articleMap.set(id, {
           ...article,
+          recommendation_type: 'bias_based',
           final_score: article.score * 0.15
         });
       }
@@ -515,10 +534,11 @@ export class RecommendationService {
       if (articleMap.has(id)) {
         const existing = articleMap.get(id);
         existing.final_score += article.score * 0.1;
-        existing.recommendation_type = 'hybrid';
+        // 이미 존재하는 기사는 첫 번째 추천 타입 유지
       } else {
         articleMap.set(id, {
           ...article,
+          recommendation_type: 'trending',
           final_score: article.score * 0.1
         });
       }
@@ -545,7 +565,10 @@ export class RecommendationService {
       [limit]
     );
 
-    return result;
+    return result.map((article: any) => ({
+      ...article,
+      recommendation_type: 'most_viewed'
+    }));
   }
 
   /**
@@ -553,7 +576,7 @@ export class RecommendationService {
    */
   private async getCachedRecommendations(userId: number): Promise<any[] | null> {
     const result = await AppDataSource.query(
-      `SELECT recommended_article_ids, expires_at
+      `SELECT recommended_article_ids, recommendation_types, expires_at
       FROM user_recommendations
       WHERE user_id = $1 AND expires_at > NOW()`,
       [userId]
@@ -568,6 +591,8 @@ export class RecommendationService {
       return null;
     }
 
+    const types = this.parseJsonField(result[0].recommendation_types);
+
     // 기사 정보 가져오기
     const articles = await AppDataSource.query(
       `SELECT na.*, s.name as source_name, c.name as category_name
@@ -578,7 +603,11 @@ export class RecommendationService {
       [articleIds]
     );
 
-    return articles;
+    // recommendation_type 복원
+    return articles.map((article: any) => ({
+      ...article,
+      recommendation_type: typeof types === 'object' ? types[article.id] : 'hybrid'
+    }));
   }
 
   /**
@@ -590,17 +619,22 @@ export class RecommendationService {
       acc[a.id] = a.final_score || 1;
       return acc;
     }, {});
+    const types = articles.reduce((acc: any, a: any) => {
+      acc[a.id] = a.recommendation_type || 'hybrid';
+      return acc;
+    }, {});
 
     await AppDataSource.query(
-      `INSERT INTO user_recommendations (user_id, recommended_article_ids, recommendation_scores, expires_at)
-      VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour')
+      `INSERT INTO user_recommendations (user_id, recommended_article_ids, recommendation_scores, recommendation_types, expires_at)
+      VALUES ($1, $2, $3, $4, NOW() + INTERVAL '1 hour')
       ON CONFLICT (user_id)
       DO UPDATE SET
         recommended_article_ids = $2,
         recommendation_scores = $3,
+        recommendation_types = $4,
         generated_at = NOW(),
         expires_at = NOW() + INTERVAL '1 hour'`,
-      [userId, JSON.stringify(articleIds), JSON.stringify(scores)]
+      [userId, JSON.stringify(articleIds), JSON.stringify(scores), JSON.stringify(types)]
     );
   }
 

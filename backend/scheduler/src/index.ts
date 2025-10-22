@@ -23,58 +23,49 @@ async function startScheduler() {
   logger.info('🚀 News Processing Scheduler 시작...');
   logger.info(`⏰ 스케줄: ${SCHEDULE_INTERVAL}`);
 
-  // 1. Raw 뉴스 처리 작업 (10분마다)
-  cron.schedule(SCHEDULE_INTERVAL, async () => {
+  // 순차적 작업 실행 함수
+  async function runSequentialJobs() {
     logger.info('📰 [JOB START] Raw News Processing');
-
     try {
       await processRawNews();
       logger.info('✅ [JOB COMPLETE] Raw News Processing');
     } catch (error: any) {
       logger.error(`❌ [JOB FAILED] Raw News Processing: ${error.message}`);
+      return; // 실패 시 다음 작업 중단
     }
-  });
 
-  // 2. AI 요약 생성 작업 (10분마다, 1분 후 시작)
-  cron.schedule(SCHEDULE_INTERVAL, async () => {
     logger.info('📝 [JOB START] AI Summary Generation');
-
     try {
-      // Raw 처리가 끝난 후 실행되도록 1분 지연
-      await new Promise(resolve => setTimeout(resolve, 60000));
       await generateAISummaries();
       logger.info('✅ [JOB COMPLETE] AI Summary Generation');
     } catch (error: any) {
       logger.error(`❌ [JOB FAILED] AI Summary Generation: ${error.message}`);
+      return; // 실패 시 다음 작업 중단
     }
-  });
 
-  // 3. 키워드 추출 작업 (10분마다, 2분 후 시작)
-  cron.schedule(SCHEDULE_INTERVAL, async () => {
     logger.info('🔑 [JOB START] Keyword Extraction');
-
     try {
-      // AI 요약 후 실행되도록 2분 지연
-      await new Promise(resolve => setTimeout(resolve, 120000));
       await extractKeywords();
       logger.info('✅ [JOB COMPLETE] Keyword Extraction');
     } catch (error: any) {
       logger.error(`❌ [JOB FAILED] Keyword Extraction: ${error.message}`);
+      return; // 실패 시 다음 작업 중단
     }
-  });
 
-  // 4. 편향 분석 작업 (10분마다, 3분 후 시작)
-  cron.schedule(SCHEDULE_INTERVAL, async () => {
     logger.info('⚖️  [JOB START] Bias Analysis');
-
     try {
-      // 키워드 추출 후 실행되도록 3분 지연
-      await new Promise(resolve => setTimeout(resolve, 180000));
       await analyzeBias();
       logger.info('✅ [JOB COMPLETE] Bias Analysis');
     } catch (error: any) {
       logger.error(`❌ [JOB FAILED] Bias Analysis: ${error.message}`);
     }
+  }
+
+  // 단일 스케줄로 모든 작업 순차 실행
+  cron.schedule(SCHEDULE_INTERVAL, async () => {
+    logger.info('\n⏰ [SCHEDULER TRIGGER] 스케줄 작업 시작');
+    await runSequentialJobs();
+    logger.info('🏁 [SCHEDULER COMPLETE] 모든 작업 완료\n');
   });
 
   logger.info('✅ 스케줄러 초기화 완료');
@@ -84,15 +75,8 @@ async function startScheduler() {
   const RUN_ON_START = process.env.RUN_ON_START === 'true';
   if (RUN_ON_START) {
     logger.info('🏃 시작 시 즉시 실행...');
-
     try {
-      await processRawNews();
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      await generateAISummaries();
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      await extractKeywords();
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      await analyzeBias();
+      await runSequentialJobs();
     } catch (error: any) {
       logger.error(`❌ 초기 실행 실패: ${error.message}`);
     }
