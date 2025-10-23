@@ -3,11 +3,20 @@
 # ===================================
 
 # === Environment Variables ===
+# 실제 환경변수 파일 (절대 커밋 금지!)
 .env
 .env.local
+.env.ecs
+.env.eks
 .env.*.local
+.env.production
+.env.development
+.env.backup.*
 backend/.env
 backend/api/.env
+
+# 템플릿은 커밋 가능
+!.env.example
 
 # === Backend API ===
 backend/api/node_modules/
@@ -175,3 +184,4 @@ backend/crawler/puppeteer-crawler/*.tsbuildinfo
 *.zip
 *_backup.tar.gz
 backend/airflow/logs/
+backend/crawler/crawler-v2/node_modules/
