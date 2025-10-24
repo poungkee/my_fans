@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: fans-cluster
+  region: ap-northeast-2
+
+managedNodeGroups:
+  - name: fans-nodegroup-medium-private
+    instanceType: t3.medium
+    desiredCapacity: 3
+    minSize: 2
+    maxSize: 5
+    volumeSize: 30
+    volumeType: gp3
+    privateNetworking: true  # 🔒 Private 서브넷에 배치
+    labels:
+      role: worker
+      subnet-type: private
+      workload: general
+    tags:
+      nodegroup-name: fans-nodegroup-medium-private
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        efs: true
+        albIngress: true
+        cloudWatch: true
