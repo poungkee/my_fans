@@ -75,10 +75,10 @@ export class NaverMetaParser {
           .filter((href) => {
             if (!href || !href.includes('/article/')) return false;
             if (href.includes('/comment')) return false;  // 댓글 페이지 제외
-            if (href.includes('sports')) return false;    // 스포츠 제외
+            // 스포츠 포함하도록 수정
 
-            // /article/언론사코드/기사번호 형식만 허용
-            const match = href.match(/\/article\/(\d+)\/(\d+)/);
+            // /article/언론사코드/기사번호 형식 허용
+            const match = href.match(/\/article\/(\w+)\/(\d+)/);
             return match !== null;
           });
       });

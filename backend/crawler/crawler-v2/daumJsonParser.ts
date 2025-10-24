@@ -33,6 +33,7 @@ export class DaumJsonParser {
       'https://news.daum.net/culture',    // 문화
       'https://news.daum.net/digital',    // IT
       'https://news.daum.net/entertain',  // 연예
+      'https://news.daum.net/sports',     // 스포츠
     ];
   }
 
@@ -47,6 +48,7 @@ export class DaumJsonParser {
     if (url.includes('/culture')) return '생활/문화';
     if (url.includes('/digital')) return 'IT/과학';
     if (url.includes('/entertain')) return '연예';
+    if (url.includes('/sports')) return '스포츠';
     return undefined;
   }
 
