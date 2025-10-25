@@ -1,0 +1,144 @@
+name: AI Services CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/ai/**'
+      - '.github/workflows/ai-services.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/ai/**'
+
+env:
+  AWS_REGION: ap-northeast-2
+  EKS_CLUSTER_NAME: fans-cluster-2az
+  K8S_NAMESPACE: fans
+
+jobs:
+  build-summarize-ai:
+    name: Build and Deploy Summarize AI
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Summarize AI
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-summarize-ai
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/ai/summarize-ai
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Deploy Summarize AI to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-summarize-ai
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/summarize-ai \
+          summarize-ai=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+        kubectl rollout status deployment/summarize-ai -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+  build-bias-analysis-ai:
+    name: Build and Deploy Bias Analysis AI
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Bias Analysis AI
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-bias-analysis-ai
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/ai/bias-analysis-ai
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Deploy Bias Analysis AI to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-bias-analysis-ai
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/bias-analysis-ai \
+          bias-analysis-ai=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+        kubectl rollout status deployment/bias-analysis-ai -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+  build-classification-api:
+    name: Build and Deploy Classification API
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Classification API
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-classification-api
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/ai/classification-api
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Deploy Classification API to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-classification-api
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/classification-api \
+          classification-api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+        kubectl rollout status deployment/classification-api -n ${{ env.K8S_NAMESPACE }} --timeout=5m

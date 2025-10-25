@@ -1,0 +1,72 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: fans-frontend-907123164281
+  CLOUDFRONT_DISTRIBUTION_ID: E3VZKE0FYIK8JH
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build React app
+      env:
+        REACT_APP_API_BASE: https://www.fans.ai.kr
+        REACT_APP_API_URL: https://www.fans.ai.kr/api
+        CI: false
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy to S3
+      run: |
+        cd frontend/build
+        aws s3 sync . s3://${{ env.S3_BUCKET }}/ --delete
+
+    - name: Invalidate CloudFront cache
+      run: |
+        aws cloudfront create-invalidation \
+          --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"
+
+    - name: Deployment summary
+      run: |
+        echo "✅ Frontend deployed successfully!"
+        echo "🌐 URL: https://www.fans.ai.kr"
+        echo "📦 S3 Bucket: ${{ env.S3_BUCKET }}"
+        echo "🔄 CloudFront Distribution: ${{ env.CLOUDFRONT_DISTRIBUTION_ID }}"

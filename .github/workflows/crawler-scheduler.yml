@@ -1,0 +1,104 @@
+name: Crawler & Scheduler CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/crawler/**'
+      - 'backend/scheduler/**'
+      - '.github/workflows/crawler-scheduler.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/crawler/**'
+      - 'backend/scheduler/**'
+
+env:
+  AWS_REGION: ap-northeast-2
+  EKS_CLUSTER_NAME: fans-cluster-2az
+  K8S_NAMESPACE: fans
+
+jobs:
+  build-unified-crawler:
+    name: Build and Deploy Unified Crawler
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Unified Crawler
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-unified-crawler
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/crawler/crawler-v2
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Deploy Unified Crawler to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-unified-crawler
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/unified-crawler \
+          unified-crawler=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+        kubectl rollout status deployment/unified-crawler -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+  build-scheduler:
+    name: Build and Deploy Scheduler
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Scheduler
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-scheduler
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/scheduler
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Deploy Scheduler to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fans-scheduler
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/scheduler \
+          scheduler=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+        kubectl rollout status deployment/scheduler -n ${{ env.K8S_NAMESPACE }} --timeout=5m

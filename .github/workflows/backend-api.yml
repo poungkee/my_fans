@@ -1,0 +1,72 @@
+name: Backend API CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/api/**'
+      - '.github/workflows/backend-api.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/api/**'
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: fans-main-api
+  EKS_CLUSTER_NAME: fans-cluster-2az
+  K8S_NAMESPACE: fans
+  DEPLOYMENT_NAME: main-api
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Main API
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd backend/api
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Deploy to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+          main-api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -n ${{ env.K8S_NAMESPACE }}
+
+        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Verify deployment
+      run: |
+        kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=main-api
+        kubectl get svc -n ${{ env.K8S_NAMESPACE }} main-api

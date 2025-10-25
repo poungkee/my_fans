@@ -1,0 +1,108 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fans-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: fans.rules
+    interval: 30s
+    rules:
+    # Pod가 5분 이상 Pending 상태
+    - alert: PodPending
+      expr: kube_pod_status_phase{namespace="fans", phase="Pending"} > 0
+      for: 5m
+      labels:
+        severity: warning
+        namespace: fans
+      annotations:
+        summary: "Pod {{ $labels.pod }} is pending for more than 5 minutes"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in Pending state for more than 5 minutes."
+
+    # Pod CPU 사용률 80% 초과
+    - alert: PodHighCPU
+      expr: sum(rate(container_cpu_usage_seconds_total{namespace="fans", pod!=""}[5m])) by (pod) / sum(container_spec_cpu_quota{namespace="fans", pod!=""}/container_spec_cpu_period{namespace="fans", pod!=""}) by (pod) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+        namespace: fans
+      annotations:
+        summary: "Pod {{ $labels.pod }} CPU usage is above 80%"
+        description: "Pod {{ $labels.pod }} CPU usage is {{ $value }}%"
+
+    # Pod 메모리 사용률 80% 초과
+    - alert: PodHighMemory
+      expr: sum(container_memory_working_set_bytes{namespace="fans", pod!=""}) by (pod) / sum(container_spec_memory_limit_bytes{namespace="fans", pod!=""}) by (pod) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+        namespace: fans
+      annotations:
+        summary: "Pod {{ $labels.pod }} memory usage is above 80%"
+        description: "Pod {{ $labels.pod }} memory usage is {{ $value }}%"
+
+    # Pod 재시작 발생
+    - alert: PodRestarting
+      expr: rate(kube_pod_container_status_restarts_total{namespace="fans"}[15m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+        namespace: fans
+      annotations:
+        summary: "Pod {{ $labels.pod }} is restarting"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in the last 15 minutes."
+
+    # Pod가 CrashLoopBackOff 상태
+    - alert: PodCrashLoopBackOff
+      expr: kube_pod_container_status_waiting_reason{namespace="fans", reason="CrashLoopBackOff"} > 0
+      for: 1m
+      labels:
+        severity: critical
+        namespace: fans
+      annotations:
+        summary: "Pod {{ $labels.pod }} is in CrashLoopBackOff"
+        description: "Pod {{ $labels.pod }} container {{ $labels.container }} is in CrashLoopBackOff state."
+
+    # Node CPU 사용률 85% 초과
+    - alert: NodeHighCPU
+      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node {{ $labels.instance }} CPU usage is above 85%"
+        description: "Node {{ $labels.instance }} CPU usage is {{ $value }}%"
+
+    # Node 메모리 사용률 85% 초과
+    - alert: NodeHighMemory
+      expr: 100 * (1 - ((node_memory_MemAvailable_bytes) / (node_memory_MemTotal_bytes))) > 85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node {{ $labels.instance }} memory usage is above 85%"
+        description: "Node {{ $labels.instance }} memory usage is {{ $value }}%"
+
+    # Node 디스크 사용률 85% 초과
+    - alert: NodeHighDiskUsage
+      expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) > 85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node {{ $labels.instance }} disk usage is above 85%"
+        description: "Node {{ $labels.instance }} disk usage is {{ $value }}%"
+
+    # Deployment replica 부족
+    - alert: DeploymentReplicasMismatch
+      expr: kube_deployment_spec_replicas{namespace="fans"} != kube_deployment_status_replicas_available{namespace="fans"}
+      for: 15m
+      labels:
+        severity: warning
+        namespace: fans
+      annotations:
+        summary: "Deployment {{ $labels.deployment }} has mismatched replicas"
+        description: "Deployment {{ $labels.deployment }} desired replicas ({{ $value }}) does not match available replicas."
