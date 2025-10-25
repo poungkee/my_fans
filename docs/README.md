@@ -108,17 +108,57 @@
 
 ---
 
+### 6️⃣ [모니터링 및 운영](./07_모니터링_및_운영.md)
+**EKS 클러스터의 모니터링, 알림, 로깅 및 운영 관리 가이드**
+
+- **모니터링 시스템**
+  - Prometheus + Grafana 구성
+  - 알림 규칙 (Alertmanager)
+  - Node Exporter 메트릭 수집
+
+- **주요 모니터링 메트릭**
+  - Pod 메트릭 (CPU, 메모리, 재시작)
+  - Node 메트릭 (시스템 리소스)
+  - Deployment 상태
+
+- **운영 작업**
+  - NodeGroup 스케일 조정
+  - Pod 재시작 및 로그 확인
+  - 트러블슈팅 가이드
+
+- **Grafana 대시보드**
+  - 접속: https://monitoring.fans.ai.kr
+  - 사전 구성된 대시보드 import
+
+**👥 대상**: DevOps 엔지니어, 시스템 관리자, 운영팀
+
+---
+
+### 7️⃣ [CI/CD 파이프라인](./08_CI_CD_파이프라인.md)
+**GitHub Actions 기반 자동 배포 파이프라인 가이드**
+
+- **워크플로우 목록**
+  - Backend API 자동 배포
+  - Frontend S3 + CloudFront 배포
+  - AI Services 병렬 배포
+  - Crawler & Scheduler 배포
+
+- **배포 프로세스**
+  - Docker 빌드 → ECR 푸시 → EKS 배포
+  - npm build → S3 업로드 → CloudFront 캐시 무효화
+
+- **GitHub Secrets 설정**
+  - AWS 자격 증명 구성
+  - IAM 권한 요구사항
+
+- **비용 최적화**
+  - NodeGroup 축소/확장 전략
+
+**👥 대상**: DevOps 엔지니어, 백엔드 개발자, CI/CD 담당자
+
+---
+
 ## 🛠️ 추가 참고 문서
-
-### [ECS 마이그레이션 환경 변수 가이드](./ECS_MIGRATION_ENV_GUIDE.md)
-- 로컬 → ECS 전환 시 필요한 환경 변수 변경사항
-- RDS 연결 설정
-- 서비스 디스커버리 URL 변경
-
-### [멀티 환경 전략 가이드](./MULTI_ENV_STRATEGY.md)
-- .env.local, .env.ecs, .env.eks 자동 전환 방법
-- 환경별 설정 차이점
-- 스크립트 사용법 (load-env.sh, switch-env.sh)
 
 ### [빠른 시작 가이드](./QUICK_START_GUIDE.md)
 - 5분 안에 로컬 환경 실행하기
@@ -137,16 +177,9 @@ docs/
 ├── 03_크롤링_및_AI_분석_흐름.md                   # 필수: 크롤링/AI 파이프라인
 ├── 04_환경설정_및_실행가이드.md                   # 필수: 실행 방법
 ├── 05_AWS_배포_아키텍처.md                        # 필수: 클라우드 배포
-├── ECS_MIGRATION_ENV_GUIDE.md                   # 참고: ECS 환경 변수
-├── MULTI_ENV_STRATEGY.md                        # 참고: 멀티 환경 전략
-├── QUICK_START_GUIDE.md                         # 참고: 빠른 시작
-└── archive/                                     # 보관: 구 버전 문서들
-    ├── PPT_발표_요약본.md
-    ├── 발표_대본.md
-    ├── 01_EKS_운영_가이드.md
-    ├── 02_프로젝트_아키텍처_설명서.md
-    ├── AI_학습_및_뉴스_분석_시스템_정리.md
-    └── ... (기타 이전 문서들)
+├── 07_모니터링_및_운영.md                         # 필수: 모니터링 (Prometheus + Grafana)
+├── 08_CI_CD_파이프라인.md                         # 필수: CI/CD (GitHub Actions)
+└── QUICK_START_GUIDE.md                         # 참고: 빠른 시작
 ```
 
 ---
@@ -171,9 +204,9 @@ docs/
 
 ### DevOps 엔지니어
 1. **05_AWS_배포_아키텍처.md** - 클라우드 인프라
-2. **04_환경설정_및_실행가이드.md** - 배포 프로세스
-3. **MULTI_ENV_STRATEGY.md** - 환경 관리 전략
-4. **ECS_MIGRATION_ENV_GUIDE.md** - 환경 변수 설정
+2. **07_모니터링_및_운영.md** - 모니터링 시스템
+3. **08_CI_CD_파이프라인.md** - 자동 배포
+4. **04_환경설정_및_실행가이드.md** - 배포 프로세스
 
 ### 프론트엔드 개발자
 1. **01_프로젝트_개요_및_구성도.md** - 전체 시스템 이해
@@ -202,8 +235,8 @@ docs/
 
 ## 🔖 버전 정보
 
-- **문서 버전**: v2.0
-- **최종 업데이트**: 2025년 10월 23일
+- **문서 버전**: v2.1
+- **최종 업데이트**: 2025년 10월 25일
 - **작성자**: Claude Code
 - **검토자**: FANS 개발팀
 
