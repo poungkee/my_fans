@@ -1,7 +1,8 @@
 // API 기본 설정
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://your-api-domain.com'
-  : 'http://localhost:3000';
+const API_BASE_URL = process.env.REACT_APP_API_BASE ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.fans.ai.kr'
+    : 'http://localhost:3000');
 
 // 공통 fetch 함수
 const fetchApi = async (endpoint) => {

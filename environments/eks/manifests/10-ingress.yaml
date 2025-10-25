@@ -1,0 +1,50 @@
+---
+# Ingress for HTTPS (www.fans.ai.kr)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fans-ingress
+  namespace: fans
+  annotations:
+    # AWS ALB 설정
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # SSL 설정 (Wildcard 인증서: *.fans.ai.kr)
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:907123164281:certificate/e1480a11-dabb-41e2-95bb-80560a2cce5f
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+
+    # 헬스체크 (default)
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+
+    # 타겟 그룹별 헬스체크 (서비스별로 다른 경로 지정)
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: '200,301,302'
+
+    # 기타 설정
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+spec:
+  rules:
+  - host: api.fans.ai.kr
+    http:
+      paths:
+      # API 경로만 (프론트엔드는 CloudFront/S3로 이동)
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api-service
+            port:
+              number: 3000
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api-service
+            port:
+              number: 3000

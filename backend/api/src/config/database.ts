@@ -37,6 +37,8 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'fans_db',
   synchronize: shouldSyncSchema(),
   logging: shouldLogQueries(),
+  // RDS SSL 연결 설정
+  ssl: process.env.DB_HOST?.includes('rds.amazonaws.com') ? { rejectUnauthorized: false } : false,
   entities: [
     User,
     Source,

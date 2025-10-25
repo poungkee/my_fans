@@ -36,41 +36,18 @@ export class AuthService {
     return redirectUri;
   }
 
-  // ---------- 프로필 이미지 다운로드 ----------
+  // ---------- 프로필 이미지 다운로드 (S3 업로드) ----------
   private async downloadProfileImage(imageUrl: string, userId: number): Promise<string | null> {
     try {
       if (!imageUrl) return null;
 
-      // uploads/profiles 디렉토리 생성
-      const uploadDir = path.join(__dirname, '../../uploads/profiles');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
+      // S3에 업로드
+      const { uploadProfileImageFromUrl } = require('../utils/s3Upload');
+      const s3Url = await uploadProfileImageFromUrl(imageUrl, userId);
 
-      // 파일명 생성
-      const timestamp = Date.now();
-      const randomNum = Math.round(Math.random() * 1e9);
-      const fileExtension = imageUrl.includes('.jpg') || imageUrl.includes('.jpeg') ? '.jpg' :
-                           imageUrl.includes('.png') ? '.png' :
-                           imageUrl.includes('.gif') ? '.gif' : '.jpg';
-      const filename = `profile-${userId}-${timestamp}-${randomNum}${fileExtension}`;
-      const filepath = path.join(uploadDir, filename);
-
-      // 이미지 다운로드
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        logger.warn('Failed to download profile image:', response.status);
-        return null;
-      }
-
-      // 파일로 저장
-      const buffer = await response.buffer();
-      fs.writeFileSync(filepath, buffer);
-
-      // 상대 경로 반환
-      return `/uploads/profiles/${filename}`;
+      return s3Url;
     } catch (error: any) {
-      logger.error('Profile image download failed:', error.message);
+      logger.error('Profile image upload to S3 failed:', error.message);
       return null;
     }
   }
@@ -203,6 +180,20 @@ export class AuthService {
   async startKakaoLogin(session: any): Promise<string> {
     const state = KakaoOAuthProvider.generateState();
     session.oauthState = state;
+    session.oauthTimestamp = Date.now(); // state 생성 시간 기록
+
+    // Redis에 세션 저장 완료 대기 (비동기 저장 문제 방지)
+    await new Promise<void>((resolve, reject) => {
+      session.save((err: any) => {
+        if (err) {
+          logger.error('Failed to save OAuth session:', err);
+          reject(err);
+        } else {
+          logger.debug('OAuth session saved → state:', state);
+          resolve();
+        }
+      });
+    });
 
     const redirectUri = this.getKakaoRedirectUri();
     logger.debug('Kakao start login → redirect_uri:', redirectUri);
@@ -215,14 +206,28 @@ export class AuthService {
     code: string,
     state: string
   ): Promise<{ user: User; token: string; message: string }> {
+    // State 검증
     if (!session?.oauthState || session.oauthState !== state) {
       logger.warn('Kakao callback state mismatch', {
         expected: session?.oauthState,
         received: state,
+        sessionId: session?.id
       });
       throw new Error('Invalid OAuth state');
     }
+
+    // State 타임아웃 검증 (5분)
+    const stateAge = Date.now() - (session.oauthTimestamp || 0);
+    if (stateAge > 5 * 60 * 1000) {
+      logger.warn('OAuth state expired', { stateAge });
+      delete session.oauthState;
+      delete session.oauthTimestamp;
+      throw new Error('OAuth state expired. Please try again.');
+    }
+
+    // State 일회용 처리 (재사용 방지)
     delete session.oauthState;
+    delete session.oauthTimestamp;
 
     logger.debug('Kakao callback → code:', code, 'state:', state);
 
@@ -299,11 +304,11 @@ export class AuthService {
         needsSave = true;
       }
 
-      // 기존 사용자의 프로필 이미지도 로컬에 다운로드하여 저장
-      if (profileImage && !user.profileImage?.startsWith('/uploads/')) {
-        const localImagePath = await this.downloadProfileImage(profileImage, user.id);
-        if (localImagePath) {
-          user.profileImage = localImagePath;
+      // 기존 사용자의 프로필 이미지도 S3에 업로드하여 저장
+      if (profileImage && !user.profileImage?.startsWith('https://')) {
+        const s3ImageUrl = await this.downloadProfileImage(profileImage, user.id);
+        if (s3ImageUrl) {
+          user.profileImage = s3ImageUrl;
           needsSave = true;
         }
       }
@@ -326,6 +331,20 @@ export class AuthService {
   async startNaverLogin(session: any): Promise<string> {
     const state = NaverOAuthProvider.generateState();
     session.oauthState = state;
+    session.oauthTimestamp = Date.now();
+
+    // Redis에 세션 저장 완료 대기
+    await new Promise<void>((resolve, reject) => {
+      session.save((err: any) => {
+        if (err) {
+          logger.error('Failed to save OAuth session:', err);
+          reject(err);
+        } else {
+          logger.debug('OAuth session saved → state:', state);
+          resolve();
+        }
+      });
+    });
 
     const redirectUri = process.env.NAVER_REDIRECT_URI!;
     return NaverOAuthProvider.buildAuthorizeUrl(state);
@@ -336,14 +355,28 @@ export class AuthService {
     code: string,
     state: string
   ): Promise<{ user: User; token: string; message: string }> {
+    // State 검증
     if (!session?.oauthState || session.oauthState !== state) {
       logger.warn('Naver callback state mismatch', {
         expected: session?.oauthState,
         received: state,
+        sessionId: session?.id
       });
       throw new Error('Invalid OAuth state');
     }
+
+    // State 타임아웃 검증 (5분)
+    const stateAge = Date.now() - (session.oauthTimestamp || 0);
+    if (stateAge > 5 * 60 * 1000) {
+      logger.warn('OAuth state expired', { stateAge });
+      delete session.oauthState;
+      delete session.oauthTimestamp;
+      throw new Error('OAuth state expired. Please try again.');
+    }
+
+    // State 일회용 처리
     delete session.oauthState;
+    delete session.oauthTimestamp;
 
     const redirectUri = process.env.NAVER_REDIRECT_URI!;
     const token = await NaverOAuthProvider.exchangeToken(code, redirectUri);
@@ -410,11 +443,11 @@ export class AuthService {
         needsSave = true;
       }
 
-      // 기존 사용자의 프로필 이미지도 로컬에 다운로드하여 저장
-      if (profileImage && !user.profileImage?.startsWith('/uploads/')) {
-        const localImagePath = await this.downloadProfileImage(profileImage, user.id);
-        if (localImagePath) {
-          user.profileImage = localImagePath;
+      // 기존 사용자의 프로필 이미지도 S3에 업로드하여 저장
+      if (profileImage && !user.profileImage?.startsWith('https://')) {
+        const s3ImageUrl = await this.downloadProfileImage(profileImage, user.id);
+        if (s3ImageUrl) {
+          user.profileImage = s3ImageUrl;
           needsSave = true;
         }
       }

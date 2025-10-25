@@ -12,7 +12,10 @@ function ArticleAnalysis({ articleId, articleContent, biasAnalysis }) {
   useEffect(() => {
     // biasAnalysis prop이 있으면 그것을 사용
     if (biasAnalysis) {
-      setAnalysisData(biasAnalysis);
+      // article.bias_analysis는 { analysis_data: {...}, bias_score, political_leaning } 형태
+      // analysis_data 안에 실제 분석 내용이 있음
+      const data = biasAnalysis.analysis_data || biasAnalysis;
+      setAnalysisData(data);
       setLoading(false);
       return;
     }
@@ -170,7 +173,7 @@ function ArticleAnalysis({ articleId, articleContent, biasAnalysis }) {
           )}
 
           {/* 정치적 분석 섹션 */}
-          {analysisData.political && (
+          {(analysisData.political || analysisData.bias_score !== undefined) && (
             <div className="analysis-section">
               <h5>정치적 분석</h5>
               <div className="political-result">
@@ -184,13 +187,13 @@ function ArticleAnalysis({ articleId, articleContent, biasAnalysis }) {
                     <div
                       className="meter-pointer"
                       style={{
-                        left: `${((analysisData.political.bias_score + 10) / 20) * 100}%`
+                        left: `${((analysisData.political?.bias_score || analysisData.bias_score || 0) + 10) / 20 * 100}%`
                       }}
                     />
                   </div>
                   <div className="meter-value">
-                    편향성 점수: {analysisData.political.bias_score > 0 ? '+' : ''}
-                    {analysisData.political.bias_score}
+                    편향성 점수: {(analysisData.political?.bias_score || analysisData.bias_score || 0) > 0 ? '+' : ''}
+                    {analysisData.political?.bias_score || analysisData.bias_score || 0}
                   </div>
                 </div>
 
@@ -198,16 +201,16 @@ function ArticleAnalysis({ articleId, articleContent, biasAnalysis }) {
                   <span
                     className="stance-badge"
                     style={{
-                      backgroundColor: getStanceLabel(analysisData.political.stance).color,
+                      backgroundColor: getStanceLabel(analysisData.political?.stance || analysisData.political_leaning || '중립').color,
                       color: '#fff'
                     }}
                   >
-                    {getStanceLabel(analysisData.political.stance).text}
+                    {getStanceLabel(analysisData.political?.stance || analysisData.political_leaning || '중립').text}
                   </span>
                 </div>
 
                 {/* 정당별 언급 분석 */}
-                {analysisData.political.party_analysis &&
+                {analysisData.political?.party_analysis &&
                  Object.keys(analysisData.political.party_analysis).length > 0 && (
                   <div className="party-analysis">
                     <h6>정당별 언급 분석</h6>

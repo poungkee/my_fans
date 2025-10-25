@@ -1,0 +1,112 @@
+---
+# Unified Crawler Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unified-crawler
+  namespace: fans
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unified-crawler
+  template:
+    metadata:
+      labels:
+        app: unified-crawler
+    spec:
+      containers:
+      - name: unified-crawler
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/unified-crawler:latest
+        ports:
+        - containerPort: 4005
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        env:
+        - name: UNIFIED_CRAWLER_PORT
+          value: "4005"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4005
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 4005
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+# Unified Crawler Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: unified-crawler-service
+  namespace: fans
+spec:
+  selector:
+    app: unified-crawler
+  ports:
+  - port: 4005
+    targetPort: 4005
+  type: ClusterIP
+
+---
+# Scheduler Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: fans
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      containers:
+      - name: scheduler
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/scheduler:latest
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Scheduler Service (optional, for monitoring)
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-service
+  namespace: fans
+spec:
+  selector:
+    app: scheduler
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP

@@ -1,0 +1,193 @@
+---
+# Summarize AI Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summarize-ai
+  namespace: fans
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: summarize-ai
+  template:
+    metadata:
+      labels:
+        app: summarize-ai
+    spec:
+      containers:
+      - name: summarize-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/summarize-ai:latest
+        command: ["python", "-u", "main.py"]
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+
+---
+# Summarize AI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: summarize-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: summarize-ai
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# Bias Analysis AI Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+    spec:
+      containers:
+      - name: bias-analysis-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/bias-analysis-ai:latest
+        command: ["python", "main.py"]
+        ports:
+        - containerPort: 8002
+        env:
+        - name: PORT
+          value: "8002"
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+# Bias Analysis AI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: bias-analysis-ai
+  ports:
+  - port: 8002
+    targetPort: 8002
+  type: ClusterIP
+
+---
+# Classification API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: classification-api
+  namespace: fans
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: classification-api
+  template:
+    metadata:
+      labels:
+        app: classification-api
+    spec:
+      containers:
+      - name: classification-api
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/classification-api:latest
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 10
+
+---
+# Classification API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: classification-api-service
+  namespace: fans
+spec:
+  selector:
+    app: classification-api
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: ClusterIP

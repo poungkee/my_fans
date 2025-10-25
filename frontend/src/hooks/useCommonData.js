@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api';
 import { commonAPI } from '../services/api';
 import { CATEGORIES_WITH_ALL, MEDIA_SOURCES_WITH_DOMAIN, SEARCH_OPTIONS } from '../constants/commonData';
 
@@ -28,7 +29,7 @@ export const useCommonData = () => {
 
         if (token) {
           try {
-            const response = await fetch('/api/auth/preferences', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/preferences`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -51,8 +52,8 @@ export const useCommonData = () => {
         try {
           // 실제 API에서 카테고리와 언론사 목록 가져오기
           const [categoriesResponse, sourcesResponse] = await Promise.all([
-            fetch('/api/common/categories'),
-            fetch('/api/common/media-sources')
+            fetch(`${API_BASE_URL}/api/common/categories`),
+            fetch(`${API_BASE_URL}/api/common/media-sources`)
           ]);
 
           if (categoriesResponse.ok) {

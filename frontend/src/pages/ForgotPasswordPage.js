@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './AuthPages.css';
 
 const ForgotPasswordPage = () => {
@@ -31,7 +32,7 @@ const ForgotPasswordPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/request-password-reset', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/request-password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ const ForgotPasswordPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/verify-password-reset-code', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-password-reset-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +111,7 @@ const ForgotPasswordPage = () => {
     }
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

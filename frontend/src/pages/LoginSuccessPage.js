@@ -1,6 +1,7 @@
 // src/pages/LoginSuccessPage.js
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './AuthPages.css';
 
 export default function LoginSuccessPage() {
@@ -43,7 +44,7 @@ export default function LoginSuccessPage() {
       abortRef.current = ac;
 
       try {
-        const r = await fetch('/api/auth/verify-token', {
+        const r = await fetch(`${API_BASE_URL}/api/auth/verify-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './AuthPages.css';
 
@@ -7,7 +7,11 @@ const LoginErrorPage = () => {
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState(5);
 
-  const error = searchParams.get('error') || '알 수 없는 오류가 발생했습니다.';
+  // useMemo로 error 값을 메모이제이션하여 리렌더링 시 변경 방지
+  const error = useMemo(() =>
+    searchParams.get('error') || '알 수 없는 오류가 발생했습니다.',
+    [searchParams]
+  );
 
   useEffect(() => {
     // 5초 후 로그인 페이지로 리다이렉트

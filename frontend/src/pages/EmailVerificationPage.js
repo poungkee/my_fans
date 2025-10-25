@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './AuthPages.css';
 
 const EmailVerificationPage = () => {
@@ -46,7 +47,7 @@ const EmailVerificationPage = () => {
     }
 
     try {
-      const response = await fetch('/api/auth/verify-email', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ const EmailVerificationPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/send-verification-code', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

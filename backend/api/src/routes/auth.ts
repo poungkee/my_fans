@@ -17,21 +17,10 @@ import logger from '../config/logger';
 const router = Router();
 const authService = new AuthService();
 
-/* ==================== multer (프로필 이미지) ==================== */
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/profiles');
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `profile-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
-
+/* ==================== multer (프로필 이미지 - S3 업로드) ==================== */
+// memoryStorage 사용 (S3에 직접 업로드하기 위해)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp/;
@@ -289,7 +278,7 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
   }
 });
 
-/* ==================== 프로필 이미지 ==================== */
+/* ==================== 프로필 이미지 (S3 업로드) ==================== */
 router.post(
   '/upload-profile-image',
   authenticateToken,
@@ -299,9 +288,17 @@ router.post(
       const userId = req.user!.userId;
       if (!req.file) return res.status(400).json({ success: false, error: '이미지 필요' });
 
-      const relativePath = `/uploads/profiles/${req.file.filename}`;
-      const user = await authService.updateUserProfile(userId, { profileImage: relativePath });
-      return res.json({ success: true, data: { profileImage: relativePath, user } });
+      // S3에 업로드
+      const { uploadProfileImageToS3 } = require('../utils/s3Upload');
+      const s3Url = await uploadProfileImageToS3(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // 사용자 프로필 업데이트
+      const user = await authService.updateUserProfile(userId, { profileImage: s3Url });
+      return res.json({ success: true, data: { profileImage: s3Url, user } });
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e.message || '업로드 실패' });
     }

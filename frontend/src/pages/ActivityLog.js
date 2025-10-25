@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import Header from '../components/Header';
 import AgencySection from '../components/AgencySection';
 import AdSidebar from '../components/AdSidebar';
@@ -64,7 +65,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch('/api/user/history?limit=100', {
+      const response = await fetch(`${API_BASE_URL}/api/user/history?limit=100`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -101,7 +102,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch('/api/user/subscriptions', {
+      const response = await fetch(`${API_BASE_URL}/api/user/subscriptions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -133,7 +134,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch('/api/user/comments', {
+      const response = await fetch(`${API_BASE_URL}/api/user/comments`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -167,7 +168,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch(`/api/comments/${commentId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -200,7 +201,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch('/api/user/reactions', {
+      const response = await fetch(`${API_BASE_URL}/api/user/reactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -232,7 +233,7 @@ const ActivityLog = () => {
         return;
       }
 
-      const response = await fetch('/api/user/bookmarks', {
+      const response = await fetch(`${API_BASE_URL}/api/user/bookmarks`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -277,7 +278,7 @@ const ActivityLog = () => {
 
       if (token && !isTokenExpired(token)) {
         // 1. 기본 프로필 정보 가져오기
-        const profileResponse = await fetch('/api/auth/profile', {
+        const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -285,7 +286,7 @@ const ActivityLog = () => {
         });
 
         // 2. 사용자 선호도 정보 가져오기
-        const preferencesResponse = await fetch('/api/auth/preferences', {
+        const preferencesResponse = await fetch(`${API_BASE_URL}/api/auth/preferences`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -343,8 +344,8 @@ const ActivityLog = () => {
   const fetchCommonData = async () => {
     try {
       const [categoriesResponse, sourcesResponse] = await Promise.all([
-        fetch('/api/common/categories'),
-        fetch('/api/common/media-sources')
+        fetch(`${API_BASE_URL}/api/common/categories`),
+        fetch(`${API_BASE_URL}/api/common/media-sources`)
       ]);
 
       if (categoriesResponse.ok) {
@@ -413,7 +414,7 @@ const ActivityLog = () => {
       }
 
       // user_preferences 테이블에 저장하기 위해 preferences API 사용
-      const response = await fetch('/api/auth/preferences', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/preferences`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -816,7 +817,7 @@ const ActivityLog = () => {
                           let token = localStorage.getItem('token');
                           if (!token) token = sessionStorage.getItem('token');
 
-                          const response = await fetch('/api/user/unsubscribe', {
+                          const response = await fetch(`${API_BASE_URL}/api/user/unsubscribe`, {
                             method: 'DELETE',
                             headers: {
                               'Content-Type': 'application/json',

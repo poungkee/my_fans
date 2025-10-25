@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 const NewsItem = ({
   news,
@@ -128,7 +129,7 @@ const NewsItem = ({
                   return;
                 }
 
-                const response = await fetch('/api/user/subscribe', {
+                const response = await fetch(`${API_BASE_URL}/api/user/subscribe`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',

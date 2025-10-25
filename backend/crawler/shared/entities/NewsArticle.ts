@@ -34,12 +34,6 @@ export class NewsArticle {
     @Column({ type: 'timestamptz', name: 'pub_date', nullable: true })
     pubDate?: Date;
 
-    @Column({ type: 'varchar', length: 200, nullable: true, name: 'original_source' })
-    originalSource?: string;
-
-    @Column({ type: 'varchar', length: 100, nullable: true, name: 'original_category' })
-    originalCategory?: string;
-
     @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt!: Date;
 

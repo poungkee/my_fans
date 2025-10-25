@@ -1,0 +1,61 @@
+---
+# Main API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-api
+  namespace: fans
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: main-api
+  template:
+    metadata:
+      labels:
+        app: main-api
+    spec:
+      containers:
+      - name: main-api
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/main-api:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+
+---
+# Main API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-api-service
+  namespace: fans
+spec:
+  selector:
+    app: main-api
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP

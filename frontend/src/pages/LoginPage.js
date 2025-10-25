@@ -3,6 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import SocialLogin from '../components/SocialLogin';
 import './AuthPages.css';
 
+// API 기본 URL 설정
+const API_BASE_URL = process.env.REACT_APP_API_BASE ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.fans.ai.kr'
+    : 'http://localhost:3000');
+
 const LoginPage = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -30,7 +36,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './ProfileSetupPage.css';
 
 const ProfileSetupPage = () => {
@@ -33,8 +34,8 @@ const ProfileSetupPage = () => {
         setDataLoading(true);
 
         const [categoriesResponse, sourcesResponse] = await Promise.all([
-          fetch('/api/common/categories'),
-          fetch('/api/common/media-sources')
+          fetch(`${API_BASE_URL}/api/common/categories`),
+          fetch(`${API_BASE_URL}/api/common/media-sources`)
         ]);
 
         if (categoriesResponse.ok) {
@@ -123,7 +124,7 @@ const ProfileSetupPage = () => {
       }
 
       // 사용자 프로필 셋업 API 호출 (user_preferences 테이블에 저장)
-      const response = await fetch('/api/auth/setup-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/setup-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

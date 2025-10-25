@@ -183,5 +183,34 @@ backend/crawler/puppeteer-crawler/*.tsbuildinfo
 *.tar.gz
 *.zip
 *_backup.tar.gz
+*.sql
+db-backup-*.sql
 backend/airflow/logs/
 backend/crawler/crawler-v2/node_modules/
+
+# === AWS Config (temporary) ===
+aws-config/
+*.exe
+helm.zip
+eksctl*.zip
+
+# === Temporary CloudFront/Route53 configs ===
+cf-*.json
+cloudfront-*.json
+route53-*.json
+*-etag.txt
+
+# === Python scripts (temporary) ===
+create_ppt.py
+update-cloudfront*.py
+update-cloudfront*.js
+
+# === Archive (old structure backup) ===
+archive/old-structure/
+
+# === Terraform State Files ===
+environments/eks/terraform/*.tfstate
+environments/eks/terraform/*.tfstate.backup
+environments/eks/terraform/.terraform/
+environments/eks/terraform/.terraform.lock.hcl
+

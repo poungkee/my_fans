@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../config/api';
 import NewsItem from './NewsItem';
 import './RecommendationsSection.css';
 
@@ -26,7 +27,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
         }
 
         // 초기 로드 시에는 캐시 삭제 안 함 (기존 추천 사용)
-        const response = await fetch('/api/recommendations?limit=20', {
+        const response = await fetch(`${API_BASE_URL}/api/recommendations?limit=20`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -64,7 +65,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       if (!token) return;
 
       // 캐시 삭제
-      await fetch('/api/recommendations/refresh', {
+      await fetch(`${API_BASE_URL}/api/recommendations/refresh`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -72,7 +73,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       });
 
       // 새로운 추천 가져오기
-      const response = await fetch('/api/recommendations?limit=20', {
+      const response = await fetch(`${API_BASE_URL}/api/recommendations?limit=20`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

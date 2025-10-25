@@ -15,6 +15,7 @@ COPY . .
 
 # 환경 변수 설정
 ENV PORT=3001
+ENV HOST=0.0.0.0
 
 # 포트 노출
 EXPOSE 3001

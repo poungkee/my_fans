@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
+import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import path from 'path';
 import { AppDataSource } from './config/database';
@@ -26,6 +28,9 @@ logger.debug(`Dotenv result: ${dotenvResult.error ? dotenvResult.error.message :
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// ALB 뒤에 있으므로 프록시 신뢰 설정 (X-Forwarded-* 헤더 사용)
+app.set('trust proxy', 1);
+
 app.use(helmet({
   contentSecurityPolicy: false, // CSP 완전히 비활성화
   crossOriginResourcePolicy: false, // CORP 비활성화
@@ -46,15 +51,49 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 세션 설정
+// Redis 클라이언트 설정
+const redisClient = createClient({
+  url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
+  socket: {
+    connectTimeout: 10000,
+    reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        logger.error('Redis connection failed after 10 retries');
+        return new Error('Redis connection failed');
+      }
+      return retries * 100;
+    }
+  }
+});
+
+redisClient.on('error', (err) => logger.error('Redis Client Error:', err));
+redisClient.on('connect', () => logger.info('✅ Redis connected for session store'));
+redisClient.on('ready', () => logger.info('✅ Redis ready'));
+
+// Redis 연결
+redisClient.connect().catch((err) => {
+  logger.error('❌ Redis connection failed:', err);
+});
+
+// Redis 세션 스토어 설정
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: 'fans:sess:',
+  ttl: 7 * 24 * 60 * 60 // 7일 (초 단위)
+});
+
+// 세션 설정 (Redis 사용)
 app.use(session({
+  store: redisStore,
   secret: process.env.SESSION_SECRET || 'your-secret-key-here',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+    secure: process.env.NODE_ENV === 'production', // HTTPS에서만 쿠키 전송
+    httpOnly: true, // JavaScript 접근 차단 (XSS 방어)
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // OAuth 크로스사이트 허용
+    maxAge: 30 * 60 * 1000, // 30분 (OAuth state는 짧게)
+    domain: process.env.NODE_ENV === 'production' ? '.fans.ai.kr' : undefined // 서브도메인 공유
   }
 }));
 

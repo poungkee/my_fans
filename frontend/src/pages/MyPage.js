@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './MyPage.css';
 
 const MyPage = () => {
@@ -86,7 +87,7 @@ const MyPage = () => {
         }
 
         // 사용자 프로필 정보 가져오기
-        const response = await fetch('/api/auth/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -132,7 +133,7 @@ const MyPage = () => {
   // 로그아웃 처리
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -202,7 +203,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/unlink-account', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/unlink-account`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -236,7 +237,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/send-verification-email', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-email`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -283,7 +284,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -336,7 +337,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/set-social-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/set-social-password`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -381,7 +382,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/send-verification-email', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-email`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -434,7 +435,7 @@ const MyPage = () => {
         ? { confirmText: deleteData.confirmText }
         : { verificationCode: deleteData.verificationCode };
 
-      const response = await fetch(apiEndpoint, {
+      const response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -491,7 +492,7 @@ const MyPage = () => {
       const formData = new FormData();
       formData.append('profileImage', file);
 
-      const response = await fetch('/api/auth/upload-profile-image', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/upload-profile-image`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -556,7 +557,7 @@ const MyPage = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('/api/auth/delete-profile-image', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/delete-profile-image`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 import './AuthPages.css';
 
 const AccountLinkPage = () => {
@@ -45,7 +46,7 @@ const AccountLinkPage = () => {
     try {
       const token = sessionStorage.getItem('token');
 
-      const response = await fetch('/api/auth/link-account', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/link-account`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

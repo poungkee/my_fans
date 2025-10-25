@@ -292,10 +292,11 @@ export class UnifiedCrawlerService {
     }
 
     // 최근 크롤링된 동일 제목 기사 체크 (1시간 이내)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentDuplicate = await newsRepo
       .createQueryBuilder('article')
       .where('article.title = :title', { title: article.title })
-      .andWhere('article.created_at > NOW() - INTERVAL \'1 hour\'')
+      .andWhere('article.created_at > :oneHourAgo', { oneHourAgo })
       .getOne();
 
     if (recentDuplicate) {
@@ -319,8 +320,6 @@ export class UnifiedCrawlerService {
       pubDate: article.pubDate || new Date(),
       sourceId,
       categoryId,
-      originalSource: article.originalSource || article.source,
-      originalCategory: article.category,
     });
 
     const saved = await newsRepo.save(newsArticle);
