@@ -16,5 +16,5 @@ beautifulsoup4==4.12.2
 
 # Keyword Extraction & NLP
 scikit-learn==1.3.2
-kiwipiepy==0.17.2
+kiwipiepy==0.18.0
 numpy==1.24.3
