@@ -304,9 +304,28 @@ function HomePageWrapper() {
     isLoading: false
   });
 
-  const currentList = isSearching
-    ? (sourceFilteredNews || categoryFilteredNews || searchResults)
-    : (sourceFilteredNews || categoryFilteredNews || feedNews);
+  // 카테고리와 언론사 필터를 AND 조건으로 적용
+  const currentList = useMemo(() => {
+    let base = isSearching ? searchResults : feedNews;
+
+    // 카테고리 필터 적용
+    if (categoryFilteredNews) {
+      base = categoryFilteredNews;
+    }
+
+    // 언론사 필터 적용 (카테고리 필터가 있으면 그 결과에서, 없으면 전체에서)
+    if (sourceFilteredNews && categoryFilteredNews) {
+      // 둘 다 있으면 AND 조건: 카테고리 필터된 결과 중에서 언론사 필터링
+      return base.filter(item =>
+        sourceFilteredNews.some(sourceItem => sourceItem.id === item.id)
+      );
+    } else if (sourceFilteredNews) {
+      // 언론사 필터만 있으면 언론사 필터 결과 사용
+      return sourceFilteredNews;
+    }
+
+    return base;
+  }, [isSearching, searchResults, feedNews, categoryFilteredNews, sourceFilteredNews]);
 
   // 디버깅: currentList 상태 확인
   useEffect(() => {
@@ -321,14 +340,13 @@ function HomePageWrapper() {
   const handleCategoryFilter = (category) => {
     if (!category || category === '전체') {
       setCategoryFilteredNews(null);
-      setSourceFilteredNews(null);
       sessionStorage.removeItem('selectedCategory');
       return;
     }
     const base = isSearching ? searchResults : feedNews;
     const filtered = base.filter((n) => n.category === category);
     setCategoryFilteredNews(filtered);
-    setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
+    // 카테고리 변경 시 언론사 필터는 유지 (AND 조건)
 
     // 카테고리 상태를 sessionStorage에 저장 (뒤로가기 시 복원용)
     sessionStorage.setItem('selectedCategory', category);

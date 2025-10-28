@@ -15,6 +15,7 @@ spec:
       labels:
         app: main-api
     spec:
+      serviceAccountName: main-api-sa
       containers:
       - name: main-api
         image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/main-api:latest

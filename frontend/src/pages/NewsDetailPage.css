@@ -822,40 +822,141 @@
 @media (max-width: 768px) {
   .news-content-wrapper {
     flex-direction: column;
-    padding: 10px;
+    padding: 15px;
   }
 
   .news-sidebar {
     width: 100%;
     order: -1;
+    margin-bottom: 20px;
   }
 
   .article-title {
-    font-size: 20px;
+    font-size: 22px;
+    line-height: 1.5;
+    margin-bottom: 15px;
   }
 
   .article-meta-info {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+    padding: 12px 0;
   }
 
   .meta-left,
   .meta-right {
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
   }
 
+  .news-source {
+    font-size: 15px;
+  }
+
+  .journalist-name {
+    font-size: 14px;
+  }
+
+  /* 터치 친화적 버튼 크기 */
   .social-buttons {
     flex-wrap: wrap;
+    gap: 12px;
   }
 
+  .icon-button {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 15px;
+  }
+
+  .back-icon-button {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+
+  /* 기사 본문 가독성 향상 */
+  .article-content-text {
+    font-size: 17px;
+    line-height: 1.9;
+  }
+
+  .article-summary-box {
+    padding: 18px;
+    font-size: 15px;
+    margin-bottom: 25px;
+  }
+
+  /* 댓글 섹션 */
   .comments-tabs {
     overflow-x: auto;
     white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .comments-tab {
     flex-shrink: 0;
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .comment-write textarea {
+    padding: 14px;
+    font-size: 15px;
+    min-height: 100px;
+  }
+
+  .comment-write button {
+    padding: 10px 18px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+
+  .comment-text {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* 답글 작성 */
+  .reply-write textarea {
+    padding: 12px;
+    font-size: 15px;
+    min-height: 80px;
+  }
+
+  .reply-submit-btn,
+  .reply-cancel-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+}
+
+/* 매우 작은 모바일 추가 최적화 */
+@media (max-width: 480px) {
+  .news-content-wrapper {
+    padding: 12px;
+  }
+
+  .article-title {
+    font-size: 20px;
+  }
+
+  .article-content-text {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  .icon-button {
+    min-width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .article-summary-box {
+    padding: 15px;
+    font-size: 14px;
   }
 }

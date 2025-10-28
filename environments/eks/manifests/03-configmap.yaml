@@ -49,3 +49,9 @@ data:
   # OAuth Redirect URIs
   KAKAO_REDIRECT_URI: https://www.fans.ai.kr/api/auth/kakao/callback
   NAVER_REDIRECT_URI: https://www.fans.ai.kr/api/auth/naver/callback
+
+  # S3 Configuration
+  AWS_REGION: ap-northeast-2
+  AWS_S3_BUCKET: fans-eks-frontend-907123164281
+  PROFILE_IMAGE_PATH: profile-images
+  PROFILE_IMAGE_BASE_URL: https://fans-eks-frontend-907123164281.s3.ap-northeast-2.amazonaws.com/profile-images

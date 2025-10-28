@@ -309,10 +309,13 @@ router.delete('/delete-profile-image', authenticateToken, async (req: Authentica
   try {
     const userId = req.user!.userId;
     const user = await authService.getUserProfile(userId);
+
+    // S3에서 프로필 이미지 삭제
     if (user?.profileImage) {
-      const imagePath = path.join(__dirname, '../../', user.profileImage);
-      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      const { deleteProfileImageFromS3 } = require('../utils/s3Upload');
+      await deleteProfileImageFromS3(user.profileImage);
     }
+
     await authService.updateUserProfile(userId, { profileImage: null });
     return res.json({ success: true, message: '프로필 이미지 삭제 완료' });
   } catch (e: any) {

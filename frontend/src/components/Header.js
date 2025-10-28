@@ -8,10 +8,14 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [showSearchBar, setShowSearchBar] = useState(false); // 검색창 표시 여부
+  const [showMobileMenu, setShowMobileMenu] = useState(false); // 모바일 햄버거 메뉴 표시 여부
+  const [expandedSection, setExpandedSection] = useState(null); // 모바일 메뉴에서 펼쳐진 섹션
+  const [selectedCategory, setSelectedCategory] = useState('전체'); // 선택된 카테고리
+  const [selectedSource, setSelectedSource] = useState(null); // 선택된 언론사
   const navigate = useNavigate();
   const location = useLocation();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
-  
+
   // 공통 데이터 가져오기
   const { categories, mediaSources, searchOptions, loading, error } = useCommonData();
 
@@ -273,6 +277,8 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
     }
 
     // 필터 초기화 강제 실행
+    setSelectedCategory('전체');
+    setSelectedSource(null);
     if (onCategoryFilter) {
       onCategoryFilter('전체');
     }
@@ -284,9 +290,34 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
     navigate('/');
   };
 
+  // 모바일 메뉴 토글
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(!showMobileMenu);
+    setExpandedSection(null); // 메뉴 열 때 섹션 초기화
+  };
+
+  // 모바일 메뉴에서 항목 클릭 시 메뉴 닫기
+  const handleMobileMenuClick = (callback) => {
+    setShowMobileMenu(false);
+    setExpandedSection(null);
+    if (callback) callback();
+  };
+
+  // 모바일 메뉴 섹션 토글
+  const toggleSection = (sectionName) => {
+    setExpandedSection(expandedSection === sectionName ? null : sectionName);
+  };
+
   return (
     <header className="header">
       <div className="header-left">
+        {/* 햄버거 메뉴 버튼 (모바일 전용) */}
+        <button className="mobile-menu-button" onClick={toggleMobileMenu}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
         <div className="logo" onClick={handleLogoClick}>FANS</div>
 
         {/* 검색 아이콘 - FANS 로고 오른쪽에 배치 */}
@@ -300,12 +331,12 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           </svg>
         </div>
 
-        <div className="dropdown">
+        <div className="dropdown desktop-only">
           <button
-            className={`dropdown-button agency-button ${activeDropdown === 'agency' ? 'active' : ''}`}
+            className={`dropdown-button agency-button ${activeDropdown === 'agency' ? 'active' : ''} ${selectedSource ? 'filter-active' : ''}`}
             onClick={() => toggleDropdown('agency')}
           >
-            📰 언론사
+            📰 언론사{selectedSource ? `: ${selectedSource}` : ''}
           </button>
           <div
             id="agency-dropdown"
@@ -318,8 +349,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                 <a
                   key={index}
                   href="#"
+                  className={selectedSource === source.name ? 'selected' : ''}
                   onClick={(e) => {
                     e.preventDefault();
+                    setSelectedSource(source.name);
                     if (onSourceFilter) {
                       onSourceFilter(source.name);
                     }
@@ -333,12 +366,12 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           </div>
         </div>
 
-        <div className="dropdown">
+        <div className="dropdown desktop-only">
           <button
-            className={`dropdown-button category-button ${activeDropdown === 'category' ? 'active' : ''}`}
+            className={`dropdown-button category-button ${activeDropdown === 'category' ? 'active' : ''} ${selectedCategory !== '전체' ? 'filter-active' : ''}`}
             onClick={() => toggleDropdown('category')}
           >
-            📂 카테고리
+            📂 카테고리{selectedCategory !== '전체' ? `: ${selectedCategory}` : ''}
           </button>
           <div
             id="category-dropdown"
@@ -351,8 +384,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                 <a
                   key={index}
                   href="#"
+                  className={selectedCategory === category ? 'selected' : ''}
                   onClick={(e) => {
                     e.preventDefault();
+                    setSelectedCategory(category);
                     if (onCategoryFilter) {
                       onCategoryFilter(category);
                     }
@@ -366,9 +401,9 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
           </div>
         </div>
 
-        {/* 활동로그 버튼 - 카테고리 옆에 배치 */}
+        {/* 활동로그 버튼 - 카테고리 옆에 배치 (데스크톱 전용) */}
         <button
-          className="activity-log-button"
+          className="activity-log-button desktop-only"
           onClick={handleActivityLog}
           title="나의 활동로그"
         >
@@ -534,6 +569,85 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                 }}>회원가입</a>
               </>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 모바일 사이드바 메뉴 */}
+      {showMobileMenu && <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} />}
+      <div className={`mobile-menu-sidebar ${showMobileMenu ? 'show' : ''}`}>
+        <div className="mobile-menu-header">
+          <h2>메뉴</h2>
+          <button className="mobile-menu-close" onClick={() => setShowMobileMenu(false)}>✕</button>
+        </div>
+
+        <div className="mobile-menu-content">
+          {/* 활동로그 */}
+          <div className="mobile-menu-item" onClick={() => handleMobileMenuClick(handleActivityLog)}>
+            <span className="mobile-menu-icon">📊</span>
+            <span>활동로그</span>
+          </div>
+
+          {/* 언론사 - 아코디언 */}
+          <div className="mobile-menu-section">
+            <div
+              className={`mobile-menu-section-title clickable ${expandedSection === 'sources' ? 'expanded' : ''}`}
+              onClick={() => toggleSection('sources')}
+            >
+              <span>📰 언론사</span>
+              <span className="arrow-icon">{expandedSection === 'sources' ? '▼' : '▶'}</span>
+            </div>
+            <div className={`mobile-menu-section-content ${expandedSection === 'sources' ? 'show' : ''}`}>
+              {loading ? (
+                <div className="mobile-menu-loading">로딩 중...</div>
+              ) : (
+                mediaSources.map((source, index) => (
+                  <div
+                    key={index}
+                    className={`mobile-menu-item sub-item ${selectedSource === source.name ? 'selected' : ''}`}
+                    onClick={() => handleMobileMenuClick(() => {
+                      setSelectedSource(source.name);
+                      if (onSourceFilter) {
+                        onSourceFilter(source.name);
+                      }
+                    })}
+                  >
+                    {source.name}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 카테고리 - 아코디언 */}
+          <div className="mobile-menu-section">
+            <div
+              className={`mobile-menu-section-title clickable ${expandedSection === 'categories' ? 'expanded' : ''}`}
+              onClick={() => toggleSection('categories')}
+            >
+              <span>📂 카테고리</span>
+              <span className="arrow-icon">{expandedSection === 'categories' ? '▼' : '▶'}</span>
+            </div>
+            <div className={`mobile-menu-section-content ${expandedSection === 'categories' ? 'show' : ''}`}>
+              {loading ? (
+                <div className="mobile-menu-loading">로딩 중...</div>
+              ) : (
+                categories.map((category, index) => (
+                  <div
+                    key={index}
+                    className={`mobile-menu-item sub-item ${selectedCategory === category ? 'selected' : ''}`}
+                    onClick={() => handleMobileMenuClick(() => {
+                      setSelectedCategory(category);
+                      if (onCategoryFilter) {
+                        onCategoryFilter(category);
+                      }
+                    })}
+                  >
+                    {category}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

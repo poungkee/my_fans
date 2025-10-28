@@ -216,7 +216,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
                   image_url: article.image_url,
                   source: article.source_name,
                   journalist: article.journalist,
-                  pub_date: article.published_at || article.published_date,
+                  pub_date: article.pub_date,
                   category: article.category_name,
                   url: article.url,
                   recommendation_type: article.recommendation_type // 추천 타입 추가

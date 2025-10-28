@@ -2,9 +2,31 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
     <title>FANS - Financial & Analytics News Service</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      /* 모바일 터치 최적화 */
+      * {
+        -webkit-tap-highlight-color: rgba(79, 70, 229, 0.2);
+        -webkit-touch-callout: none;
+      }
+
+      /* 모바일 스크롤 부드럽게 */
+      html {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* 텍스트 선택 최적화 */
+      body {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+    </style>
 </head>
 <body>
     <div id="root"></div>

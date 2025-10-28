@@ -247,9 +247,9 @@
   .ad-sidebar {
     width: 100%;
     position: static;
-    order: -1;
+    order: 2; /* 광고를 뉴스 콘텐츠 아래로 이동 */
     max-height: none;
-    margin-bottom: 20px;
+    margin-top: 20px; /* 위쪽 여백으로 변경 */
   }
 
   .ad-banner {

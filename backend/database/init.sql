@@ -32,7 +32,7 @@ CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255), -- 소셜 로그인 지원을 위해 nullable
     user_name VARCHAR(100),
     tel VARCHAR(20),
     profile_image VARCHAR(500),
