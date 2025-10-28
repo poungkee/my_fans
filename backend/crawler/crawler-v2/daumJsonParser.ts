@@ -333,6 +333,12 @@ export class DaumJsonParser {
       return false;
     }
 
+    // [종합] 기사 필터링 (여러 기사가 합쳐진 기사)
+    if (article.title.includes('[종합]') || article.title.includes('(종합)')) {
+      logger.warn(`[종합] 기사 제외: ${article.title.substring(0, 50)}...`);
+      return false;
+    }
+
     if (!article.content || article.content.length < 100) {
       logger.warn('본문이 너무 짧습니다');
       return false;

@@ -3,18 +3,130 @@ import re
 from typing import Optional
 from transformers import pipeline
 import torch
+import os
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+try:
+    from kiwipiepy import Kiwi
+    KIWI_AVAILABLE = True
+except ImportError:
+    KIWI_AVAILABLE = False
+    print("[경고] kiwipiepy가 설치되지 않았습니다. 기본 키워드 추출을 사용합니다.")
+
+class KeywordExtractor:
+    """TF-IDF 기반 키워드 추출 + kiwipiepy 형태소 분석"""
+
+    def __init__(self, stopwords_file='stopwords.txt'):
+        self.vectorizer = None
+        self.kiwi = Kiwi() if KIWI_AVAILABLE else None
+
+        # 불용어 파일에서 로드
+        self.stopwords = self._load_stopwords(stopwords_file)
+        if self.stopwords:
+            print(f"[키워드 추출기] 불용어 {len(self.stopwords)}개 로드 완료")
+
+    def _load_stopwords(self, filepath):
+        """stopwords.txt 파일에서 불용어 로드"""
+        stopwords = set()
+
+        # 파일 경로 확인 (상대 경로 처리)
+        if not os.path.isabs(filepath):
+            # 현재 스크립트의 디렉토리 기준
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            filepath = os.path.join(script_dir, filepath)
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # 주석(#)과 빈 줄 무시
+                    if line and not line.startswith('#'):
+                        stopwords.add(line)
+            return stopwords
+        except FileNotFoundError:
+            print(f"[경고] 불용어 파일을 찾을 수 없습니다: {filepath}")
+            print("[경고] 기본 불용어 세트를 사용합니다.")
+            # 기본 불용어 (최소한)
+            return {
+                '있다', '하다', '되다', '이다', '것', '수', '등', '때',
+                '기자', '취재', '보도', '통해', '대해', '위해'
+            }
+        except Exception as e:
+            print(f"[오류] 불용어 파일 로드 실패: {e}")
+            return set()
+
+    def _extract_nouns(self, text: str) -> list:
+        """형태소 분석으로 명사만 추출"""
+        if not self.kiwi:
+            # Kiwi 없으면 간단한 정규식 사용
+            words = re.findall(r'[가-힣]{2,}', text)
+            return [w for w in words if w not in self.stopwords]
+
+        try:
+            # 품사 태깅 (Kiwi.tokenize)
+            tokens = self.kiwi.tokenize(text)
+
+            # 명사만 추출 (NNG: 일반명사, NNP: 고유명사, NNB: 의존명사)
+            nouns = [
+                token.form for token in tokens
+                if token.tag in ['NNG', 'NNP', 'NNB']  # 명사만
+                and len(token.form) >= 2  # 2글자 이상
+                and token.form not in self.stopwords  # 불용어 제외
+                and not token.form.isdigit()  # 숫자 제외
+            ]
+
+            return nouns
+
+        except Exception as e:
+            print(f"명사 추출 오류: {e}")
+            return []
+
+    def extract(self, text: str, top_n: int = 10) -> list:
+        """단일 텍스트에서 키워드 추출"""
+        try:
+            # 1. 명사 추출
+            nouns = self._extract_nouns(text)
+
+            if not nouns:
+                return []
+
+            # 2. 명사들을 공백으로 연결 (TF-IDF 입력용)
+            preprocessed_text = ' '.join(nouns)
+
+            # 3. TF-IDF로 키워드 점수 계산
+            vectorizer = TfidfVectorizer(
+                max_features=100,
+                min_df=1,
+                ngram_range=(1, 1)  # 단일 명사만 (이미 전처리 완료)
+            )
+            tfidf_matrix = vectorizer.fit_transform([preprocessed_text])
+            feature_names = vectorizer.get_feature_names_out()
+            scores = tfidf_matrix.toarray()[0]
+
+            # 4. 키워드 점수 정렬
+            keyword_scores = [(feature_names[i], scores[i])
+                            for i in range(len(scores)) if scores[i] > 0]
+            keyword_scores.sort(key=lambda x: x[1], reverse=True)
+
+            return keyword_scores[:top_n]
+
+        except Exception as e:
+            print(f"키워드 추출 오류: {e}")
+            return []
 
 class NewsAISummarizer:
     def __init__(self):
         """뉴스 요약 AI 모델 초기화"""
         self.summarizer = None
+        self.keyword_extractor = KeywordExtractor()
         self._load_model()
 
     def _load_model(self):
         """한국어 요약 모델 로드"""
         try:
-            # 경량화된 한국어 요약 모델 사용
-            model_name = "eenzeenee/t5-base-korean-summarization"
+            # 경량화된 한국어 요약 모델 사용 (T5-small: 빠르고 가벼움)
+            model_name = "psyche/KoT5-summarization"
             self.summarizer = pipeline(
                 "summarization",
                 model=model_name,
@@ -67,7 +179,7 @@ class NewsAISummarizer:
 
             # 토큰 길이 제한 (대략 512토큰)
             if len(full_text) > 2000:
-                full_text = full_text[:2000] + "..."
+                full_text = full_text[:2000] + "…"
 
             # AI 요약 생성 (입력 길이에 따라 max_length 자동 조정)
             actual_max_length = min(max_length, len(full_text) // 2) if len(full_text) > 50 else max_length
@@ -76,7 +188,8 @@ class NewsAISummarizer:
                 max_length=actual_max_length,
                 min_length=min(30, actual_max_length - 10),
                 do_sample=True,
-                temperature=0.7
+                temperature=0.7,
+                truncation=True  # 긴 텍스트 자동 자르기
             )
 
             summary = summary_result[0]['summary_text'] if summary_result else full_text
@@ -99,27 +212,16 @@ class NewsAISummarizer:
             }
 
     def extract_keywords(self, text: str, top_k: int = 5) -> list:
-        """간단한 키워드 추출 (빈도 기반)"""
+        """TF-IDF 기반 키워드 추출 (형태소 분석 적용)"""
         try:
             if not text:
                 return []
 
-            # 한글 단어만 추출 (2글자 이상)
-            words = re.findall(r'[가-힣]{2,}', text)
+            # KeywordExtractor 사용
+            keyword_scores = self.keyword_extractor.extract(text, top_n=top_k)
 
-            # 불용어 제거
-            stopwords = {'그리고', '하지만', '그런데', '이러한', '그래서', '따라서',
-                        '때문에', '이번', '지난', '오늘', '어제', '내일', '기자', '취재'}
-            words = [w for w in words if w not in stopwords]
-
-            # 빈도 계산
-            word_freq = {}
-            for word in words:
-                word_freq[word] = word_freq.get(word, 0) + 1
-
-            # 빈도순 정렬하여 상위 키워드 반환
-            keywords = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-            return [word for word, freq in keywords[:top_k]]
+            # (키워드, 점수) 튜플 리스트를 키워드만 리스트로 변환 (기존 인터페이스 유지)
+            return [keyword for keyword, score in keyword_scores]
 
         except Exception as e:
             print(f"[AI] 키워드 추출 실패: {e}")

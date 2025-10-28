@@ -58,8 +58,9 @@ function HomePageWrapper() {
       navigationEntries[0].type === 'reload';
 
     if (isRefresh) {
-      // 새로고침 시 카테고리 상태 초기화
+      // 새로고침 시 카테고리 및 검색어 상태 초기화
       sessionStorage.removeItem('selectedCategory');
+      sessionStorage.removeItem('searchQuery');
       setIsPageRefresh(true);
     } else {
       // 뒤로가기 또는 일반 네비게이션
@@ -140,15 +141,26 @@ function HomePageWrapper() {
     return () => controller.abort();
   }, [API_BASE]); // 의존성은 그대로 두고
 
-  /* -------------------- 카테고리 상태 복원 (뒤로가기 시) -------------------- */
+  /* -------------------- 카테고리 및 검색어 상태 복원 (뒤로가기 시) -------------------- */
   useEffect(() => {
-    // 새로고침이 아니고, feedNews가 로드되었을 때만 실행
-    if (!isPageRefresh && feedNews.length > 0) {
-      const savedCategory = sessionStorage.getItem('selectedCategory');
-      if (savedCategory && savedCategory !== '전체') {
-        const filtered = feedNews.filter((n) => n.category === savedCategory);
-        setCategoryFilteredNews(filtered);
-        console.log(`🔄 카테고리 복원: ${savedCategory} (${filtered.length}개 기사)`);
+    // 새로고침이 아닐 때만 실행
+    if (!isPageRefresh) {
+      // 카테고리 복원
+      if (feedNews.length > 0) {
+        const savedCategory = sessionStorage.getItem('selectedCategory');
+        if (savedCategory && savedCategory !== '전체') {
+          const filtered = feedNews.filter((n) => n.category === savedCategory);
+          setCategoryFilteredNews(filtered);
+          console.log(`🔄 카테고리 복원: ${savedCategory} (${filtered.length}개 기사)`);
+        }
+      }
+
+      // 검색어 복원
+      const savedSearchQuery = sessionStorage.getItem('searchQuery');
+      if (savedSearchQuery && savedSearchQuery.trim()) {
+        console.log(`🔍 검색어 복원: "${savedSearchQuery}"`);
+        setSearchQuery(savedSearchQuery);
+        setIsSearching(true);
       }
     }
   }, [feedNews, isPageRefresh]);
@@ -261,6 +273,13 @@ function HomePageWrapper() {
     const q = (query || '').trim();
     setSearchQuery(q);
     setIsSearching(!!q);
+
+    // 검색어 상태를 sessionStorage에 저장 (뒤로가기 시 복원용)
+    if (q) {
+      sessionStorage.setItem('searchQuery', q);
+    } else {
+      sessionStorage.removeItem('searchQuery');
+    }
   };
 
   // 강제 데이터 새로고침 함수
