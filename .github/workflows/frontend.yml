@@ -64,9 +64,28 @@ jobs:
           --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
           --paths "/*"
 
+    - name: Wait for CloudFront invalidation
+      run: |
+        echo "Waiting for CloudFront cache invalidation to complete..."
+        sleep 30
+
+    - name: Health check
+      run: |
+        echo "Checking if the frontend is accessible..."
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://www.fans.ai.kr)
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "✅ Frontend is accessible (HTTP $HTTP_STATUS)"
+        else
+          echo "⚠️ Frontend returned HTTP $HTTP_STATUS"
+          exit 1
+        fi
+
     - name: Deployment summary
+      if: success()
       run: |
         echo "✅ Frontend deployed successfully!"
         echo "🌐 URL: https://www.fans.ai.kr"
         echo "📦 S3 Bucket: ${{ env.S3_BUCKET }}"
         echo "🔄 CloudFront Distribution: ${{ env.CLOUDFRONT_DISTRIBUTION_ID }}"
+        echo "🔖 Git SHA: ${{ github.sha }}"
+        echo "👤 Deployed by: ${{ github.actor }}"

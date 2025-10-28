@@ -13,7 +13,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  EKS_CLUSTER_NAME: fans-cluster-2az
+  EKS_CLUSTER_NAME: fans-cluster
   K8S_NAMESPACE: fans
 
 jobs:

@@ -143,7 +143,7 @@ GitHub Actions에서 사용할 IAM 사용자에 다음 권한이 필요합니다
 
 ```bash
 # EKS 클러스터 연결
-aws eks update-kubeconfig --name fans-cluster-2az --region ap-northeast-2
+aws eks update-kubeconfig --name fans-cluster --region ap-northeast-2
 
 # Pod 상태 확인
 kubectl get pods -n fans

@@ -15,7 +15,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  EKS_CLUSTER_NAME: fans-cluster-2az
+  EKS_CLUSTER_NAME: fans-cluster
   K8S_NAMESPACE: fans
 
 jobs:
@@ -37,17 +37,34 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build and push Unified Crawler
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: fans-unified-crawler
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd backend/crawler/crawler-v2
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        cd backend/crawler
+        docker buildx build \
+          --file crawler-v2/Dockerfile \
+          --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
+          --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Deploy Unified Crawler to EKS
       env:
@@ -60,6 +77,12 @@ jobs:
           unified-crawler=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -n ${{ env.K8S_NAMESPACE }}
         kubectl rollout status deployment/unified-crawler -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Unified Crawler deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
 
   build-scheduler:
     name: Build and Deploy Scheduler
@@ -79,17 +102,33 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build and push Scheduler
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: fans-scheduler
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd backend/scheduler
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker buildx build \
+          --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
+          --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Deploy Scheduler to EKS
       env:
@@ -102,3 +141,9 @@ jobs:
           scheduler=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -n ${{ env.K8S_NAMESPACE }}
         kubectl rollout status deployment/scheduler -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Scheduler deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"

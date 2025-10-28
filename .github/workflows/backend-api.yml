@@ -14,7 +14,7 @@ on:
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: fans-main-api
-  EKS_CLUSTER_NAME: fans-cluster-2az
+  EKS_CLUSTER_NAME: fans-cluster
   K8S_NAMESPACE: fans
   DEPLOYMENT_NAME: main-api
 
@@ -38,6 +38,9 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
@@ -45,11 +48,28 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd backend/api
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker buildx build \
+          --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
+          --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
+
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Update kubeconfig
       run: |
@@ -70,3 +90,24 @@ jobs:
       run: |
         kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=main-api
         kubectl get svc -n ${{ env.K8S_NAMESPACE }} main-api
+
+    - name: Health check
+      run: |
+        echo "Waiting for pods to be ready..."
+        sleep 30
+        HEALTH_CHECK=$(kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/main-api -- wget -qO- http://localhost:3000/health || echo "FAILED")
+        if [[ "$HEALTH_CHECK" == "FAILED" ]]; then
+          echo "Health check failed! Rolling back..."
+          kubectl rollout undo deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.K8S_NAMESPACE }}
+          exit 1
+        fi
+        echo "Health check passed!"
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Main API deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
+        echo "🔖 Git SHA: ${{ github.sha }}"
+        echo "👤 Deployed by: ${{ github.actor }}"
+        echo "🌐 API URL: https://api.fans.ai.kr"
