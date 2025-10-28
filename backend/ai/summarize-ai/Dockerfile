@@ -3,9 +3,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 시스템 의존성 최소화 설치
+# 시스템 의존성 최소화 설치 (kiwipiepy 빌드 도구 포함)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    gcc \
+    g++ \
+    make \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
