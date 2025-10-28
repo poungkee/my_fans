@@ -35,17 +35,31 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build and push Summarize AI
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: fans-summarize-ai
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd backend/ai/summarize-ai
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker buildx build \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Deploy Summarize AI to EKS
       env:
@@ -58,6 +72,12 @@ jobs:
           summarize-ai=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -n ${{ env.K8S_NAMESPACE }}
         kubectl rollout status deployment/summarize-ai -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Summarize AI deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
 
   build-bias-analysis-ai:
     name: Build and Deploy Bias Analysis AI
@@ -77,17 +97,31 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build and push Bias Analysis AI
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: fans-bias-analysis-ai
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd backend/ai/bias-analysis-ai
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker buildx build \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Deploy Bias Analysis AI to EKS
       env:
@@ -100,6 +134,12 @@ jobs:
           bias-analysis-ai=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -n ${{ env.K8S_NAMESPACE }}
         kubectl rollout status deployment/bias-analysis-ai -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Bias Analysis AI deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
 
   build-classification-api:
     name: Build and Deploy Classification API
@@ -119,17 +159,31 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build and push Classification API
+      id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: fans-classification-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd backend/ai/classification-api
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        cd backend/simple-classifier
+        docker buildx build \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push \
+          .
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-image.outputs.image }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+      continue-on-error: true
 
     - name: Deploy Classification API to EKS
       env:
@@ -142,3 +196,9 @@ jobs:
           classification-api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -n ${{ env.K8S_NAMESPACE }}
         kubectl rollout status deployment/classification-api -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+
+    - name: Deployment summary
+      if: success()
+      run: |
+        echo "✅ Classification API deployed successfully!"
+        echo "📦 Image: ${{ steps.build-image.outputs.image }}"
