@@ -132,12 +132,12 @@ GitHub Actions에서 사용할 IAM 사용자에 다음 권한이 필요합니다
 
 | 서비스 | ECR 리포지토리 | 컨테이너 이름 |
 |--------|---------------|-------------|
-| Main API | `fans-main-api` | `main-api` |
-| Summarize AI | `fans-summarize-ai` | `summarize-ai` |
-| Bias Analysis AI | `fans-bias-analysis-ai` | `bias-analysis-ai` |
-| Classification API | `fans-classification-api` | `classification-api` |
-| Unified Crawler | `fans-unified-crawler` | `unified-crawler` |
-| Scheduler | `fans-scheduler` | `scheduler` |
+| Main API | `fans/main-api` | `main-api` |
+| Summarize AI | `fans/summarize-ai` | `summarize-ai` |
+| Bias Analysis AI | `fans/bias-analysis-ai` | `bias-analysis-ai` |
+| Classification API | `fans/classification-api` | `classification-api` |
+| Unified Crawler | `fans/unified-crawler` | `unified-crawler` |
+| Scheduler | `fans/scheduler` | `scheduler` |
 
 ## EKS 배포 확인
 

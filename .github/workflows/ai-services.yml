@@ -64,7 +64,7 @@ jobs:
     - name: Deploy Summarize AI to EKS
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: fans-summarize-ai
+        ECR_REPOSITORY: fans/summarize-ai
         IMAGE_TAG: ${{ github.sha }}
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
@@ -126,7 +126,7 @@ jobs:
     - name: Deploy Bias Analysis AI to EKS
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: fans-bias-analysis-ai
+        ECR_REPOSITORY: fans/bias-analysis-ai
         IMAGE_TAG: ${{ github.sha }}
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
@@ -188,7 +188,7 @@ jobs:
     - name: Deploy Classification API to EKS
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: fans-classification-api
+        ECR_REPOSITORY: fans/classification-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
