@@ -1,99 +1,148 @@
-# FANS 프로젝트 Makefile
-# 환경별 빠른 실행을 위한 명령어 모음
+# ================================
+# FANS 프로젝트 환경 관리 Makefile
+# 개발/운영 환경 자동 전환
+# ================================
 
-.PHONY: help env-local env-ecs env-eks start-local start-ecs start-eks stop logs clean
+.PHONY: help dev prod-eks clean db-init db-reset logs status
 
-# 기본 타겟
+# 기본 타겟: 도움말 출력
 help:
-	@echo "FANS 프로젝트 - 사용 가능한 명령어"
+	@echo "FANS Backend Environment Management"
 	@echo ""
-	@echo "환경 전환:"
-	@echo "  make env-local    - 로컬 개발 환경으로 전환"
-	@echo "  make env-ecs      - ECS 배포 환경으로 전환"
-	@echo "  make env-eks      - EKS 배포 환경으로 전환"
+	@echo "Available commands:"
+	@echo "  make dev          - Start development environment (Docker Compose)"
+	@echo "  make prod-eks     - Deploy to production (AWS EKS)"
+	@echo "  make db-init      - Initialize development database schemas"
+	@echo "  make db-reset     - Reset development database (⚠️  Delete all data)"
+	@echo "  make clean        - Stop all containers and clean volumes"
+	@echo "  make logs         - Show logs (service=SERVICE_NAME)"
+	@echo "  make status       - Show running containers status"
 	@echo ""
-	@echo "Docker Compose 실행:"
-	@echo "  make start-local  - 로컬 환경으로 시작"
-	@echo "  make start-ecs    - ECS 시뮬레이션 시작"
-	@echo "  make start-eks    - EKS 시뮬레이션 시작"
-	@echo "  make stop         - 모든 서비스 중지"
+
+# 개발 환경 시작
+dev:
+	@echo "🚀 Starting development environment..."
 	@echo ""
-	@echo "유틸리티:"
-	@echo "  make logs         - 전체 로그 확인"
-	@echo "  make logs-api     - API 로그만 확인"
-	@echo "  make clean        - 중지 및 볼륨 삭제"
+	@echo "✓ Using DB_SCHEMA=development"
+	@cd environments/local && docker-compose up -d
 	@echo ""
-	@echo "현재 환경 확인:"
-	@echo "  make current-env  - 현재 .env 파일 환경 확인"
+	@echo "✅ Development environment is running:"
+	@echo "  - API Server:    http://localhost:3000"
+	@echo "  - Frontend:      http://localhost:3001"
+	@echo "  - Database:      localhost:5432 (schema: development)"
+	@echo "  - Redis:         localhost:6379"
+	@echo ""
+	@echo "📋 Useful commands:"
+	@echo "  make logs service=main-api    - View API logs"
+	@echo "  make status                   - Check status"
+	@echo "  make clean                    - Stop all services"
 
-# 환경 전환
-env-local:
-	@bash scripts/switch-env.sh local
+# 운영 환경 배포 (EKS)
+prod-eks:
+	@echo "🚀 Deploying to production (EKS)..."
+	@echo ""
+	@echo "⚠️  WARNING: This will deploy to PRODUCTION environment!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo ""
+	@echo "✓ Building Docker images..."
+	@docker build -t fans-main-api:latest -f backend/api/Dockerfile backend/api
+	@echo ""
+	@echo "✓ Applying Kubernetes manifests..."
+	@kubectl apply -f environments/eks/manifests/
+	@echo ""
+	@echo "✅ Deployment complete!"
+	@echo "  Check status: kubectl get pods -n fans-svc"
 
-env-ecs:
-	@bash scripts/switch-env.sh ecs
+# 데이터베이스 초기화 (개발)
+db-init:
+	@echo "🗄️  Initializing development database schemas..."
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/01_create_schemas.sql
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/02_development_tables.sql
+	@echo "✅ Database initialized (development schema)"
 
-env-eks:
-	@bash scripts/switch-env.sh eks
+# 데이터베이스 초기화 (운영)
+db-init-prod:
+	@echo "🗄️  Initializing production database schemas..."
+	@echo "⚠️  WARNING: This will create production schema!"
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/01_create_schemas.sql
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/03_production_tables.sql
+	@echo "✅ Production schema initialized"
 
-# Docker Compose 시작 (환경별)
-start-local: env-local
-	@bash scripts/docker-start.sh
-
-start-ecs: env-ecs
-	@bash scripts/docker-start.sh
-
-start-eks: env-eks
-	@bash scripts/docker-start.sh
-
-# 빠른 시작 (자동 감지)
-start:
-	@bash scripts/docker-start.sh
-
-# 중지
-stop:
-	@docker-compose down
-
-# 로그
-logs:
-	@docker-compose logs -f
-
-logs-api:
-	@docker-compose logs -f main-api
-
-logs-ai:
-	@docker-compose logs -f summarize-ai bias-analysis-ai
-
-logs-crawler:
-	@docker-compose logs -f unified-crawler
+# 데이터베이스 리셋 (개발)
+db-reset:
+	@echo "⚠️  WARNING: This will DELETE ALL DATA in development schema!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db -c "DROP SCHEMA IF EXISTS development CASCADE;"
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/01_create_schemas.sql
+	@docker exec -i fans_postgres psql -U fans_user -d fans_db < backend/database/schemas/02_development_tables.sql
+	@echo "✅ Database reset complete"
 
 # 정리
 clean:
-	@docker-compose down -v
-	@echo "✅ 모든 컨테이너 및 볼륨 삭제 완료"
+	@echo "🧹 Stopping all containers..."
+	@cd environments/local && docker-compose down
+	@echo "✅ All containers stopped"
 
-# 현재 환경 확인
-current-env:
-	@echo "현재 .env 파일 상태:"
-	@if [ -f .env.local ] && diff -q .env .env.local > /dev/null 2>&1; then \
-		echo "  🟢 LOCAL 환경"; \
-	elif [ -f .env.ecs ] && diff -q .env .env.ecs > /dev/null 2>&1; then \
-		echo "  🔵 ECS 환경"; \
-	elif [ -f .env.eks ] && diff -q .env .env.eks > /dev/null 2>&1; then \
-		echo "  🟣 EKS 환경"; \
+# 전체 정리 (볼륨 포함)
+clean-all:
+	@echo "🧹 Stopping all containers and removing volumes..."
+	@echo "⚠️  WARNING: This will DELETE ALL DATA!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@cd environments/local && docker-compose down -v
+	@echo "✅ All containers and volumes removed"
+
+# 로그 확인
+logs:
+	@if [ -z "$(service)" ]; then \
+		echo "Usage: make logs service=SERVICE_NAME"; \
+		echo "Available services: main-api, postgres, redis, summarize-ai, bias-analysis-ai"; \
 	else \
-		echo "  ⚠️  알 수 없음 (커스텀 .env)"; \
+		cd environments/local && docker-compose logs -f $(service); \
 	fi
 
-# 개발용 - 전체 재시작
-restart: stop start
+# 상태 확인
+status:
+	@echo "📊 Container Status:"
+	@docker ps --filter "name=fans_" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-# 빌드 (이미지 재빌드)
-build-local:
-	@DEPLOY_ENV=local docker-compose build
+# 빌드
+build:
+	@echo "📦 Building Docker images..."
+	@cd environments/local && docker-compose build
 
-build-ecs:
-	@DEPLOY_ENV=ecs docker-compose build
+# 재시작
+restart:
+	@echo "🔄 Restarting services..."
+	@cd environments/local && docker-compose restart
+	@echo "✅ Services restarted"
 
-build-eks:
-	@DEPLOY_ENV=eks docker-compose build
+# 특정 서비스만 시작
+start-api:
+	@cd environments/local && docker-compose up -d main-api
+
+start-db:
+	@cd environments/local && docker-compose up -d postgres redis
+
+start-ai:
+	@cd environments/local && docker-compose up -d summarize-ai bias-analysis-ai
+
+# 테스트
+test:
+	@echo "🧪 Running tests..."
+	@cd backend/api && npm test
+
+# 타입 체크
+typecheck:
+	@echo "🔍 Running TypeScript type check..."
+	@cd backend/api && npm run typecheck
+
+# DB 스키마 확인
+db-check:
+	@echo "📊 Database Schemas:"
+	@docker exec fans_postgres psql -U fans_user -d fans_db -c "\dn"
+	@echo ""
+	@echo "📋 Development Tables:"
+	@docker exec fans_postgres psql -U fans_user -d fans_db -c "\dt development.*" | head -25

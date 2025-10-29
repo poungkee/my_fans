@@ -12,7 +12,7 @@ ai_module = AIModule()
 
 class SummarizeRequest(BaseModel):
     text: str
-    max_length: int = 40
+    max_length: int = 150
 
 class SummarizeResponse(BaseModel):
     summary: str

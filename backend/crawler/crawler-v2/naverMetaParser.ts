@@ -33,7 +33,7 @@ export class NaverMetaParser {
       'https://news.naver.com/section/105',  // IT/과학
       'https://news.naver.com/section/104',  // 세계
       'https://news.naver.com/section/114',  // 연예
-      'https://sports.news.naver.com/index', // 스포츠
+      'https://m.sports.naver.com',          // 스포츠 (eks 브랜치 개선사항)
     ];
   }
 
@@ -48,7 +48,7 @@ export class NaverMetaParser {
     if (url.includes('/section/105')) return 'IT/과학';
     if (url.includes('/section/104')) return '세계';
     if (url.includes('/section/114')) return '연예';
-    if (url.includes('sports.news.naver.com')) return '스포츠';
+    if (url.includes('sports.naver.com') || url.includes('m.sports.naver.com')) return '스포츠';  // eks 브랜치 개선사항
     return undefined;
   }
 
@@ -103,7 +103,7 @@ export class NaverMetaParser {
 
       await page.goto(url, {
         waitUntil: 'networkidle0',
-        timeout: 45000
+        timeout: 60000
       });
 
       // 메타 태그와 본문 추출 (단순화된 버전)
@@ -144,12 +144,13 @@ export class NaverMetaParser {
           const removeSelectors = contentEl.querySelectorAll('script, style, .ad, figure, .btn_fold');
           removeSelectors.forEach(el => el.remove());
 
-          // 본문 텍스트 (문단별로 추출)
+          // 본문 텍스트 (문단별로 추출, 개선된 필터링)
           const paragraphs: string[] = [];
           const pElements = contentEl.querySelectorAll('p');
           pElements.forEach(p => {
             const text = p.textContent?.trim();
-            if (text && text.length > 0) {
+            // 최소 길이 20자로 품질 향상
+            if (text && text.length > 20) {
               paragraphs.push(text);
             }
           });
@@ -220,6 +221,9 @@ export class NaverMetaParser {
       if (category) {
         logger.info(`  카테고리: ${category}`);
       }
+      // 디버그 로깅 (eks 브랜치 개선사항)
+      logger.info(`  기자명 추출: ${articleData.journalist || '없음'}`);
+      logger.info(`  이미지 URL: ${articleData.imageUrl ? '있음' : '없음'}`);
 
       // 빈 문자열은 undefined로 변환
       let imageUrl = articleData.imageUrl || undefined;
@@ -346,11 +350,11 @@ export class NaverMetaParser {
       return false;
     }
 
-    // [종합] 기사 필터링 (여러 기사가 합쳐진 기사)
-    if (article.title.includes('[종합]') || article.title.includes('(종합)')) {
-      logger.warn(`[종합] 기사 제외: ${article.title.substring(0, 50)}...`);
-      return false;
-    }
+    // [종합] 기사도 수집 (eks 브랜치 개선사항 반영)
+    // if (article.title.includes('[종합]') || article.title.includes('(종합)')) {
+    //   logger.warn(`[종합] 기사 제외: ${article.title.substring(0, 50)}...`);
+    //   return false;
+    // }
 
     if (!article.content || article.content.length < 100) {
       logger.warn('본문이 너무 짧습니다');

@@ -32,8 +32,8 @@ export class DaumJsonParser {
       'https://news.daum.net/foreign',    // 국제
       'https://news.daum.net/culture',    // 문화
       'https://news.daum.net/digital',    // IT
-      'https://news.daum.net/entertain',  // 연예
-      'https://news.daum.net/sports',     // 스포츠
+      'https://entertain.daum.net/',      // 연예
+      'https://sports.daum.net/',         // 스포츠
     ];
   }
 
@@ -47,8 +47,8 @@ export class DaumJsonParser {
     if (url.includes('/foreign')) return '세계';
     if (url.includes('/culture')) return '생활/문화';
     if (url.includes('/digital')) return 'IT/과학';
-    if (url.includes('/entertain')) return '연예';
-    if (url.includes('/sports')) return '스포츠';
+    if (url.includes('entertain.daum.net')) return '연예';
+    if (url.includes('sports.daum.net')) return '스포츠';
     return undefined;
   }
 
@@ -67,12 +67,17 @@ export class DaumJsonParser {
       // 동적 콘텐츠 로딩 대기
       await page.waitForTimeout(2000);
 
-      // 기사 URL 수집
+      // 기사 URL 수집 (일반 뉴스, 연예, 스포츠 모두 포함)
       const urls = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href*="v.daum.net/v/"]'));
+        const links = Array.from(document.querySelectorAll('a[href]'));
         return links
           .map((a) => (a as HTMLAnchorElement).href)
-          .filter((href) => href && href.includes('v.daum.net/v/'));
+          .filter((href) => {
+            if (!href) return false;
+            // 다음 뉴스 기사 패턴: v.daum.net/v/XXXXXX
+            // 연예/스포츠도 v.daum.net 사용
+            return href.includes('v.daum.net/v/');
+          });
       });
 
       // 중복 제거
@@ -95,7 +100,7 @@ export class DaumJsonParser {
 
       await page.goto(url, {
         waitUntil: 'networkidle0',
-        timeout: 45000
+        timeout: 60000
       });
 
       // JSON 데이터와 본문 추출
@@ -192,14 +197,41 @@ export class DaumJsonParser {
           pubDateStr: document.querySelector('.num_date')?.textContent?.trim() || ''
         };
 
-        // 기자명 추출
+        // 기자명 추출 (다중 시도)
+        let journalistName = '';
+
+        // 1차 시도: .txt_info
         const infoEl = document.querySelector('.txt_info');
         if (infoEl && infoEl.textContent) {
           const match = infoEl.textContent.match(/([가-힣]{2,4})\s*기자/);
           if (match) {
-            fallbackData.journalist = match[1];
+            journalistName = match[1];
           }
         }
+
+        // 2차 시도: .info_view 또는 .article_view 내부
+        if (!journalistName) {
+          const viewEl = document.querySelector('.info_view, .article_view');
+          if (viewEl && viewEl.textContent) {
+            const match = viewEl.textContent.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              journalistName = match[1];
+            }
+          }
+        }
+
+        // 3차 시도: 본문 상단 p 태그에서
+        if (!journalistName) {
+          const firstP = document.querySelector('.article_view p:first-child, #harmonyContainer p:first-child');
+          if (firstP && firstP.textContent) {
+            const match = firstP.textContent.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              journalistName = match[1];
+            }
+          }
+        }
+
+        fallbackData.journalist = journalistName;
 
         // 이미지 추출 (여러 방법 시도)
         // 1. og:image 메타 태그
@@ -237,6 +269,10 @@ export class DaumJsonParser {
       // 빈 문자열은 undefined로 변환
       if (imageUrl === '') imageUrl = undefined;
       let journalist = articleData.fallbackData.journalist;
+
+      // 디버그 로깅 (eks 브랜치 개선사항)
+      logger.info(`  기자명 추출: ${journalist || '없음'}`);
+      logger.info(`  이미지 URL: ${imageUrl ? '있음' : '없음'}`);
 
       // 카테고리 추출 (sectionUrl이 있으면 사용, 없으면 JSON에서 추출)
       let category = sectionUrl ? this.getCategoryFromUrl(sectionUrl) : articleData.jsonData?.dmcf?.categoryName;
@@ -333,11 +369,11 @@ export class DaumJsonParser {
       return false;
     }
 
-    // [종합] 기사 필터링 (여러 기사가 합쳐진 기사)
-    if (article.title.includes('[종합]') || article.title.includes('(종합)')) {
-      logger.warn(`[종합] 기사 제외: ${article.title.substring(0, 50)}...`);
-      return false;
-    }
+    // [종합] 기사도 수집 (eks 브랜치 개선사항 반영)
+    // if (article.title.includes('[종합]') || article.title.includes('(종합)')) {
+    //   logger.warn(`[종합] 기사 제외: ${article.title.substring(0, 50)}...`);
+    //   return false;
+    // }
 
     if (!article.content || article.content.length < 100) {
       logger.warn('본문이 너무 짧습니다');

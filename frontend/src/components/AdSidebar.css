@@ -39,7 +39,7 @@
 /* 광고 배지 */
 .ad-badge {
   display: inline-block;
-  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
   color: white;
   font-size: 0.7rem;
   font-weight: 600;
@@ -59,13 +59,13 @@
 
 /* 메인 광고 배너 */
 .ad-banner {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   border-radius: 10px;
   padding: 0.7rem; /* 1rem → 0.7rem으로 더 축소 */
   margin-bottom: 0.7rem; /* 1rem → 0.7rem으로 더 축소 */
   color: white;
   text-align: center;
-  box-shadow: 0 8px 25px rgba(107, 114, 128, 0.3);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -84,7 +84,7 @@
 
 .ad-banner:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(107, 114, 128, 0.4);
+  box-shadow: 0 12px 35px rgba(139, 92, 246, 0.4);
 }
 
 .ad-content {

@@ -11,6 +11,10 @@ const pool = new Pool({
   user: process.env.POSTGRES_USER || 'fans_user',
   password: process.env.POSTGRES_PASSWORD || 'fans_password',
   database: process.env.POSTGRES_DB || 'fans_db',
+  // ⭐ 스키마 설정 (search_path)
+  options: process.env.DB_SCHEMA
+    ? `-c search_path=${process.env.DB_SCHEMA},public`
+    : undefined,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -31,7 +35,8 @@ export async function query(text: string, params?: any[]) {
 
 // 연결 테스트
 pool.on('connect', () => {
-  logger.info('✅ PostgreSQL 연결 성공');
+  const schema = process.env.DB_SCHEMA || 'public';
+  logger.info(`✅ PostgreSQL 연결 성공 (schema: ${schema})`);
 });
 
 pool.on('error', (err) => {

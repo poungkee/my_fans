@@ -1,26 +1,36 @@
 /* 뉴스 상세 페이지 CSS */
 
 .news-detail-container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
-  background: #fff;
+  background: #f8f9fa;
   min-height: 100vh;
 }
 
 .news-content-wrapper {
   display: flex;
+  flex-direction: row;
   gap: 20px;
   padding: 20px;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .main-article-area {
   flex: 1;
   min-width: 0;
+  max-width: calc(100% - 200px);
+  order: 1;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  padding: 25px;
 }
 
 .news-sidebar {
-  width: 300px;
+  width: 180px;
   flex-shrink: 0;
+  order: 2;
 }
 
 /* 뒤로 가기 버튼 */
@@ -825,10 +835,16 @@
     padding: 15px;
   }
 
+  .main-article-area {
+    max-width: none;
+    width: 100%;
+    padding: 20px;
+  }
+
   .news-sidebar {
     width: 100%;
-    order: -1;
-    margin-bottom: 20px;
+    order: 2;
+    margin-top: 20px;
   }
 
   .article-title {

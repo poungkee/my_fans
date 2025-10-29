@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
+import AdSidebar from '../components/AdSidebar';
 import SourceBiasChart from '../components/SourceBiasChart';
 import ArticleAnalysis from '../components/ArticleAnalysis';
 import './NewsDetailPage.css';
@@ -1160,10 +1160,8 @@ function NewsDetailPage() {
           </div>
         </div>
 
-        {/* 사이드바 */}
-        <div className="news-sidebar">
-          <Sidebar />
-        </div>
+        {/* 광고 사이드바 - 메인 페이지와 동일한 구조 */}
+        <AdSidebar />
       </div>
     </div>
   );

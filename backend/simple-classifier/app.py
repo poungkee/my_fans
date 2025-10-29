@@ -25,13 +25,17 @@ SUMMARIZE_AI_URL = os.getenv('SUMMARIZE_AI_URL', 'http://summarize-ai:8000')
 
 def get_db_connection():
     """PostgreSQL 데이터베이스 연결"""
-    return psycopg2.connect(
+    db_schema = os.getenv('DB_SCHEMA', 'public')
+    conn = psycopg2.connect(
         host=os.getenv('DB_HOST', 'postgres'),
         port=int(os.getenv('DB_PORT', 5432)),
         user=os.getenv('POSTGRES_USER', 'fans_user'),
         password=os.getenv('POSTGRES_PASSWORD', 'fans_password'),
-        database=os.getenv('POSTGRES_DB', 'fans_db')
+        database=os.getenv('POSTGRES_DB', 'fans_db'),
+        options=f'-c search_path={db_schema},public'  # ⭐ 스키마 설정
     )
+    logger.debug(f"✅ DB 연결 완료 (schema: {db_schema})")
+    return conn
 
 # 언론사 매핑 (sources 테이블에 실제로 존재하는 언론사만)
 # 나머지는 "기타"(449)로 통합되지만, raw_news_articles.original_source에는 원본 이름이 저장되어

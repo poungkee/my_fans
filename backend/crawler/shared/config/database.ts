@@ -13,8 +13,9 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || 'fans_user',
   password: process.env.DB_PASSWORD || 'fans_password',
   database: process.env.DB_NAME || 'fans_db',
+  schema: process.env.DB_SCHEMA || 'public',  // ⭐ 스키마 분리
   synchronize: false, // production에서는 false
-  logging: false,
+  logging: process.env.NODE_ENV !== 'production',  // 개발 환경에서만 로깅
   entities: [NewsArticle, RawNewsArticle, Category, Source, BiasAnalysis],
   migrations: [],
   subscribers: [],

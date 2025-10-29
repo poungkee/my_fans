@@ -152,8 +152,59 @@ class NewsAISummarizer:
 
         return text.strip()
 
-    def summarize_news(self, title: str, content: str, max_length: int = 100) -> dict:
-        """뉴스 기사 요약"""
+    def truncate_at_sentence(self, text: str, max_chars: int) -> str:
+        """문장 경계에서 텍스트 자르기"""
+        if len(text) <= max_chars:
+            return text
+
+        # max_chars까지 자른 후, 마지막 문장 경계 찾기
+        truncated = text[:max_chars]
+
+        # 한국어 문장 종결 부호: ., !, ?, 다, 요, 습니다, 었다, 였다 등
+        sentence_endings = ['. ', '! ', '? ', '다. ', '요. ', '습니다. ', '었다. ', '였다. ', '는다. ', '한다. ']
+
+        last_pos = -1
+        for ending in sentence_endings:
+            pos = truncated.rfind(ending)
+            if pos > last_pos:
+                last_pos = pos + len(ending)
+
+        # 문장 경계를 찾았으면 그곳에서 자르기
+        if last_pos > len(truncated) * 0.7:  # 70% 이상 위치에서 찾았으면
+            return truncated[:last_pos].strip()
+
+        # 못 찾았으면 원래대로
+        return truncated + "..."
+
+    def ensure_sentence_ending(self, text: str) -> str:
+        """요약이 완전한 문장으로 끝나도록 보정"""
+        if not text:
+            return text
+
+        text = text.strip()
+
+        # 이미 문장 종결 부호로 끝나면 OK
+        if text.endswith(('.', '!', '?', '다', '요', '음')):
+            return text
+
+        # 마지막 완전한 문장 찾기
+        sentence_endings = ['. ', '! ', '? ', '다. ', '요. ', '습니다. ', '었다. ', '였다. ', '는다. ', '한다. ']
+
+        last_pos = -1
+        for ending in sentence_endings:
+            pos = text.rfind(ending)
+            if pos > last_pos:
+                last_pos = pos + len(ending) - 1  # 공백 제외
+
+        # 80% 이상 위치에서 문장 경계를 찾았으면 그곳까지만 반환
+        if last_pos > len(text) * 0.8:
+            return text[:last_pos+1].strip()
+
+        # 못 찾았으면 원문 그대로 (잘림 표시)
+        return text
+
+    def summarize_news(self, title: str, content: str, max_length: int = 150) -> dict:
+        """뉴스 기사 요약 (개선 버전)"""
         try:
             if not self.summarizer:
                 return {
@@ -166,7 +217,7 @@ class NewsAISummarizer:
             cleaned_title = self.clean_text(title or "")
             cleaned_content = self.clean_text(content or "")
 
-            # 제목 + 내용 결합 (토큰 제한 고려)
+            # 제목 + 내용 결합
             full_text = f"{cleaned_title}. {cleaned_content}"
 
             # 텍스트가 너무 짧으면 원문 반환
@@ -177,22 +228,29 @@ class NewsAISummarizer:
                     "success": True
                 }
 
-            # 토큰 길이 제한 (대략 512토큰)
-            if len(full_text) > 2000:
-                full_text = full_text[:2000] + "…"
+            # 긴 텍스트 처리: 문장 경계에서 자르기 (3000자로 증가)
+            if len(full_text) > 3000:
+                full_text = self.truncate_at_sentence(full_text, 3000)
 
-            # AI 요약 생성 (입력 길이에 따라 max_length 자동 조정)
-            actual_max_length = min(max_length, len(full_text) // 2) if len(full_text) > 50 else max_length
+            # AI 요약 생성
+            # max_length를 더 여유있게 설정 (기본 150)
+            actual_max_length = max(max_length, 100)  # 최소 100자 보장
+            min_summary_length = min(50, actual_max_length - 20)  # 최소 길이 설정
+
             summary_result = self.summarizer(
                 full_text,
                 max_length=actual_max_length,
-                min_length=min(30, actual_max_length - 10),
+                min_length=min_summary_length,
                 do_sample=True,
                 temperature=0.7,
-                truncation=True  # 긴 텍스트 자동 자르기
+                truncation=True,
+                early_stopping=True  # 문장이 완성되면 조기 종료
             )
 
             summary = summary_result[0]['summary_text'] if summary_result else full_text
+
+            # 요약 후처리: 완전한 문장으로 끝나도록 보정
+            summary = self.ensure_sentence_ending(summary)
 
             return {
                 "summary": summary,
@@ -202,8 +260,9 @@ class NewsAISummarizer:
 
         except Exception as e:
             print(f"[AI] 요약 생성 실패: {e}")
-            # 실패시 원본 텍스트의 앞부분을 요약으로 사용
-            fallback = (content or title or "")[:max_length] + "..."
+            # 실패시 원본 텍스트의 앞부분을 문장 경계에서 자르기
+            fallback_text = content or title or ""
+            fallback = self.truncate_at_sentence(fallback_text, max_length)
             return {
                 "summary": fallback,
                 "keywords": [],
@@ -222,6 +281,7 @@ class NewsAISummarizer:
 
             # (키워드, 점수) 튜플 리스트를 키워드만 리스트로 변환 (기존 인터페이스 유지)
             return [keyword for keyword, score in keyword_scores]
+
 
         except Exception as e:
             print(f"[AI] 키워드 추출 실패: {e}")
