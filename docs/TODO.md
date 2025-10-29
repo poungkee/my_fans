@@ -35,7 +35,6 @@
 ### 모니터링 메트릭 적용
 - **설명**: Prometheus 메트릭을 각 서비스에 적용
 - **소요 시간**: 약 60-90분
-- **가이드 문서**: `environments/eks/docs/prometheus-metrics-guide.md`
 
 #### 세부 작업
 1. **Main API에 Prometheus 메트릭 적용**
@@ -81,4 +80,4 @@
 
 - 모니터링 대시보드: https://monitoring.fans.ai.kr
 - Grafana 로그인: admin / fans-admin-2025
-- 가이드 문서 위치: `environments/eks/docs/`
+- 가이드 문서 위치: ``
