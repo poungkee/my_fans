@@ -146,3 +146,18 @@ db-check:
 	@echo ""
 	@echo "📋 Development Tables:"
 	@docker exec fans_postgres psql -U fans_user -d fans_db -c "\dt development.*" | head -25
+
+# 백업 DB로 백업
+backup-to-school:
+	@chmod +x scripts/backup-to-school-db.sh
+	@./scripts/backup-to-school-db.sh
+
+# 백업 DB에서 복원
+restore-from-school:
+	@chmod +x scripts/restore-from-school-db.sh
+	@./scripts/restore-from-school-db.sh
+
+# 학원 DB 접속
+connect-school-db:
+	@echo "학원 DB에 접속합니다..."
+	@PGPASSWORD=Gkrtod1@ psql -h 211.46.52.151 -p 15432 -U team1 -d postgres

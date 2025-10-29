@@ -1,0 +1,138 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup-to-school
+  namespace: fans
+spec:
+  # 매일 새벽 2시에 백업 실행
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: db-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:15
+              env:
+                # 메인 DB 정보 (RDS 또는 Kubernetes Postgres)
+                - name: POSTGRES_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: POSTGRES_DB
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: POSTGRES_USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: POSTGRES_PASSWORD
+                - name: DB_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: DB_HOST
+                - name: DB_PORT
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: DB_PORT
+
+                # 백업 DB 정보 (학원 서버)
+                - name: BACKUP_DB_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_HOST
+                - name: BACKUP_DB_PORT
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_PORT
+                - name: BACKUP_DB_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_USERNAME
+                - name: BACKUP_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_PASSWORD
+                - name: BACKUP_DB_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_NAME
+                - name: BACKUP_DB_ENABLED
+                  valueFrom:
+                    secretKeyRef:
+                      name: fans-secrets
+                      key: BACKUP_DB_ENABLED
+
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+
+                  echo "========================================"
+                  echo "FANS Database Backup to School Server"
+                  echo "========================================"
+
+                  # 백업 활성화 확인
+                  if [ "$BACKUP_DB_ENABLED" != "true" ]; then
+                      echo "❌ Backup is disabled. Skipping..."
+                      exit 0
+                  fi
+
+                  TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+                  BACKUP_FILE="/tmp/fans_backup_${TIMESTAMP}.sql"
+
+                  echo "1. Dumping production database..."
+                  PGPASSWORD=$POSTGRES_PASSWORD pg_dump \
+                      -h $DB_HOST \
+                      -p $DB_PORT \
+                      -U $POSTGRES_USER \
+                      -d $POSTGRES_DB \
+                      --schema=production \
+                      --clean \
+                      --if-exists \
+                      > $BACKUP_FILE
+
+                  echo "✅ Dump completed: $BACKUP_FILE"
+                  echo ""
+
+                  echo "2. Creating backup schema on school server..."
+                  PGPASSWORD=$BACKUP_DB_PASSWORD psql \
+                      -h $BACKUP_DB_HOST \
+                      -p $BACKUP_DB_PORT \
+                      -U $BACKUP_DB_USERNAME \
+                      -d $BACKUP_DB_NAME \
+                      -c "CREATE SCHEMA IF NOT EXISTS fans_backup;"
+
+                  echo "3. Uploading backup to school server..."
+                  PGPASSWORD=$BACKUP_DB_PASSWORD psql \
+                      -h $BACKUP_DB_HOST \
+                      -p $BACKUP_DB_PORT \
+                      -U $BACKUP_DB_USERNAME \
+                      -d $BACKUP_DB_NAME \
+                      < $BACKUP_FILE
+
+                  echo ""
+                  echo "✅ Backup completed successfully!"
+                  echo "   Target: $BACKUP_DB_HOST:$BACKUP_DB_PORT"
+                  echo "   Schema: fans_backup"
+                  echo "   Timestamp: $TIMESTAMP"
+
+                  # 임시 파일 삭제
+                  rm -f $BACKUP_FILE

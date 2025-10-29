@@ -228,3 +228,7 @@ _backup/cleanup-*/
 
 # Database migrations archive
 backend/database/migrations_archive/
+
+# Database Backups
+backups/
+*.sql
