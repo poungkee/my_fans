@@ -213,4 +213,18 @@ environments/eks/terraform/*.tfstate
 environments/eks/terraform/*.tfstate.backup
 environments/eks/terraform/.terraform/
 environments/eks/terraform/.terraform.lock.hcl
+environments/eks/terraform/*.tfplan
 
+# === Root temporary files (AWS configs, etc.) ===
+/node_modules/
+/nul
+iam_policy.json
+lb-controller-sa.yaml
+lb-controller-trust-policy.json
+remove-cloudfront-alias.py
+
+# === Cleanup backups ===
+_backup/cleanup-*/
+
+# Database migrations archive
+backend/database/migrations_archive/

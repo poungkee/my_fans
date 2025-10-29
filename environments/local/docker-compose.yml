@@ -105,6 +105,7 @@ services:
       - UNIFIED_CRAWLER_PORT=4005
       - AUTO_CRAWL=${AUTO_CRAWL:-true}
       - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - DB_SCHEMA=${DB_SCHEMA:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,6 +169,8 @@ services:
       - PORT=${PORT:-3000}
       - NODE_ENV=${NODE_ENV:-development}
       - JWT_SECRET=${JWT_SECRET}
+      - DB_SCHEMA=${DB_SCHEMA:-development}
+      - BIAS_ANALYSIS_AI_URL=${BIAS_ANALYSIS_AI_URL:-http://bias-analysis-ai:8002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -227,6 +230,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_SCHEMA=${DB_SCHEMA:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -260,6 +264,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_SCHEMA=${DB_SCHEMA:-development}
       - CLASSIFICATION_API_URL=http://classification-api:5000
       - SUMMARIZE_AI_URL=http://summarize-ai:8000
       - SCHEDULE_INTERVAL=*/10 * * * *
