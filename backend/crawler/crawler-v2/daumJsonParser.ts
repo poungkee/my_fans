@@ -197,8 +197,9 @@ export class DaumJsonParser {
           pubDateStr: document.querySelector('.num_date')?.textContent?.trim() || ''
         };
 
-        // 기자명 추출 (다중 시도)
+        // 기자명 추출 (다중 시도, AWS_FANS 개선사항 반영)
         let journalistName = '';
+        let journalistFound = false;
 
         // 1차 시도: .txt_info
         const infoEl = document.querySelector('.txt_info');
@@ -206,34 +207,40 @@ export class DaumJsonParser {
           const match = infoEl.textContent.match(/([가-힣]{2,4})\s*기자/);
           if (match) {
             journalistName = match[1];
+            journalistFound = true;
           }
         }
 
-        // 2차 시도: .info_view 또는 .article_view 내부
-        if (!journalistName) {
-          const viewEl = document.querySelector('.info_view, .article_view');
-          if (viewEl && viewEl.textContent) {
-            const match = viewEl.textContent.match(/([가-힣]{2,4})\s*기자/);
+        // 2차 시도: 기사 영역 전체에서 검색 (양방향 패턴)
+        if (!journalistFound) {
+          const articleEl = document.querySelector('.article_view');
+          if (articleEl) {
+            const text = articleEl.textContent || '';
+            // "이름 기자" 또는 "기자 이름" 패턴 검색
+            const match = text.match(/([가-힣]{2,4})\s*기자/) || text.match(/기자\s*([가-힣]{2,4})/);
             if (match) {
               journalistName = match[1];
+              journalistFound = true;
             }
           }
         }
 
         // 3차 시도: 본문 상단 p 태그에서
-        if (!journalistName) {
+        if (!journalistFound) {
           const firstP = document.querySelector('.article_view p:first-child, #harmonyContainer p:first-child');
           if (firstP && firstP.textContent) {
             const match = firstP.textContent.match(/([가-힣]{2,4})\s*기자/);
             if (match) {
               journalistName = match[1];
+              journalistFound = true;
             }
           }
         }
 
         fallbackData.journalist = journalistName;
+        fallbackData.journalistDebug = journalistFound ? 'found' : 'not_found';
 
-        // 이미지 추출 (여러 방법 시도)
+        // 이미지 추출 (AWS_FANS 개선: JSON 데이터 우선 추출은 외부에서 처리)
         // 1. og:image 메타 태그
         const ogImage = document.querySelector('meta[property="og:image"]');
         if (ogImage) {
@@ -243,7 +250,7 @@ export class DaumJsonParser {
           }
         }
 
-        // 2. article 내 첫 번째 이미지
+        // 2. article 내 첫 번째 이미지 (data-original 지원 유지)
         if (!fallbackData.imageUrl) {
           const imgEl = document.querySelector('div.article_view img, figure img, .thumb_area img, #mArticle img');
           if (imgEl) {
@@ -261,18 +268,15 @@ export class DaumJsonParser {
         };
       });
 
-      // 데이터 조합
+      // 데이터 조합 (AWS_FANS 개선: JSON 우선 추출)
       let title = articleData.jsonData?.dmcf?.title || articleData.fallbackData.title;
       let originalSource = articleData.jsonData?.cp?.cpKorName || articleData.fallbackData.source;
       let content = articleData.content;
+      // 이미지는 JSON에서 먼저 추출 (더 정확함)
       let imageUrl = articleData.jsonData?.dmcf?.representImage || articleData.fallbackData.imageUrl || undefined;
       // 빈 문자열은 undefined로 변환
       if (imageUrl === '') imageUrl = undefined;
       let journalist = articleData.fallbackData.journalist;
-
-      // 디버그 로깅 (eks 브랜치 개선사항)
-      logger.info(`  기자명 추출: ${journalist || '없음'}`);
-      logger.info(`  이미지 URL: ${imageUrl ? '있음' : '없음'}`);
 
       // 카테고리 추출 (sectionUrl이 있으면 사용, 없으면 JSON에서 추출)
       let category = sectionUrl ? this.getCategoryFromUrl(sectionUrl) : articleData.jsonData?.dmcf?.categoryName;
@@ -300,11 +304,14 @@ export class DaumJsonParser {
       // 언론사 분류 (기타- prefix 적용)
       const classifiedSource = classifySource(originalSource);
 
+      // AWS_FANS 스타일 로깅
       logger.info(`[Daum JSON Parser] 파싱 성공: ${title.substring(0, 30)}...`);
       logger.info(`  원본 언론사: ${originalSource} → 분류: ${classifiedSource}`);
       if (category) {
         logger.info(`  카테고리: ${category}`);
       }
+      logger.info(`  기자: ${journalist || '없음'} (${(articleData.fallbackData as any).journalistDebug || 'unknown'})`);
+      logger.info(`  이미지: ${imageUrl ? '있음' : '없음'}`);
 
       return {
         title,

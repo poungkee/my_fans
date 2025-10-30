@@ -137,24 +137,37 @@ export class NaverMetaParser {
           if (titleEl) result.title = titleEl.textContent?.trim() || '';
         }
 
-        // 3. 본문 추출
+        // 3. 본문 추출 (AWS_FANS 개선: 지능적 문단 분리)
         const contentEl = document.querySelector('#dic_area');
         if (contentEl) {
           // 불필요한 요소 제거
           const removeSelectors = contentEl.querySelectorAll('script, style, .ad, figure, .btn_fold');
           removeSelectors.forEach(el => el.remove());
 
-          // 본문 텍스트 (문단별로 추출, 개선된 필터링)
-          const paragraphs: string[] = [];
-          const pElements = contentEl.querySelectorAll('p');
-          pElements.forEach(p => {
-            const text = p.textContent?.trim();
-            // 최소 길이 20자로 품질 향상
-            if (text && text.length > 20) {
-              paragraphs.push(text);
+          // 전체 텍스트 추출 → 문단 분리
+          const rawText = contentEl.textContent?.trim() || '';
+
+          if (rawText) {
+            // 여러 줄바꿈(\n\n 이상)을 기준으로 문단 분리
+            const paragraphs = rawText
+              .split(/\n\s*\n/)  // 두 개 이상의 줄바꿈으로 분리
+              .map(para => para.trim())
+              .map(para => para.replace(/\s+/g, ' '))  // 중복 공백 제거
+              .filter(para => para.length > 20);  // 최소 20자 이상만
+
+            // 문단이 제대로 분리되지 않았으면 (전체가 한 덩어리)
+            if (paragraphs.length === 1 && paragraphs[0].length > 500) {
+              // 단일 줄바꿈 기준으로 재시도
+              const lines = rawText
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 20);
+
+              result.content = lines.join('\n\n');
+            } else {
+              result.content = paragraphs.join('\n\n');
             }
-          });
-          result.content = paragraphs.length > 0 ? paragraphs.join('\n\n') : (contentEl.textContent?.trim() || '');
+          }
         }
 
         // 4. 이미지 폴백
@@ -166,13 +179,48 @@ export class NaverMetaParser {
           }
         }
 
-        // 5. 기자명
-        const journalistEl = document.querySelector('.media_end_head_journalist .name');
-        if (journalistEl) {
-          const text = journalistEl.textContent || '';
+        // 5. 기자명 (AWS_FANS 개선: 3단계 폴백)
+        let journalistFound = false;
+
+        // 시도 1: .media_end_head_journalist .name
+        const journalistEl1 = document.querySelector('.media_end_head_journalist .name');
+        if (journalistEl1) {
+          const text = journalistEl1.textContent || '';
           const match = text.match(/([가-힣]{2,4})\s*기자/);
-          if (match) result.journalist = match[1];
+          if (match) {
+            result.journalist = match[1];
+            journalistFound = true;
+          }
         }
+
+        // 시도 2: .media_end_head_journalist_name (다른 구조)
+        if (!journalistFound) {
+          const journalistEl2 = document.querySelector('.media_end_head_journalist_name');
+          if (journalistEl2) {
+            const text = journalistEl2.textContent || '';
+            const match = text.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              result.journalist = match[1];
+              journalistFound = true;
+            }
+          }
+        }
+
+        // 시도 3: 전체 journalist 영역에서 검색
+        if (!journalistFound) {
+          const journalistArea = document.querySelector('.media_end_head_journalist');
+          if (journalistArea) {
+            const text = journalistArea.textContent || '';
+            const match = text.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              result.journalist = match[1];
+              journalistFound = true;
+            }
+          }
+        }
+
+        // 디버깅: 기자 정보 찾았는지 표시
+        result.journalistDebug = journalistFound ? 'found' : 'not_found';
 
         // 6. 언론사 폴백
         if (!result.originalSource) {
@@ -216,14 +264,14 @@ export class NaverMetaParser {
       // 카테고리 추출 (sectionUrl이 있으면 사용)
       const category = sectionUrl ? this.getCategoryFromUrl(sectionUrl) : undefined;
 
+      // AWS_FANS 스타일 로깅
       logger.info(`[Naver Meta Parser] 파싱 성공: ${articleData.title.substring(0, 30)}...`);
       logger.info(`  원본 언론사: ${articleData.originalSource} → 분류: ${classifiedSource}`);
       if (category) {
         logger.info(`  카테고리: ${category}`);
       }
-      // 디버그 로깅 (eks 브랜치 개선사항)
-      logger.info(`  기자명 추출: ${articleData.journalist || '없음'}`);
-      logger.info(`  이미지 URL: ${articleData.imageUrl ? '있음' : '없음'}`);
+      logger.info(`  기자: ${articleData.journalist || '없음'} (${(articleData as any).journalistDebug || 'unknown'})`);
+      logger.info(`  이미지: ${articleData.imageUrl ? '있음' : '없음'}`);
 
       // 빈 문자열은 undefined로 변환
       let imageUrl = articleData.imageUrl || undefined;
