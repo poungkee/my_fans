@@ -5,7 +5,7 @@ import logger from './logger';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { DaumJsonParser, DaumNewsData } from './daumJsonParser';
 import { NaverMetaParser, NaverNewsData } from './naverMetaParser';
-import { summarizeArticle, analyzeBias } from '../shared/services/aiService';
+import { addSummaryJob, addBiasJob } from '@fans/queue';
 
 /**
  * 통합 크롤러 서비스
@@ -338,14 +338,20 @@ export class UnifiedCrawlerService {
 
     logger.info(`💾 새 기사 저장: ${article.title.substring(0, 50)}...`);
 
-    // AI 요약 (비동기, 실패해도 계속)
-    summarizeArticle(saved.id, article.content).catch((error: any) => {
-      logger.error(`AI 요약 실패 (기사 ID: ${saved.id}):`, error);
+    // AI 요약 큐에 Job 추가 (비동기, 실패해도 계속)
+    addSummaryJob({
+      articleId: saved.id,
+      content: article.content
+    }).catch((error: any) => {
+      logger.error(`AI 요약 큐 추가 실패 (기사 ID: ${saved.id}):`, error);
     });
 
-    // AI 편향 분석 (비동기, 실패해도 계속)
-    analyzeBias(saved.id, article.content).catch((error: any) => {
-      logger.error(`AI 분석 실패 (기사 ID: ${saved.id}):`, error);
+    // AI 편향 분석 큐에 Job 추가 (비동기, 실패해도 계속)
+    addBiasJob({
+      articleId: saved.id,
+      content: article.content
+    }).catch((error: any) => {
+      logger.error(`AI 편향 분석 큐 추가 실패 (기사 ID: ${saved.id}):`, error);
     });
   }
 
