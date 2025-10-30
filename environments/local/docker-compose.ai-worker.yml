@@ -1,0 +1,45 @@
+# AI Worker 추가 설정
+# 사용법: docker-compose -f docker-compose.yml -f docker-compose.ai-worker.yml up -d
+
+services:
+  # Redis 업데이트 (healthcheck 추가)
+  redis:
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ================================
+  # AI Worker (BullMQ Consumer)
+  # ================================
+
+  # AI Worker - BullMQ Consumer
+  ai-worker:
+    build: ../../backend/ai-worker
+    container_name: fans_ai_worker
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SUMMARIZE_AI_URL=http://summarize-ai:8000
+      - BIAS_ANALYSIS_AI_URL=http://bias-analysis-ai:8002
+      - RECOMMENDATION_AI_URL=http://recommendation-ai:8003
+      - WORKER_CONCURRENCY=5
+      - LOG_LEVEL=info
+      - NODE_ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+      summarize-ai:
+        condition: service_healthy
+      bias-analysis-ai:
+        condition: service_healthy
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+networks:
+  fans_network:
+    external: true

@@ -1,19 +1,19 @@
 /**
  * 편향 분석 작업
- * Bias Analysis AI의 정치 편향 분석 엔드포인트 호출
+ * Queue 기반으로 변경됨
  */
 
-import axios from 'axios';
 import { logger } from '../utils/logger';
 import { getDbClient } from '../utils/database';
+import { addBatchBiasJobs } from '@fans/queue';
 
-const BIAS_ANALYSIS_AI_URL = process.env.BIAS_ANALYSIS_AI_URL || 'http://bias-analysis-ai:8002';
 const BATCH_SIZE = parseInt(process.env.BIAS_BATCH_SIZE || '50');
 
 interface Article {
   id: number;
   title: string;
   content: string;
+  category_id: number;
   category_name: string;
 }
 
@@ -26,7 +26,7 @@ export async function analyzeBias(): Promise<void> {
   try {
     // 1. 편향 분석이 없는 정치 기사 조회 (AI 분류 개선으로 정치 카테고리만 필터링)
     const result = await client.query(`
-      SELECT na.id, na.title, na.content, c.name as category_name
+      SELECT na.id, na.title, na.content, na.category_id, c.name as category_name
       FROM news_articles na
       JOIN categories c ON na.category_id = c.id
       WHERE c.name = '정치'
@@ -44,85 +44,22 @@ export async function analyzeBias(): Promise<void> {
       return;
     }
 
-    logger.info(`⚖️  ${articles.length}개 정치 기사 편향 분석 중...`);
+    logger.info(`⚖️  ${articles.length}개 정치 기사를 편향 분석 큐에 추가 중...`);
 
-    let successCount = 0;
-    let failCount = 0;
+    // 2. 모든 기사를 Queue에 배치 추가
+    try {
+      const jobs = articles.map(article => ({
+        articleId: article.id,
+        content: article.content,
+        categoryId: article.category_id
+      }));
 
-    // 2. 각 기사에 대해 편향 분석
-    for (const article of articles) {
-      try {
-        // 언론사 정보 가져오기
-        const sourceResult = await client.query(`
-          SELECT s.name as source_name
-          FROM news_articles na
-          LEFT JOIN sources s ON na.source_id = s.id
-          WHERE na.id = $1
-        `, [article.id]);
-
-        const sourceName = sourceResult.rows[0]?.source_name || '기타';
-
-        // Bias Analysis AI 호출 - /analyze/full 사용
-        const response = await axios.post(
-          `${BIAS_ANALYSIS_AI_URL}/analyze/full`,
-          {
-            text: `${article.title}\n\n${article.content}`,
-            article_id: article.id,
-            source_name: sourceName,
-            category: '정치'
-          },
-          { timeout: 15000 }
-        );
-
-        if (response.data) {
-          const biasData = response.data;
-
-          // /analyze/full 응답에서 필드 추출
-          const biasScore = biasData.bias_score || 0;
-          const politicalLeaning = biasData.political_leaning || '중립';
-          const confidence = biasData.confidence || 0.8;
-
-          // 3. bias_analysis 테이블에 저장
-          await client.query(
-            `INSERT INTO bias_analysis (
-              article_id,
-              political_leaning,
-              bias_score,
-              confidence,
-              analysis_data
-            ) VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (article_id)
-            DO UPDATE SET
-              political_leaning = EXCLUDED.political_leaning,
-              bias_score = EXCLUDED.bias_score,
-              confidence = EXCLUDED.confidence,
-              analysis_data = EXCLUDED.analysis_data,
-              updated_at = NOW()`,
-            [
-              article.id,
-              politicalLeaning,
-              biasScore,
-              confidence,
-              JSON.stringify(biasData)
-            ]
-          );
-
-          successCount++;
-          logger.debug(`✅ 기사 ID ${article.id} 편향 분석 완료: ${politicalLeaning} (점수: ${biasScore})`);
-        } else {
-          throw new Error('편향 분석 결과가 없습니다');
-        }
-      } catch (error: any) {
-        failCount++;
-        logger.error(`❌ 기사 ID ${article.id} 편향 분석 실패: ${error.message}`);
-        continue;
-      }
-
-      // API 호출 제한을 위한 짧은 지연
-      await new Promise(resolve => setTimeout(resolve, 150));
+      const jobIds = await addBatchBiasJobs(jobs);
+      logger.info(`✅ 편향 분석 큐에 ${jobIds.length}개 작업 추가 완료`);
+    } catch (error: any) {
+      logger.error(`❌ 편향 분석 큐 추가 실패: ${error.message}`);
+      throw error;
     }
-
-    logger.info(`✅ 편향 분석 완료: ${successCount}개 성공, ${failCount}개 실패`);
   } catch (error: any) {
     logger.error(`❌ 편향 분석 작업 실패: ${error.message}`);
     throw error;

@@ -1,0 +1,57 @@
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: general
+spec:
+  # 템플릿 설정
+  template:
+    metadata:
+      labels:
+        workload-type: general
+    spec:
+      nodeClassRef:
+        name: default
+      requirements:
+        # 인스턴스 타입 (범용)
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]  # 안정성 중요 서비스는 On-Demand
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.medium
+            - t3a.medium
+            - t3.large
+            - t3a.large
+      # Taints (AI Worker가 이 노드에 스케줄링되지 않도록)
+      taints:
+        - key: workload-type
+          value: general
+          effect: NoSchedule
+      # Kubelet 설정
+      kubelet:
+        maxPods: 110
+        evictionHard:
+          memory.available: "5%"
+          nodefs.available: "10%"
+          nodefs.inodesFree: "5%"
+        systemReserved:
+          cpu: "100m"
+          memory: "100Mi"
+          ephemeral-storage: "1Gi"
+
+  # 제한 설정
+  limits:
+    cpu: "8"      # 최대 8 vCPU
+    memory: 16Gi  # 최대 16GB RAM
+
+  # Disruption 설정 (노드 교체 정책)
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    expireAfter: 720h  # 30일 후 노드 교체
+    consolidateAfter: 30s
+    budgets:
+      - nodes: "10%"  # 동시에 10%의 노드만 교체

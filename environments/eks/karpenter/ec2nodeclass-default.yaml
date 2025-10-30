@@ -1,0 +1,52 @@
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  # AMI 선택
+  amiFamily: AL2  # Amazon Linux 2
+
+  # 서브넷 선택 (Private Subnets)
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: fans-cluster
+
+  # 보안 그룹 선택
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: fans-cluster
+
+  # IAM 인스턴스 프로파일
+  role: KarpenterNodeRole-fans-cluster
+
+  # 사용자 데이터 (노드 초기화 스크립트)
+  userData: |
+    #!/bin/bash
+    echo "Karpenter General Node"
+    # CloudWatch 에이전트 설치 (선택)
+    yum install -y amazon-cloudwatch-agent
+
+  # 블록 디바이스 매핑 (EBS 볼륨)
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 30Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+        deleteOnTermination: true
+
+  # 메타데이터 옵션
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+
+  # 태그
+  tags:
+    Name: karpenter-general-node
+    Environment: production
+    ManagedBy: karpenter
+    WorkloadType: general

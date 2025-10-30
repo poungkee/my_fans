@@ -1,0 +1,58 @@
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: ai-worker
+spec:
+  # 템플릿 설정
+  template:
+    metadata:
+      labels:
+        workload-type: ai-worker
+    spec:
+      nodeClassRef:
+        name: ai-worker
+      requirements:
+        # Spot 인스턴스 사용 (60-90% 비용 절감)
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        # CPU 최적화 인스턴스 (AI Worker용)
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - c5.large      # 2 vCPU, 4GB RAM
+            - c5.xlarge     # 4 vCPU, 8GB RAM
+            - c5a.large     # AMD EPYC (저렴)
+            - c5a.xlarge
+            - c6i.large     # 최신 세대
+            - c6i.xlarge
+      # Taints (AI Worker만 스케줄링되도록)
+      taints:
+        - key: workload-type
+          value: ai-worker
+          effect: NoSchedule
+      # Kubelet 설정
+      kubelet:
+        maxPods: 110
+        evictionHard:
+          memory.available: "5%"
+          nodefs.available: "10%"
+        systemReserved:
+          cpu: "100m"
+          memory: "100Mi"
+
+  # 제한 설정
+  limits:
+    cpu: "16"      # 최대 16 vCPU
+    memory: 32Gi   # 최대 32GB RAM
+
+  # Disruption 설정 (Spot 중단 대응)
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    expireAfter: 168h  # 7일 후 노드 교체 (Spot은 짧게)
+    consolidateAfter: 30s
+    budgets:
+      - nodes: "50%"  # Spot은 중단 가능성 있으므로 50%까지 동시 교체 허용

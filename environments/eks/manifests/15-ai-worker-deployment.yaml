@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker
+  namespace: fans
+  labels:
+    app: ai-worker
+    tier: worker
+spec:
+  replicas: 2  # 기본 2개 (KEDA가 자동 조정)
+  selector:
+    matchLabels:
+      app: ai-worker
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+        tier: worker
+    spec:
+      # Karpenter AI Worker NodePool에 스케줄링
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: workload-type
+                    operator: In
+                    values:
+                      - ai-worker
+      tolerations:
+        - key: workload-type
+          operator: Equal
+          value: ai-worker
+          effect: NoSchedule
+
+      containers:
+        - name: ai-worker
+          image: YOUR_ECR_REPO/fans-ai-worker:latest
+          imagePullPolicy: Always
+
+          env:
+            # Redis
+            - name: REDIS_HOST
+              value: "fans-redis"
+            - name: REDIS_PORT
+              value: "6379"
+
+            # AI Services URLs
+            - name: SUMMARIZE_AI_URL
+              value: "http://summarize-ai:8000"
+            - name: BIAS_ANALYSIS_AI_URL
+              value: "http://bias-analysis-ai:8002"
+            - name: RECOMMENDATION_AI_URL
+              value: "http://recommendation-ai:8003"
+
+            # Worker Config
+            - name: WORKER_CONCURRENCY
+              value: "5"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: NODE_ENV
+              value: "production"
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+          # Readiness Probe
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('ioredis').createClient({host:process.env.REDIS_HOST}).ping().then(()=>process.exit(0)).catch(()=>process.exit(1))"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Liveness Probe
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('ioredis').createClient({host:process.env.REDIS_HOST}).ping().then(()=>process.exit(0)).catch(()=>process.exit(1))"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Graceful Shutdown (Spot 중단 대응)
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 15  # 진행 중인 작업 완료 대기
+
+      # Spot 중단 시 Pod를 다른 노드로 빠르게 이동
+      terminationGracePeriodSeconds: 120
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-worker
+  namespace: fans
+spec:
+  selector:
+    app: ai-worker
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3002
+  type: ClusterIP

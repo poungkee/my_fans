@@ -1,0 +1,202 @@
+name: Deploy to EKS Production
+
+on:
+  push:
+    branches:
+      - main  # main 브랜치에 push하면 자동 배포
+  workflow_dispatch:  # 수동 실행도 가능
+
+env:
+  AWS_REGION: ap-northeast-2
+  EKS_CLUSTER_NAME: fans-cluster
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
+
+jobs:
+  deploy:
+    name: Build and Deploy to EKS
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.fans-prod.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set image tag
+        id: image-tag
+        run: |
+          echo "TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "DATE=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+
+      # Main API 빌드 및 푸시
+      - name: Build and push Main API
+        run: |
+          docker build \
+            --build-arg NODE_ENV=production \
+            -t $ECR_REGISTRY/fans-main-api:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-main-api:latest \
+            -f backend/api/Dockerfile \
+            backend/api
+
+          docker push $ECR_REGISTRY/fans-main-api:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-main-api:latest
+
+      # Summarize AI 빌드 및 푸시
+      - name: Build and push Summarize AI
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-summarize-ai:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-summarize-ai:latest \
+            -f backend/ai/summarize-ai/Dockerfile \
+            backend/ai/summarize-ai
+
+          docker push $ECR_REGISTRY/fans-summarize-ai:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-summarize-ai:latest
+
+      # Bias Analysis AI 빌드 및 푸시
+      - name: Build and push Bias Analysis AI
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-bias-analysis-ai:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-bias-analysis-ai:latest \
+            -f backend/ai/bias-analysis-ai/Dockerfile \
+            backend/ai/bias-analysis-ai
+
+          docker push $ECR_REGISTRY/fans-bias-analysis-ai:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-bias-analysis-ai:latest
+
+      # Crawler 빌드 및 푸시
+      - name: Build and push Crawler
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-unified-crawler:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-unified-crawler:latest \
+            -f backend/crawler/crawler-v2/Dockerfile \
+            backend/crawler/crawler-v2
+
+          docker push $ECR_REGISTRY/fans-unified-crawler:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-unified-crawler:latest
+
+      # Classifier 빌드 및 푸시
+      - name: Build and push Classifier
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-classification-api:latest \
+            -f backend/simple-classifier/Dockerfile \
+            backend/simple-classifier
+
+          docker push $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-classification-api:latest
+
+      # Scheduler 빌드 및 푸시
+      - name: Build and push Scheduler
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-scheduler:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-scheduler:latest \
+            -f backend/scheduler/Dockerfile \
+            backend/scheduler
+
+          docker push $ECR_REGISTRY/fans-scheduler:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-scheduler:latest
+
+      # Frontend 빌드 및 푸시
+      - name: Build and push Frontend
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/fans-frontend:${{ steps.image-tag.outputs.TAG }} \
+            -t $ECR_REGISTRY/fans-frontend:latest \
+            -f frontend/Dockerfile \
+            frontend
+
+          docker push $ECR_REGISTRY/fans-frontend:${{ steps.image-tag.outputs.TAG }}
+          docker push $ECR_REGISTRY/fans-frontend:latest
+
+      # EKS 클러스터 설정
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      # 이미지 태그 업데이트 (Kustomize 사용)
+      - name: Update image tags in manifests
+        run: |
+          cd environments/eks/manifests
+
+          # 각 deployment의 이미지 태그 업데이트
+          kubectl set image deployment/main-api \
+            main-api=$ECR_REGISTRY/fans-main-api:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/summarize-ai \
+            summarize-ai=$ECR_REGISTRY/fans-summarize-ai:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/bias-analysis-ai \
+            bias-analysis-ai=$ECR_REGISTRY/fans-bias-analysis-ai:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/unified-crawler \
+            unified-crawler=$ECR_REGISTRY/fans-unified-crawler:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/classification-api \
+            classification-api=$ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/scheduler \
+            scheduler=$ECR_REGISTRY/fans-scheduler:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+          kubectl set image deployment/frontend \
+            frontend=$ECR_REGISTRY/fans-frontend:${{ steps.image-tag.outputs.TAG }} \
+            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
+
+      # Kubernetes 매니페스트 적용
+      - name: Deploy to EKS
+        run: |
+          kubectl apply -f environments/eks/manifests/ -n fans-svc
+
+          # 배포 상태 확인
+          kubectl rollout status deployment/main-api -n fans-svc --timeout=5m
+          kubectl rollout status deployment/summarize-ai -n fans-svc --timeout=5m
+          kubectl rollout status deployment/bias-analysis-ai -n fans-svc --timeout=5m
+
+      # 배포 확인
+      - name: Verify deployment
+        run: |
+          echo "===== Deployment Status ====="
+          kubectl get pods -n fans-svc
+          echo ""
+          echo "===== Services ====="
+          kubectl get svc -n fans-svc
+          echo ""
+          echo "===== Ingress ====="
+          kubectl get ingress -n fans-svc
+
+      # Slack 알림 (선택사항)
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to EKS Production
+            Result: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
