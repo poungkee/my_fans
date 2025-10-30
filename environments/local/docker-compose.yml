@@ -83,6 +83,35 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # AI Recommendation Service (Port: 8003)
+  recommendation-ai:
+    build: ../../backend/ai/recommendation_ai
+    container_name: fans_recommendation_ai
+    ports:
+      - "${RECOMMENDATION_AI_PORT:-8003}:8003"
+    env_file:
+      - .env
+    environment:
+      - PORT=${RECOMMENDATION_AI_PORT:-8003}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_SCHEMA=${DB_SCHEMA}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
   # ================================
   # 크롤러 서비스들
   # ================================
