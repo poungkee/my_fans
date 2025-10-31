@@ -13,7 +13,7 @@ metadata:
 
     # SSL 설정 (Wildcard 인증서: *.fans.ai.kr)
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:907123164281:certificate/e1480a11-dabb-41e2-95bb-80560a2cce5f
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:907123164281:certificate/538dae35-9a09-4f03-aced-4298fd4b04bd
     alb.ingress.kubernetes.io/ssl-redirect: '443'
 
     # 헬스체크 (default)
@@ -30,10 +30,9 @@ metadata:
     alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
 spec:
   rules:
-  - host: api.fans.ai.kr
+  - host: www.fans.ai.kr
     http:
       paths:
-      # API 경로만 (프론트엔드는 CloudFront/S3로 이동)
       - path: /api
         pathType: Prefix
         backend:
@@ -42,6 +41,23 @@ spec:
             port:
               number: 3000
       - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api-service
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-api-service
+            port:
+              number: 3000
+  - host: api.fans.ai.kr
+    http:
+      paths:
+      - path: /
         pathType: Prefix
         backend:
           service:

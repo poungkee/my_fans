@@ -14,6 +14,7 @@ resource "aws_cloudfront_distribution" "static_assets" {
   comment             = "FANS Static Assets CDN"
   default_root_object = "index.html"
   price_class         = "PriceClass_200"  # US, Europe, Asia, Middle East, Africa
+  aliases             = ["www.fans.ai.kr"]
 
   # S3 Origin
   origin {
@@ -96,8 +97,8 @@ resource "aws_cloudfront_distribution" "static_assets" {
 
   # SSL Certificate
   viewer_certificate {
-    cloudfront_default_certificate = true
-    # custom_ssl_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT_ID"
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:907123164281:certificate/a6cd0de2-9d06-45e8-8ebe-d01fa797d8e4"
+    ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
 

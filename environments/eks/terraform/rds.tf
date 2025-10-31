@@ -36,7 +36,7 @@ resource "aws_db_instance" "postgres" {
 
   # 엔진 설정
   engine               = "postgres"
-  engine_version       = "15.4"
+  engine_version       = "15.14"
   instance_class       = "db.t3.medium"
   allocated_storage    = 100
   storage_type         = "gp3"
@@ -67,8 +67,8 @@ resource "aws_db_instance" "postgres" {
   skip_final_snapshot = false
   final_snapshot_identifier = "${var.cluster_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
 
-  # 파라미터 그룹
-  parameter_group_name = aws_db_parameter_group.postgres.name
+  # 파라미터 그룹 (기본 parameter group 사용)
+  # parameter_group_name = aws_db_parameter_group.postgres.name
 
   tags = {
     Name        = "${var.cluster_name}-postgres"
@@ -76,47 +76,39 @@ resource "aws_db_instance" "postgres" {
   }
 }
 
-# RDS 파라미터 그룹 (PostgreSQL 15 최적화)
-resource "aws_db_parameter_group" "postgres" {
-  name   = "${var.cluster_name}-postgres-15"
-  family = "postgres15"
-
-  # 연결 최적화
-  parameter {
-    name  = "max_connections"
-    value = "200"
-  }
-
-  # 메모리 최적화 (db.t3.medium: 4GB RAM)
-  parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4096}"  # 1GB
-  }
-
-  parameter {
-    name  = "effective_cache_size"
-    value = "{DBInstanceClassMemory*3/4096}"  # 3GB
-  }
-
-  # 쿼리 성능
-  parameter {
-    name  = "work_mem"
-    value = "10240"  # 10MB
-  }
-
-  parameter {
-    name  = "maintenance_work_mem"
-    value = "524288"  # 512MB
-  }
-
-  # 로깅
-  parameter {
-    name  = "log_min_duration_statement"
-    value = "1000"  # 1초 이상 쿼리 로깅
-  }
-
-  tags = {
-    Name        = "${var.cluster_name}-postgres-params"
-    Environment = var.environment
-  }
-}
+# RDS 파라미터 그룹 (기본 사용)
+# 참고: Custom parameter group은 static parameter 문제로 인해 제거됨
+# AWS 기본 parameter group 사용 권장
+#
+# resource "aws_db_parameter_group" "postgres" {
+#   name   = "${var.cluster_name}-postgres-15-v2"
+#   family = "postgres15"
+#
+#   # 연결 최적화
+#   parameter {
+#     name  = "max_connections"
+#     value = "200"
+#   }
+#
+#   # 쿼리 성능
+#   parameter {
+#     name  = "work_mem"
+#     value = "10240"  # 10MB
+#   }
+#
+#   parameter {
+#     name  = "maintenance_work_mem"
+#     value = "524288"  # 512MB
+#   }
+#
+#   # 로깅
+#   parameter {
+#     name  = "log_min_duration_statement"
+#     value = "1000"  # 1초 이상 쿼리 로깅
+#   }
+#
+#   tags = {
+#     Name        = "${var.cluster_name}-postgres-params"
+#     Environment = var.environment
+#   }
+# }

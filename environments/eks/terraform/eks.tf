@@ -156,6 +156,9 @@ module "karpenter" {
   create_node_iam_role = false
   node_iam_role_arn    = module.eks.eks_managed_node_groups["main_workers"].iam_role_arn
 
+  # EKS Access Entry 충돌 방지
+  create_access_entry = false
+
   tags = {
     Environment = var.environment
   }

@@ -23,4 +23,5 @@ export const AppDataSource = new DataSource({
     connectionLimit: 10,
     client_encoding: 'UTF8',
   },
+  ssl: process.env.DB_HOST?.includes('rds.amazonaws.com') ? { rejectUnauthorized: false } : false,
 });
