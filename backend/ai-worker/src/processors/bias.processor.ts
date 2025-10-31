@@ -11,20 +11,20 @@ export async function processBias(job: Job<BiasJob>): Promise<JobResult> {
   logger.info(`Processing bias analysis for article ${articleId}`);
 
   try {
-    // AI 편향성 분석 서비스 호출
+    // AI 편향성 분석 서비스 호출 (엔드포인트: /analyze/full)
     const response = await axios.post(
-      `${BIAS_ANALYSIS_AI_URL}/analyze_bias`,
+      `${BIAS_ANALYSIS_AI_URL}/analyze/full`,
       {
+        text: content,
         article_id: articleId,
-        content: content,
-        category_id: categoryId,
+        category: categoryId, // 카테고리 이름 필요 (categoryId가 아닌 category name)
       },
       {
         timeout: 30000,
       }
     );
 
-    if (!response.data || !response.data.success) {
+    if (!response.data) {
       throw new Error('AI service returned failure response');
     }
 

@@ -415,43 +415,6 @@ CREATE TABLE market_summary (
 CREATE INDEX idx_market_summary_type ON market_summary(market_type);
 CREATE INDEX idx_market_summary_updated ON market_summary(updated_at DESC);
 
--- ================================
--- 추가: Raw News Articles (크롤링 원본 저장)
--- ================================
-
--- Raw News Articles Table (크롤링 원본 저장)
-CREATE TABLE raw_news_articles (
-    id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(500) NOT NULL,
-    content TEXT,
-    url VARCHAR(1000) UNIQUE,
-    image_url VARCHAR(1000),
-    journalist VARCHAR(100),
-    pub_date TIMESTAMPTZ,
-
-    -- 원본 데이터 (텍스트 형태로 저장)
-    original_source VARCHAR(200),  -- 크롤링한 원본 언론사명 (분류 전)
-    original_category VARCHAR(100), -- 크롤링한 원본 카테고리명 (분류 전)
-
-    -- 처리 상태
-    processed BOOLEAN DEFAULT FALSE,
-    processed_at TIMESTAMPTZ,
-    processing_error TEXT,
-
-    -- 타임스탬프
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Raw News Articles 인덱스
-CREATE INDEX idx_raw_news_processed ON raw_news_articles(processed);
-CREATE INDEX idx_raw_news_created_at ON raw_news_articles(created_at DESC);
-CREATE INDEX idx_raw_news_url ON raw_news_articles(url);
-
--- Raw News Articles updated_at 트리거
-CREATE TRIGGER trigger_raw_news_updated
-    BEFORE UPDATE ON raw_news_articles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ================================
 -- 추가: 추천 시스템 관련 테이블

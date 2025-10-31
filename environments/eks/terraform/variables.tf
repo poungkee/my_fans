@@ -35,7 +35,32 @@ variable "enable_nat_gateway" {
 }
 
 variable "single_nat_gateway" {
-  description = "Use single NAT Gateway"
+  description = "Use single NAT Gateway (false = 2 NAT Gateways for Multi-AZ)"
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "db_username" {
+  description = "RDS master username"
+  type        = string
+  default     = "fans_user"
+  sensitive   = true
+}
+
+variable "db_password" {
+  description = "RDS master password"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "RDS database name"
+  type        = string
+  default     = "fans_db"
+}
+
+variable "s3_bucket_name" {
+  description = "S3 bucket name for static assets"
+  type        = string
+  default     = "fans-static-assets"
 }

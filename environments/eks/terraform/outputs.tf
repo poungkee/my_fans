@@ -49,3 +49,91 @@ output "configure_kubectl" {
   description = "Configure kubectl command"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${var.cluster_name}"
 }
+
+# ==================================
+# RDS Outputs
+# ==================================
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.postgres.endpoint
+}
+
+output "rds_address" {
+  description = "RDS PostgreSQL address (without port)"
+  value       = aws_db_instance.postgres.address
+}
+
+output "rds_port" {
+  description = "RDS PostgreSQL port"
+  value       = aws_db_instance.postgres.port
+}
+
+output "rds_connection_string" {
+  description = "RDS connection string (without password)"
+  value       = "postgresql://${var.db_username}@${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/${var.db_name}"
+  sensitive   = true
+}
+
+# ==================================
+# ElastiCache Outputs
+# ==================================
+output "redis_primary_endpoint" {
+  description = "ElastiCache Redis primary endpoint"
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+}
+
+output "redis_reader_endpoint" {
+  description = "ElastiCache Redis reader endpoint"
+  value       = aws_elasticache_replication_group.redis.reader_endpoint_address
+}
+
+output "redis_port" {
+  description = "ElastiCache Redis port"
+  value       = aws_elasticache_replication_group.redis.port
+}
+
+output "redis_connection_url" {
+  description = "Redis connection URL for BullMQ"
+  value       = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}"
+}
+
+# ==================================
+# S3 & CloudFront Outputs
+# ==================================
+output "s3_bucket_name" {
+  description = "S3 bucket name for static assets"
+  value       = aws_s3_bucket.static_assets.bucket
+}
+
+output "s3_bucket_arn" {
+  description = "S3 bucket ARN"
+  value       = aws_s3_bucket.static_assets.arn
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID"
+  value       = aws_cloudfront_distribution.static_assets.id
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront domain name"
+  value       = aws_cloudfront_distribution.static_assets.domain_name
+}
+
+output "cloudfront_url" {
+  description = "CloudFront URL"
+  value       = "https://${aws_cloudfront_distribution.static_assets.domain_name}"
+}
+
+# ==================================
+# Karpenter Outputs
+# ==================================
+output "karpenter_irsa_arn" {
+  description = "Karpenter IRSA ARN"
+  value       = module.karpenter.iam_role_arn
+}
+
+output "karpenter_sqs_queue_name" {
+  description = "Karpenter SQS queue name"
+  value       = module.karpenter.queue_name
+}

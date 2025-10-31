@@ -3,6 +3,7 @@ import { Worker } from 'bullmq';
 import { redisConfig } from './config/redis.config';
 import { logger } from './utils/logger';
 import { QUEUE_NAMES } from '../../queue/src/config/queue-names';
+import { Pool } from 'pg';
 
 // Processors
 import { processSummary } from './processors/summary.processor';
@@ -13,18 +14,31 @@ import { processRecommendation } from './processors/recommendation.processor';
 // 환경변수 로드
 dotenv.config();
 
-const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '5');
+const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '3');
+const SUMMARY_CONCURRENCY = parseInt(process.env.SUMMARY_CONCURRENCY || '1');
 
-// Summary Worker
+// Database connection
+const dbPool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.POSTGRES_DB || 'fans_db',
+  user: process.env.POSTGRES_USER || 'fans_user',
+  password: process.env.POSTGRES_PASSWORD || 'fans_pass',
+  max: 10,
+});
+
+const DB_SCHEMA = process.env.DB_SCHEMA || 'development';
+
+// Summary Worker - 요약은 무거우므로 동시 1개만 처리
 const summaryWorker = new Worker(
   QUEUE_NAMES.AI_SUMMARY,
   processSummary,
   {
     connection: redisConfig,
-    concurrency: CONCURRENCY,
+    concurrency: SUMMARY_CONCURRENCY,
     limiter: {
-      max: 10,
-      duration: 1000, // 1초당 10개
+      max: 2,
+      duration: 1000, // 1초당 2개로 제한
     },
   }
 );
@@ -74,11 +88,101 @@ const recommendationWorker = new Worker(
 // 이벤트 핸들러
 const workers = [summaryWorker, biasWorker, keywordWorker, recommendationWorker];
 
-workers.forEach((worker) => {
-  worker.on('completed', (job) => {
-    logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
-  });
+// Summary worker: save to news_articles
+summaryWorker.on('completed', async (job) => {
+  try {
+    const result = await job.returnvalue;
+    if (result?.success && result?.data) {
+      await dbPool.query(
+        `UPDATE ${DB_SCHEMA}.news_articles SET ai_summary = $1 WHERE id = $2`,
+        [result.data.summary, job.data.articleId]
+      );
+      logger.info(`✅ Summary saved to DB for article ${job.data.articleId}`);
+    }
+  } catch (error: any) {
+    logger.error(`Failed to save summary: ${error.message}`);
+  }
+  logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
+});
 
+// Bias worker: save to bias_analysis AND article_sentiment
+biasWorker.on('completed', async (job) => {
+  try {
+    const result = await job.returnvalue;
+    if (result?.success && result?.data) {
+      const data = result.data;
+
+      // Save bias analysis if political article
+      if (data.political_leaning) {
+        await dbPool.query(
+          `INSERT INTO ${DB_SCHEMA}.bias_analysis
+           (article_id, political_leaning, bias_score, confidence, analysis_data)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (article_id) DO UPDATE SET
+             political_leaning = EXCLUDED.political_leaning,
+             bias_score = EXCLUDED.bias_score,
+             confidence = EXCLUDED.confidence,
+             analysis_data = EXCLUDED.analysis_data`,
+          [
+            job.data.articleId,
+            data.political_leaning,
+            data.bias_score,
+            data.confidence,
+            JSON.stringify(data)
+          ]
+        );
+        logger.info(`✅ Bias analysis saved to DB for article ${job.data.articleId}`);
+      }
+
+      // Save sentiment analysis (all articles)
+      if (data.sentiment) {
+        // Calculate normalized scores from counts
+        const total = data.sentiment.positive_count + data.sentiment.negative_count;
+        let posScore = 0.33, negScore = 0.33, neuScore = 0.34;
+
+        if (total > 0) {
+          posScore = data.sentiment.positive_count / total;
+          negScore = data.sentiment.negative_count / total;
+          neuScore = 1.0 - (posScore + negScore);
+        }
+
+        await dbPool.query(
+          `INSERT INTO ${DB_SCHEMA}.article_sentiment
+           (article_id, overall_sentiment, positive_score, negative_score, neutral_score)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (article_id) DO UPDATE SET
+             overall_sentiment = EXCLUDED.overall_sentiment,
+             positive_score = EXCLUDED.positive_score,
+             negative_score = EXCLUDED.negative_score,
+             neutral_score = EXCLUDED.neutral_score`,
+          [
+            job.data.articleId,
+            data.sentiment.sentiment,
+            posScore,
+            negScore,
+            neuScore
+          ]
+        );
+        logger.info(`✅ Sentiment analysis saved to DB for article ${job.data.articleId}`);
+      }
+    }
+  } catch (error: any) {
+    logger.error(`Failed to save bias/sentiment: ${error.message}`);
+  }
+  logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
+});
+
+// Keyword worker: just log
+keywordWorker.on('completed', (job) => {
+  logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
+});
+
+// Recommendation worker: just log
+recommendationWorker.on('completed', (job) => {
+  logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
+});
+
+workers.forEach((worker) => {
   worker.on('failed', (job, err) => {
     logger.error(`❌ Job ${job?.id} failed in queue ${job?.queueName}: ${err.message}`);
   });
@@ -100,5 +204,5 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 logger.info('🚀 AI Workers started');
-logger.info(`📊 Concurrency: ${CONCURRENCY}`);
+logger.info(`📊 Summary Concurrency: ${SUMMARY_CONCURRENCY}, Other Concurrency: ${CONCURRENCY}`);
 logger.info(`📋 Queues: ${Object.values(QUEUE_NAMES).join(', ')}`);

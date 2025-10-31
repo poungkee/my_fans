@@ -11,19 +11,19 @@ export async function processSummary(job: Job<SummaryJob>): Promise<JobResult> {
   logger.info(`Processing summary for article ${articleId}`);
 
   try {
-    // AI 요약 서비스 호출
+    // AI 요약 서비스 호출 (엔드포인트: /ai/summarize)
     const response = await axios.post(
-      `${SUMMARIZE_AI_URL}/summarize`,
+      `${SUMMARIZE_AI_URL}/ai/summarize`,
       {
-        article_id: articleId,
-        content: content,
+        text: content,
+        max_length: 150,
       },
       {
         timeout: 30000, // 30초 타임아웃
       }
     );
 
-    if (!response.data || !response.data.success) {
+    if (!response.data || !response.data.summary) {
       throw new Error('AI service returned failure response');
     }
 
@@ -31,7 +31,10 @@ export async function processSummary(job: Job<SummaryJob>): Promise<JobResult> {
 
     return {
       success: true,
-      data: response.data,
+      data: {
+        summary: response.data.summary,
+        length: response.data.length,
+      },
       processedAt: new Date(),
     };
   } catch (error: any) {

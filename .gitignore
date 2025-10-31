@@ -214,6 +214,8 @@ environments/eks/terraform/*.tfstate.backup
 environments/eks/terraform/.terraform/
 environments/eks/terraform/.terraform.lock.hcl
 environments/eks/terraform/*.tfplan
+environments/eks/terraform/terraform.tfvars
+environments/eks/terraform/*.auto.tfvars
 
 # === Root temporary files (AWS configs, etc.) ===
 /node_modules/
@@ -232,3 +234,8 @@ backend/database/migrations_archive/
 # Database Backups
 backups/
 *.sql
+backend/scheduler/node_modules/
+
+# Scheduler node_modules
+backend/scheduler/node_modules/
+**/node_modules/

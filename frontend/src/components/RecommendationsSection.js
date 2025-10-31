@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../config/api';
 import NewsItem from './NewsItem';
 import './RecommendationsSection.css';
 
@@ -22,12 +21,11 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
         }
 
         if (!token) {
-          setLoading(false);
           return; // 비로그인 사용자는 추천 섹션 숨김
         }
 
         // 초기 로드 시에는 캐시 삭제 안 함 (기존 추천 사용)
-        const response = await fetch(`${API_BASE_URL}/api/recommendations?limit=20`, {
+        const response = await fetch(`/api/recommendations?limit=20`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -65,7 +63,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       if (!token) return;
 
       // 캐시 삭제
-      await fetch(`${API_BASE_URL}/api/recommendations/refresh`, {
+      await fetch(`/api/recommendations/refresh`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -73,7 +71,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       });
 
       // 새로운 추천 가져오기
-      const response = await fetch(`${API_BASE_URL}/api/recommendations?limit=20`, {
+      const response = await fetch(`/api/recommendations?limit=20`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -90,13 +88,14 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
     }
   };
 
-  // 로그인하지 않은 경우 렌더링하지 않음
-  let token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  // 비로그인 사용자는 컴포넌트를 렌더링하지 않음
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (!token) {
     return null;
   }
 
-  if (loading) {
+  // 로딩 중인 경우
+  if (loading && recommendations.length === 0) {
     return (
       <section className={`recommendations-section ${isExpanded ? 'expanded' : 'collapsed'}`}>
         <div className="recommendations-header" onClick={() => setIsExpanded(!isExpanded)}>
@@ -202,7 +201,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
         <>
           <div className="recommendations-subtitle">
             {isNewUser
-              ? '기사를 읽거나 프로필 등록을 해서 맞춤 추천 뉴스 보기가 가능합니다'
+              ? '현재 인기 있는 기사를 추천해드립니다. 더 많은 기사를 읽으면 맞춤 추천이 개선됩니다!'
               : '당신의 관심사를 기반으로 선별한 뉴스입니다'}
           </div>
 

@@ -11,20 +11,18 @@ export async function processKeyword(job: Job<KeywordJob>): Promise<JobResult> {
   logger.info(`Processing keyword extraction for article ${articleId}`);
 
   try {
-    // AI 키워드 추출 서비스 호출 (bias-analysis-ai에 포함됨)
+    // AI 키워드 추출 서비스 호출 (엔드포인트: /analyze/keywords)
     const response = await axios.post(
-      `${BIAS_ANALYSIS_AI_URL}/extract_keywords`,
+      `${BIAS_ANALYSIS_AI_URL}/analyze/keywords`,
       {
-        article_id: articleId,
-        title: title,
-        content: content,
+        text: `${title} ${content}`,
       },
       {
         timeout: 30000,
       }
     );
 
-    if (!response.data || !response.data.success) {
+    if (!response.data || !response.data.keywords) {
       throw new Error('AI service returned failure response');
     }
 
@@ -32,7 +30,9 @@ export async function processKeyword(job: Job<KeywordJob>): Promise<JobResult> {
 
     return {
       success: true,
-      data: response.data,
+      data: {
+        keywords: response.data.keywords,
+      },
       processedAt: new Date(),
     };
   } catch (error: any) {

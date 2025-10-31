@@ -282,35 +282,38 @@ services:
     restart: unless-stopped
 
   # News Processing Scheduler (Airflow 대체)
-  scheduler:
-    build: ../../backend/scheduler
-    container_name: fans_scheduler
-    env_file:
-      - .env
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_SCHEMA=${DB_SCHEMA:-development}
-      - CLASSIFICATION_API_URL=http://classification-api:5000
-      - SUMMARIZE_AI_URL=http://summarize-ai:8000
-      - SCHEDULE_INTERVAL=*/10 * * * *
-      - RUN_ON_START=false
-      - RAW_NEWS_BATCH_SIZE=100
-      - SUMMARY_BATCH_SIZE=50
-      - LOG_LEVEL=info
-    depends_on:
-      postgres:
-        condition: service_healthy
-      classification-api:
-        condition: service_healthy
-      summarize-ai:
-        condition: service_healthy
-    networks:
-      - fans_network
-    restart: unless-stopped
+  # ============================================
+  # Scheduler (사용 안함 - Crawler가 BullMQ에 직접 작업 추가)
+  # ============================================
+  # scheduler:
+  #   build: ../../backend/scheduler
+  #   container_name: fans_scheduler
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - POSTGRES_DB=${POSTGRES_DB}
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - DB_SCHEMA=${DB_SCHEMA:-development}
+  #     - CLASSIFICATION_API_URL=http://classification-api:5000
+  #     - SUMMARIZE_AI_URL=http://summarize-ai:8000
+  #     - SCHEDULE_INTERVAL=*/10 * * * *
+  #     - RUN_ON_START=false
+  #     - RAW_NEWS_BATCH_SIZE=100
+  #     - SUMMARY_BATCH_SIZE=50
+  #     - LOG_LEVEL=info
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     classification-api:
+  #       condition: service_healthy
+  #     summarize-ai:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   restart: unless-stopped
 
   # ================================
   # 아래 서비스들은 더 이상 사용하지 않음 (주석 처리)

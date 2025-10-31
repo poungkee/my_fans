@@ -4,7 +4,7 @@
  */
 
 import cron from 'node-cron';
-import { processRawNews } from './jobs/processRawNews';
+// import { processRawNews } from './jobs/processRawNews'; // REMOVED: raw_news_articles 테이블 삭제됨
 import { generateAISummaries } from './jobs/generateSummaries';
 import { extractKeywords } from './jobs/extractKeywords';
 import { analyzeBias } from './jobs/analyzeBias';
@@ -25,14 +25,8 @@ async function startScheduler() {
 
   // 순차적 작업 실행 함수
   async function runSequentialJobs() {
-    logger.info('📰 [JOB START] Raw News Processing');
-    try {
-      await processRawNews();
-      logger.info('✅ [JOB COMPLETE] Raw News Processing');
-    } catch (error: any) {
-      logger.error(`❌ [JOB FAILED] Raw News Processing: ${error.message}`);
-      return; // 실패 시 다음 작업 중단
-    }
+    // REMOVED: processRawNews() - raw_news_articles 테이블 삭제됨
+    // Crawler가 news_articles에 직접 저장하고 BullMQ에 작업 발행함
 
     logger.info('📝 [JOB START] AI Summary Generation');
     try {
