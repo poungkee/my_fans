@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { NewsArticle } from '../entities/NewsArticle';
-import { RawNewsArticle } from '../entities/RawNewsArticle';
 import { Category } from '../entities/Category';
 import { Source } from '../entities/Source';
 import { BiasAnalysis } from '../entities/BiasAnalysis';
@@ -16,7 +15,7 @@ export const AppDataSource = new DataSource({
   schema: process.env.DB_SCHEMA || 'public',  // ⭐ 스키마 분리
   synchronize: false, // production에서는 false
   logging: process.env.NODE_ENV !== 'production',  // 개발 환경에서만 로깅
-  entities: [NewsArticle, RawNewsArticle, Category, Source, BiasAnalysis],
+  entities: [NewsArticle, Category, Source, BiasAnalysis],
   migrations: [],
   subscribers: [],
   extra: {

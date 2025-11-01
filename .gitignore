@@ -170,6 +170,7 @@ infra/terraform/terraform.rc
 
 # === Work Log (개인 작업 기록) ===
 work_log.md
+work_log_my.md
 
 # Puppeteer Crawler
 backend/crawler/puppeteer-crawler/node_modules/

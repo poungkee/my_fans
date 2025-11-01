@@ -1,40 +1,37 @@
-# Build stage
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# 공통 queue 디렉토리 복사
-COPY ../queue/package*.json ../queue/
-COPY ../queue/src ../queue/src
-COPY ../queue/tsconfig.json ../queue/
-
-# AI Worker 소스 복사
-COPY package*.json ./
-COPY tsconfig.json ./
-COPY src ./src
-
-# 의존성 설치 및 빌드
-RUN npm ci
-RUN npm run build
-
-# Production stage
 FROM node:20-alpine
 
+# Timezone 설정
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Seoul
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /app
 
-# 프로덕션 의존성만 설치
-COPY package*.json ./
-RUN npm ci --only=production
+# queue 복사 및 빌드
+COPY queue/package*.json ./queue/
+RUN cd queue && npm install
+COPY queue ./queue
+RUN cd queue && npm run build
 
-# 빌드된 파일 복사
-COPY --from=builder /app/dist ./dist
+# ai-worker package.json 복사 및 npm install
+COPY ai-worker/package*.json ./ai-worker/
+RUN cd ai-worker && npm install
 
-# 환경변수
+# ai-worker 소스 파일 복사
+COPY ai-worker/src ./ai-worker/src
+COPY ai-worker/tsconfig.json ./ai-worker/
+
+# @fans/queue를 빌드된 버전으로 덮어쓰기
+RUN rm -rf /app/ai-worker/node_modules/@fans && \
+    mkdir -p /app/ai-worker/node_modules/@fans && \
+    cp -r /app/queue /app/ai-worker/node_modules/@fans/queue
+
+# TypeScript 컴파일
+RUN cd ai-worker && npm run build
+
+# 환경변수 기본값
 ENV NODE_ENV=production
 
-# 헬스체크
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+WORKDIR /app/ai-worker
 
-# 실행
 CMD ["node", "dist/index.js"]

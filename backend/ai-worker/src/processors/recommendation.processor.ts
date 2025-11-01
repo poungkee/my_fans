@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import { RecommendationJob, JobResult } from '../../../queue/src/types/job.types';
+import { RecommendationJob, JobResult } from '@fans/queue';
 
 const RECOMMENDATION_AI_URL = process.env.RECOMMENDATION_AI_URL || 'http://localhost:8003';
 

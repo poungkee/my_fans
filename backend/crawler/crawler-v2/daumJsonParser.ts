@@ -193,6 +193,7 @@ export class DaumJsonParser {
           title: document.querySelector('h3.tit_view')?.textContent?.trim() || '',
           source: document.querySelector('#kakaoServiceLogo')?.textContent?.trim() || '',
           journalist: '',
+          journalistDebug: '',
           imageUrl: '',
           pubDateStr: document.querySelector('.num_date')?.textContent?.trim() || ''
         };

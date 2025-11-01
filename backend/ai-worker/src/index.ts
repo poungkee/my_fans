@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { Worker } from 'bullmq';
 import { redisConfig } from './config/redis.config';
 import { logger } from './utils/logger';
-import { QUEUE_NAMES } from '../../queue/src/config/queue-names';
+import { QUEUE_NAMES } from '@fans/queue';
 import { Pool } from 'pg';
 
 // Processors
@@ -25,9 +25,10 @@ const dbPool = new Pool({
   user: process.env.POSTGRES_USER || 'fans_user',
   password: process.env.POSTGRES_PASSWORD || 'fans_pass',
   max: 10,
+  ssl: process.env.DB_HOST && process.env.DB_HOST !== 'localhost'
+    ? { rejectUnauthorized: false }
+    : false,
 });
-
-const DB_SCHEMA = process.env.DB_SCHEMA || 'development';
 
 // Summary Worker - 요약은 무거우므로 동시 1개만 처리
 const summaryWorker = new Worker(
@@ -94,7 +95,7 @@ summaryWorker.on('completed', async (job) => {
     const result = await job.returnvalue;
     if (result?.success && result?.data) {
       await dbPool.query(
-        `UPDATE ${DB_SCHEMA}.news_articles SET ai_summary = $1 WHERE id = $2`,
+        `UPDATE news_articles SET ai_summary = $1 WHERE id = $2`,
         [result.data.summary, job.data.articleId]
       );
       logger.info(`✅ Summary saved to DB for article ${job.data.articleId}`);
@@ -115,7 +116,7 @@ biasWorker.on('completed', async (job) => {
       // Save bias analysis if political article
       if (data.political_leaning) {
         await dbPool.query(
-          `INSERT INTO ${DB_SCHEMA}.bias_analysis
+          `INSERT INTO bias_analysis
            (article_id, political_leaning, bias_score, confidence, analysis_data)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (article_id) DO UPDATE SET
@@ -147,7 +148,7 @@ biasWorker.on('completed', async (job) => {
         }
 
         await dbPool.query(
-          `INSERT INTO ${DB_SCHEMA}.article_sentiment
+          `INSERT INTO article_sentiment
            (article_id, overall_sentiment, positive_score, negative_score, neutral_score)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (article_id) DO UPDATE SET

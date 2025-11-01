@@ -338,30 +338,20 @@ export class UnifiedCrawlerService {
 
     logger.info(`💾 새 기사 저장: ${article.title.substring(0, 50)}...`);
 
-    // AI 요약 큐에 Job 추가 (비동기, 실패해도 계속)
-    addSummaryJob({
-      articleId: saved.id,
-      content: article.content
-    }).catch((error: any) => {
-      logger.error(`AI 요약 큐 추가 실패 (기사 ID: ${saved.id}):`, error);
-    });
+    // AI 큐에 Job 추가 (타임아웃 10초, 실패해도 크롤링은 계속)
+    Promise.all([
+      addSummaryJob({ articleId: saved.id, content: article.content })
+        .then(() => logger.info(`✅ AI 요약 큐 추가: ${saved.id}`))
+        .catch((err) => logger.warn(`⚠️  AI 요약 큐 추가 실패 (${saved.id}): ${err.message}`)),
 
-    // AI 편향 분석 큐에 Job 추가 (비동기, 실패해도 계속)
-    addBiasJob({
-      articleId: saved.id,
-      content: article.content
-    }).catch((error: any) => {
-      logger.error(`AI 편향 분석 큐 추가 실패 (기사 ID: ${saved.id}):`, error);
-    });
+      addBiasJob({ articleId: saved.id, content: article.content })
+        .then(() => logger.info(`✅ AI 편향 큐 추가: ${saved.id}`))
+        .catch((err) => logger.warn(`⚠️  AI 편향 큐 추가 실패 (${saved.id}): ${err.message}`)),
 
-    // AI 키워드 추출 큐에 Job 추가 (비동기, 실패해도 계속)
-    addKeywordJob({
-      articleId: saved.id,
-      content: article.content,
-      title: article.title
-    }).catch((error: any) => {
-      logger.error(`AI 키워드 큐 추가 실패 (기사 ID: ${saved.id}):`, error);
-    });
+      addKeywordJob({ articleId: saved.id, content: article.content, title: article.title })
+        .then(() => logger.info(`✅ AI 키워드 큐 추가: ${saved.id}`))
+        .catch((err) => logger.warn(`⚠️  AI 키워드 큐 추가 실패 (${saved.id}): ${err.message}`))
+    ]).catch(() => {}); // 전체 실패해도 크롤링은 계속
   }
 
   /**

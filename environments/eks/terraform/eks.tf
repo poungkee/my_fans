@@ -56,6 +56,20 @@ module "eks" {
         }
       }
     }
+
+    hodduk_admin = {
+      kubernetes_groups = []
+      principal_arn     = "arn:aws:iam::907123164281:user/hodduk"
+
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
   }
 
   # EKS Managed Node Groups (t3.large × 2 for Main API, Crawler, AI Services)

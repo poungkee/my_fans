@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import { BiasJob, JobResult } from '../../../queue/src/types/job.types';
+import { BiasJob, JobResult } from '@fans/queue';
 
 const BIAS_ANALYSIS_AI_URL = process.env.BIAS_ANALYSIS_AI_URL || 'http://localhost:8002';
 

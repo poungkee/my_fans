@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import { SummaryJob, JobResult } from '../../../queue/src/types/job.types';
+import { SummaryJob, JobResult } from '@fans/queue';
 
 const SUMMARIZE_AI_URL = process.env.SUMMARIZE_AI_URL || 'http://localhost:8000';
 
