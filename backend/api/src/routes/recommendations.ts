@@ -16,29 +16,46 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
     const userId = req.user!.userId;
     const limit = parseInt(req.query.limit as string) || 20;
 
-    // 1. 캐시된 추천 조회 (user_recommendations 테이블)
-    const cachedRecommendations = await AppDataSource.query(
-      `SELECT na.*, ur.score, ur.created_at as recommended_at
-       FROM user_recommendations ur
-       JOIN news_articles na ON ur.article_id = na.id
-       WHERE ur.user_id = $1
-       ORDER BY ur.score DESC, ur.created_at DESC
-       LIMIT $2`,
-      [userId, limit]
+    // 1. 캐시된 추천 조회 (user_recommendations 테이블 - JSONB 구조)
+    const cacheResult = await AppDataSource.query(
+      `SELECT recommended_article_ids, recommendation_types, created_at
+       FROM user_recommendations
+       WHERE user_id = $1 AND expires_at > NOW()`,
+      [userId]
     );
 
-    // 2. 캐시가 있으면 반환
-    if (cachedRecommendations.length > 0) {
-      logger.info(`Returning cached recommendations for user ${userId}`);
-      return res.json({
-        success: true,
-        data: {
-          recommendations: cachedRecommendations,
-          count: cachedRecommendations.length,
-          generated_at: cachedRecommendations[0]?.recommended_at || new Date().toISOString(),
-          cached: true
-        }
-      });
+    // 2. 캐시가 있으면 기사 정보 가져와서 반환
+    if (cacheResult.length > 0) {
+      const articleIds = cacheResult[0].recommended_article_ids;
+      const types = cacheResult[0].recommendation_types || {};
+
+      if (articleIds && articleIds.length > 0) {
+        const articles = await AppDataSource.query(
+          `SELECT na.*, s.name as source_name, c.name as category_name
+           FROM news_articles na
+           LEFT JOIN sources s ON na.source_id = s.id
+           LEFT JOIN categories c ON na.category_id = c.id
+           WHERE na.id = ANY($1::int[])
+           LIMIT $2`,
+          [articleIds, limit]
+        );
+
+        const recommendations = articles.map((article: any) => ({
+          ...article,
+          recommendation_type: types[article.id] || 'hybrid'
+        }));
+
+        logger.info(`Returning cached recommendations for user ${userId}`);
+        return res.json({
+          success: true,
+          data: {
+            recommendations,
+            count: recommendations.length,
+            generated_at: cacheResult[0].created_at,
+            cached: true
+          }
+        });
+      }
     }
 
     // 3. 캐시가 없으면 Queue에 Job 추가
