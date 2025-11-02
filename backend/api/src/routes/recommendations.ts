@@ -58,7 +58,57 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
       }
     }
 
-    // 3. 캐시가 없으면 Queue에 Job 추가
+    // 3. 캐시가 없으면 Cold Start 확인
+    const userProfile = await AppDataSource.query(
+      `SELECT preferred_categories, preferred_sources
+       FROM user_preferences
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    const userActivity = await AppDataSource.query(
+      `SELECT COUNT(*) as read_count FROM user_read_history WHERE user_id = $1
+       UNION ALL
+       SELECT COUNT(*) as like_count FROM user_article_likes WHERE user_id = $1`,
+      [userId]
+    );
+
+    const hasProfile = userProfile.length > 0 &&
+                      (userProfile[0].preferred_categories?.length > 0 ||
+                       userProfile[0].preferred_sources?.length > 0);
+    const totalActivity = userActivity.reduce((sum: number, row: any) => sum + parseInt(row.read_count || row.like_count || 0), 0);
+
+    // 4. Cold Start 사용자 - 즉시 인기 기사 6개 반환
+    if (!hasProfile && totalActivity === 0) {
+      logger.info(`Cold Start user ${userId}, returning 6 popular articles`);
+      const popularArticles = await AppDataSource.query(
+        `SELECT na.*, s.name as source_name, c.name as category_name
+         FROM news_articles na
+         LEFT JOIN sources s ON na.source_id = s.id
+         LEFT JOIN categories c ON na.category_id = c.id
+         WHERE na.published_at >= NOW() - INTERVAL '7 days'
+         ORDER BY na.views DESC, na.published_at DESC
+         LIMIT 6`
+      );
+
+      const recommendations = popularArticles.map((article: any) => ({
+        ...article,
+        recommendation_type: 'most_viewed'
+      }));
+
+      return res.json({
+        success: true,
+        data: {
+          recommendations,
+          count: recommendations.length,
+          generated_at: new Date().toISOString(),
+          cached: false,
+          cold_start: true
+        }
+      });
+    }
+
+    // 5. 프로필 설정 사용자 - Queue에 Job 추가
     logger.info(`No cached recommendations for user ${userId}, adding to queue`);
     await addRecommendationJob({
       userId,
