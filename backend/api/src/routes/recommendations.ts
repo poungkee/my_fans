@@ -67,16 +67,16 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
     );
 
     const userActivity = await AppDataSource.query(
-      `SELECT COUNT(*) as read_count FROM user_read_history WHERE user_id = $1
-       UNION ALL
-       SELECT COUNT(*) as like_count FROM user_article_likes WHERE user_id = $1`,
+      `SELECT COUNT(*) as activity_count
+       FROM user_actions
+       WHERE user_id = $1 AND action_type IN ('read', 'like')`,
       [userId]
     );
 
     const hasProfile = userProfile.length > 0 &&
                       (userProfile[0].preferred_categories?.length > 0 ||
                        userProfile[0].preferred_sources?.length > 0);
-    const totalActivity = userActivity.reduce((sum: number, row: any) => sum + parseInt(row.read_count || row.like_count || 0), 0);
+    const totalActivity = userActivity.length > 0 ? parseInt(userActivity[0].activity_count || 0) : 0;
 
     // 4. Cold Start 사용자 - 즉시 인기 기사 6개 반환
     if (!hasProfile && totalActivity === 0) {
