@@ -82,12 +82,13 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
     if (!hasProfile && totalActivity === 0) {
       logger.info(`Cold Start user ${userId}, returning 6 popular articles`);
       const popularArticles = await AppDataSource.query(
-        `SELECT na.*, s.name as source_name, c.name as category_name
+        `SELECT na.*, s.name as source_name, c.name as category_name,
+                COALESCE((SELECT SUM(weight) FROM user_actions WHERE article_id = na.id), 0) as views
          FROM news_articles na
          LEFT JOIN sources s ON na.source_id = s.id
          LEFT JOIN categories c ON na.category_id = c.id
-         WHERE na.published_at >= NOW() - INTERVAL '7 days'
-         ORDER BY na.views DESC, na.published_at DESC
+         WHERE na.pub_date >= NOW() - INTERVAL '7 days'
+         ORDER BY views DESC, na.pub_date DESC
          LIMIT 6`
       );
 
