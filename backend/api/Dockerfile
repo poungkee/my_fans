@@ -8,6 +8,10 @@ WORKDIR /app
 WORKDIR /app/backend
 COPY queue ./queue
 
+# queue 패키지 빌드
+WORKDIR /app/backend/queue
+RUN npm install && npm run build
+
 # API 디렉토리로 이동
 WORKDIR /app/backend/api
 
