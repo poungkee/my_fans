@@ -4,14 +4,21 @@ FROM node:20-alpine
 # 작업 디렉토리 설정
 WORKDIR /app
 
+# queue 패키지 먼저 복사 (로컬 의존성)
+WORKDIR /app/backend
+COPY queue ./queue
+
+# API 디렉토리로 이동
+WORKDIR /app/backend/api
+
 # 패키지 파일 복사
-COPY package*.json ./
+COPY api/package*.json ./
 
 # 의존성 설치 (개발 의존성 포함)
 RUN npm install
 
 # 소스 코드 복사
-COPY . .
+COPY api/. .
 
 # 포트 설정
 EXPOSE 8000
