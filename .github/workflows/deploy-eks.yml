@@ -1,10 +1,7 @@
 name: Deploy to EKS Production
 
 on:
-  push:
-    branches:
-      - main  # main 브랜치에 push하면 자동 배포
-  workflow_dispatch:  # 수동 실행도 가능
+  workflow_dispatch:  # 수동 실행만 가능 (자동 배포 비활성화)
 
 env:
   AWS_REGION: ap-northeast-2
