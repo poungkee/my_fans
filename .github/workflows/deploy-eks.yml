@@ -189,6 +189,7 @@ jobs:
       # Slack 알림 (선택사항)
       - name: Notify Slack
         if: always()
+        continue-on-error: true
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
