@@ -11,17 +11,30 @@ export class RecommendationService {
     limit: number = 20
   ): Promise<any[]> {
     try {
-      // 1. 캐시된 추천 확인
+      // 1. 먼저 사용자 프로필/활동 확인 (Cold Start 판단)
+      const userPreferences = await this.getUserPreferences(userId);
+      const hasProfile = userPreferences.preferred_categories.length > 0 ||
+                        userPreferences.preferred_sources.length > 0;
+      const hasActivity = userPreferences.total_read > 0 ||
+                         userPreferences.total_likes > 0;
+
+      // 2. Cold Start 사용자는 캐시 무시하고 바로 인기 기사 6개 반환
+      if (!hasProfile && !hasActivity) {
+        logger.info(`No profile set for user ${userId}, returning top 6 popular articles`);
+        return await this.getMostViewedArticles(6);
+      }
+
+      // 3. 프로필 설정 사용자 - 캐시 확인
       const cached = await this.getCachedRecommendations(userId);
       if (cached && cached.length > 0) {
         logger.info(`Using cached recommendations for user ${userId}`);
         return cached.slice(0, limit);
       }
 
-      // 2. 신규 추천 생성
+      // 4. 신규 추천 생성
       const recommendations = await this.generateRecommendations(userId, limit);
 
-      // 3. 캐시에 저장
+      // 5. 캐시에 저장
       await this.cacheRecommendations(userId, recommendations);
 
       return recommendations;
@@ -42,21 +55,7 @@ export class RecommendationService {
     // 1. 사용자 선호도 분석
     const userPreferences = await this.getUserPreferences(userId);
 
-    // 2. 프로필 설정 여부 확인 (선호 카테고리 또는 언론사 설정 여부)
-    const hasProfile = userPreferences.preferred_categories.length > 0 ||
-                      userPreferences.preferred_sources.length > 0;
-
-    // 3. 활동 기록 확인 (기사 읽기, 좋아요 등)
-    const hasActivity = userPreferences.total_read > 0 ||
-                       userPreferences.total_likes > 0;
-
-    // 4. 프로필 미설정 사용자 (Cold Start) - 인기 기사 6개 반환
-    if (!hasProfile && !hasActivity) {
-      logger.info(`No profile set for user ${userId}, returning top 6 popular articles`);
-      return await this.getMostViewedArticles(6);
-    }
-
-    // 5. 프로필 설정 사용자 - 맞춤 추천 + 인기 기사 3개
+    // 2. 프로필 설정 사용자 - 맞춤 추천 + 인기 기사 3개
     // 협업 필터링 - 유사한 사용자 찾기
     const similarUsers = await this.findSimilarUsers(userId, 10);
 
