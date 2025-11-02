@@ -9,7 +9,8 @@ on:
 env:
   AWS_REGION: ap-northeast-2
   EKS_CLUSTER_NAME: fans-cluster
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
+  AWS_ACCOUNT_ID: 907123164281
+  ECR_REGISTRY: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com
 
 jobs:
   deploy:
