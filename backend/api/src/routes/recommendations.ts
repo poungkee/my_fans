@@ -69,7 +69,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
     const userActivity = await AppDataSource.query(
       `SELECT COUNT(*) as activity_count
        FROM user_actions
-       WHERE user_id = $1 AND action_type IN ('read', 'like')`,
+       WHERE user_id = $1 AND action_type IN ('VIEW', 'LIKE', 'READ')`,
       [userId]
     );
 
