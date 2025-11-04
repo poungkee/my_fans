@@ -15,6 +15,7 @@ spec:
       labels:
         app: summarize-ai
     spec:
+      # Main worker 노드에서 실행 (메모리 많이 사용)
       containers:
       - name: summarize-ai
         image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/summarize-ai:latest
@@ -31,10 +32,10 @@ spec:
             name: fans-secrets
         resources:
           requests:
-            memory: "2Gi"
+            memory: "4Gi"
             cpu: "500m"
           limits:
-            memory: "4Gi"
+            memory: "6Gi"
             cpu: "2000m"
         livenessProbe:
           httpGet:
@@ -83,6 +84,13 @@ spec:
       labels:
         app: bias-analysis-ai
     spec:
+      tolerations:
+      - key: workload-type
+        operator: Equal
+        value: ai-worker
+        effect: NoSchedule
+      nodeSelector:
+        workload-type: ai-worker
       containers:
       - name: bias-analysis-ai
         image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/bias-analysis-ai:latest

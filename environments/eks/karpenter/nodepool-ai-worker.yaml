@@ -53,6 +53,5 @@ spec:
   disruption:
     consolidationPolicy: WhenUnderutilized
     expireAfter: 168h  # 7일 후 노드 교체 (Spot은 짧게)
-    consolidateAfter: 30s
     budgets:
       - nodes: "50%"  # Spot은 중단 가능성 있으므로 50%까지 동시 교체 허용

@@ -43,6 +43,14 @@ module "vpc" {
     "karpenter.sh/discovery"                    = var.cluster_name
   }
 
+  database_subnet_tags = {
+    "Name" = "${var.cluster_name}-database-subnet"
+  }
+
+  elasticache_subnet_tags = {
+    "Name" = "${var.cluster_name}-elasticache-subnet"
+  }
+
   tags = {
     Name        = "${var.cluster_name}-vpc"
     Environment = var.environment

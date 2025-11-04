@@ -35,27 +35,53 @@ spec:
 
       containers:
         - name: ai-worker
-          image: YOUR_ECR_REPO/fans-ai-worker:latest
+          image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/ai-worker:latest
           imagePullPolicy: Always
 
           env:
-            # Redis
+            # Redis (ElastiCache)
             - name: REDIS_HOST
-              value: "fans-redis"
+              value: "fans-cluster-redis.1wbeqm.ng.0001.apn2.cache.amazonaws.com"
             - name: REDIS_PORT
               value: "6379"
 
             # AI Services URLs
             - name: SUMMARIZE_AI_URL
-              value: "http://summarize-ai:8000"
+              value: "http://summarize-ai-service:8000"
             - name: BIAS_ANALYSIS_AI_URL
-              value: "http://bias-analysis-ai:8002"
+              value: "http://bias-analysis-ai-service:8002"
             - name: RECOMMENDATION_AI_URL
               value: "http://recommendation-ai:8003"
+
+            # Database (RDS)
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: DB_HOST
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: DB_PASSWORD
 
             # Worker Config
             - name: WORKER_CONCURRENCY
               value: "5"
+            - name: SUMMARY_CONCURRENCY
+              value: "2"
             - name: LOG_LEVEL
               value: "info"
             - name: NODE_ENV

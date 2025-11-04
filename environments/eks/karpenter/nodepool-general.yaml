@@ -26,11 +26,8 @@ spec:
             - t3a.medium
             - t3.large
             - t3a.large
-      # Taints (AI Worker가 이 노드에 스케줄링되지 않도록)
-      taints:
-        - key: workload-type
-          value: general
-          effect: NoSchedule
+      # Taints 제거 - 일반 워크로드는 자유롭게 스케줄링
+      # AI Worker는 nodeSelector로 ai-worker 노드에만 배치됨
       # Kubelet 설정
       kubelet:
         maxPods: 110
@@ -52,6 +49,5 @@ spec:
   disruption:
     consolidationPolicy: WhenUnderutilized
     expireAfter: 720h  # 30일 후 노드 교체
-    consolidateAfter: 30s
     budgets:
       - nodes: "10%"  # 동시에 10%의 노드만 교체

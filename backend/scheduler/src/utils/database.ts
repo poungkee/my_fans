@@ -15,6 +15,10 @@ const pool = new Pool({
   options: process.env.DB_SCHEMA
     ? `-c search_path=${process.env.DB_SCHEMA},public`
     : undefined,
+  // ⭐ SSL 설정 (RDS 연결용)
+  ssl: process.env.PGSSLMODE === 'require'
+    ? { rejectUnauthorized: false }
+    : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -39,7 +43,7 @@ pool.on('connect', () => {
   logger.info(`✅ PostgreSQL 연결 성공 (schema: ${schema})`);
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   logger.error(`❌ PostgreSQL 연결 오류: ${err.message}`);
 });
 
