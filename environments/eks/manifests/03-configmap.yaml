@@ -13,12 +13,10 @@ data:
   SUMMARIZE_AI_URL: http://summarize-ai-service:8000
   BIAS_AI_URL: http://bias-analysis-ai-service:8002
   BIAS_ANALYSIS_AI_URL: http://bias-analysis-ai-service:8002
-  CLASSIFICATION_API_URL: http://classification-api-service:5000
 
   # Ports
   SUMMARIZE_AI_PORT: "8000"
   BIAS_ANALYSIS_AI_PORT: "8002"
-  CLASSIFICATION_API_PORT: "5000"
   UNIFIED_CRAWLER_PORT: "4007"
 
   # AI Model

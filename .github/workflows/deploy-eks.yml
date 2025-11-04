@@ -89,18 +89,6 @@ jobs:
           docker push $ECR_REGISTRY/fans-unified-crawler:${{ steps.image-tag.outputs.TAG }}
           docker push $ECR_REGISTRY/fans-unified-crawler:latest
 
-      # Classifier 빌드 및 푸시
-      - name: Build and push Classifier
-        run: |
-          docker build \
-            -t $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }} \
-            -t $ECR_REGISTRY/fans-classification-api:latest \
-            -f backend/recommendation/Dockerfile \
-            backend/recommendation
-
-          docker push $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }}
-          docker push $ECR_REGISTRY/fans-classification-api:latest
-
       # Scheduler 빌드 및 푸시
       - name: Build and push Scheduler
         run: |
@@ -150,10 +138,6 @@ jobs:
 
           kubectl set image deployment/unified-crawler \
             unified-crawler=$ECR_REGISTRY/fans-unified-crawler:${{ steps.image-tag.outputs.TAG }} \
-            --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
-
-          kubectl set image deployment/classification-api \
-            classification-api=$ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }} \
             --dry-run=client -o yaml | kubectl apply -f - -n fans-svc
 
           kubectl set image deployment/scheduler \
