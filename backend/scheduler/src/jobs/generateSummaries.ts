@@ -22,13 +22,14 @@ export async function generateAISummaries(): Promise<void> {
   const client = await getDbClient();
 
   try {
-    // 1. AI 요약이 없는 기사 조회
+    // 1. AI 요약이 없는 기사 조회 (오늘 기사만 - 실시간 처리)
     const result = await client.query(`
       SELECT id, content
       FROM news_articles
       WHERE ai_summary IS NULL
         AND content IS NOT NULL
         AND LENGTH(content) >= 100
+        AND created_at >= CURRENT_DATE  -- 오늘 기사만!
       ORDER BY created_at DESC
       LIMIT $1
     `, [BATCH_SIZE]);

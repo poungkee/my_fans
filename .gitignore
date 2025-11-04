@@ -240,3 +240,7 @@ backend/scheduler/node_modules/
 # Scheduler node_modules
 backend/scheduler/node_modules/
 **/node_modules/
+
+# Log files
+logs/*.log
+*.log

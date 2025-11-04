@@ -91,7 +91,7 @@ jobs:
     - name: Verify deployment
       run: |
         kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=main-api
-        kubectl get svc -n ${{ env.K8S_NAMESPACE }} main-api
+        kubectl get svc -n ${{ env.K8S_NAMESPACE }} main-api-service
 
     - name: Health check
       run: |

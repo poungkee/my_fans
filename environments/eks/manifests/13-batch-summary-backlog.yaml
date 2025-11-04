@@ -1,0 +1,101 @@
+---
+# 배치 백로그 처리 CronJob
+# 과거 기사 중 요약되지 않은 기사를 야간에 배치 처리
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: batch-summary-backlog
+  namespace: fans
+  labels:
+    app: batch-summary-backlog
+    tier: batch
+spec:
+  # 매일 새벽 2시 실행
+  schedule: "0 2 * * *"
+
+  # 동시 실행 방지 (이전 작업이 완료될 때까지 대기)
+  concurrencyPolicy: Forbid
+
+  # 성공한 Job 1개만 보관
+  successfulJobsHistoryLimit: 1
+
+  # 실패한 Job 3개 보관 (디버깅용)
+  failedJobsHistoryLimit: 3
+
+  # Job 템플릿
+  jobTemplate:
+    metadata:
+      labels:
+        app: batch-summary-backlog
+    spec:
+      # 6시간 타임아웃 (백로그가 많을 경우 대비)
+      activeDeadlineSeconds: 21600
+
+      # 백오프 제한 (3번 재시도)
+      backoffLimit: 3
+
+      template:
+        metadata:
+          labels:
+            app: batch-summary-backlog
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: batch-processor
+            image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/scheduler:latest
+            imagePullPolicy: Always
+
+            # 배치 스크립트 실행
+            command:
+            - node
+            - /app/dist/batch-backlog.js
+
+            env:
+            # 배치 크기 설정
+            - name: BATCH_BACKLOG_SIZE
+              value: "1000"
+
+            # 데이터베이스 설정
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: DB_HOST
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fans-secrets
+                  key: POSTGRES_PASSWORD
+
+            # Redis 설정 (BullMQ 큐용)
+            - name: REDIS_HOST
+              value: "fans-redis"
+            - name: REDIS_PORT
+              value: "6379"
+
+            # 로그 레벨
+            - name: LOG_LEVEL
+              value: "info"
+
+            # 리소스 제한
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "250m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+---
