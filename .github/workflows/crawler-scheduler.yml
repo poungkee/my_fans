@@ -112,9 +112,15 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       run: |
         cd backend
+        echo "📂 Build context: $(pwd)"
+        echo "📋 Listing files..."
+        ls -la scheduler/ || true
+        ls -la queue/ || true
+        echo "🔨 Starting Docker build..."
         docker buildx build \
           --file scheduler/Dockerfile \
           --no-cache \
+          --progress=plain \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
           --push \
