@@ -125,8 +125,8 @@ class NewsAISummarizer:
     def _load_model(self):
         """한국어 요약 모델 로드"""
         try:
-            # 경량화된 한국어 요약 모델 사용 (T5-small: 빠르고 가벼움)
-            model_name = "psyche/KoT5-summarization"
+            # 경량화된 한국어 요약 모델 사용 (T5-small: 60M 파라미터)
+            model_name = "eenzeenee/t5-small-korean-summarization"
             self.summarizer = pipeline(
                 "summarization",
                 model=model_name,

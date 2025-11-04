@@ -35,7 +35,7 @@ def health_check():
     return {
         "status": "healthy",
         "service": "ai-service",
-        "model": "psyche/KoT5-summarization"
+        "model": "eenzeenee/t5-small-korean-summarization"
     }
 
 @app.post("/ai/summarize", response_model=SummarizeResponse)
