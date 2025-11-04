@@ -112,8 +112,9 @@ jobs:
         ECR_REPOSITORY: fans/scheduler
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd backend/scheduler
+        cd backend
         docker buildx build \
+          --file scheduler/Dockerfile \
           --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
           --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
