@@ -47,9 +47,9 @@ jobs:
         ECR_REPOSITORY: fans/unified-crawler
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd backend/crawler
+        cd backend
         docker buildx build \
-          --file crawler-v2/Dockerfile \
+          --file crawler/crawler-v2/Dockerfile \
           --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
           --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
