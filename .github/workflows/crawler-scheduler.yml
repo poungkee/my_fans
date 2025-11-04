@@ -115,8 +115,7 @@ jobs:
         cd backend
         docker buildx build \
           --file scheduler/Dockerfile \
-          --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
-          --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
+          --no-cache \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
           --push \
