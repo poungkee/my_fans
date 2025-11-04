@@ -71,7 +71,7 @@ metadata:
   name: scheduler
   namespace: fans
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: scheduler
@@ -80,6 +80,20 @@ spec:
       labels:
         app: scheduler
     spec:
+      # Pod Anti-Affinity: 각 AZ에 분산 배치
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - scheduler
+              topologyKey: topology.kubernetes.io/zone
+
       containers:
       - name: scheduler
         image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/scheduler:latest

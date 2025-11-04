@@ -169,7 +169,7 @@ jobs:
         ECR_REPOSITORY: fans/classification-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd backend/simple-classifier
+        cd backend/recommendation
         docker buildx build \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \

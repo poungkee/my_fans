@@ -16,6 +16,21 @@ spec:
         app: main-api
     spec:
       serviceAccountName: main-api-sa
+
+      # Pod Anti-Affinity: 각 AZ에 분산 배치
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - main-api
+              topologyKey: topology.kubernetes.io/zone
+
       containers:
       - name: main-api
         image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/main-api:latest

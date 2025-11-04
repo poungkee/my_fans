@@ -211,8 +211,10 @@ D:\dev1
 │   │   ├── summarize-ai/      # 요약 AI
 │   │   └── bias-analysis-ai/  # 편향 분석 AI
 │   ├── scheduler/             # 작업 스케줄러
-│   ├── database/              # DB 스키마
-│   └── simple-classifier/     # 분류 API
+│   ├── ai-worker/             # BullMQ Worker (AI 처리)
+│   ├── queue/                 # BullMQ 공통 모듈
+│   ├── recommendation/        # 분류 API (Classification)
+│   └── database/              # DB 스키마
 │
 ├── frontend/                  # React 앱
 ├── docs/                      # 📄 문서 모음

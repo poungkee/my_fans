@@ -95,8 +95,8 @@ jobs:
           docker build \
             -t $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }} \
             -t $ECR_REGISTRY/fans-classification-api:latest \
-            -f backend/simple-classifier/Dockerfile \
-            backend/simple-classifier
+            -f backend/recommendation/Dockerfile \
+            backend/recommendation
 
           docker push $ECR_REGISTRY/fans-classification-api:${{ steps.image-tag.outputs.TAG }}
           docker push $ECR_REGISTRY/fans-classification-api:latest

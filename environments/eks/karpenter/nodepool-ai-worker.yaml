@@ -20,15 +20,16 @@ spec:
           operator: In
           values: ["amd64"]
         # CPU 최적화 인스턴스 (AI Worker용)
+        # AI 서비스는 최소 8GB RAM 필요 → xlarge 이상만 허용
         - key: node.kubernetes.io/instance-type
           operator: In
           values:
-            - c5.large      # 2 vCPU, 4GB RAM
             - c5.xlarge     # 4 vCPU, 8GB RAM
-            - c5a.large     # AMD EPYC (저렴)
-            - c5a.xlarge
-            - c6i.large     # 최신 세대
-            - c6i.xlarge
+            - c5a.xlarge    # AMD EPYC (저렴, 4 vCPU, 8GB)
+            - c6i.xlarge    # 최신 세대 (4 vCPU, 8GB)
+            - c5.2xlarge    # 8 vCPU, 16GB RAM
+            - c5a.2xlarge
+            - c6i.2xlarge
       # Taints (AI Worker만 스케줄링되도록)
       taints:
         - key: workload-type
