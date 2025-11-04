@@ -8,14 +8,16 @@ RUN cd queue && npm install
 COPY ./queue ./queue
 RUN cd queue && npm run build
 
-# scheduler package.json 복사 및 설치
+# scheduler package.json 복사
 COPY ./scheduler/package*.json ./scheduler/
-RUN cd scheduler && npm ci --only=production
+
+# npm install로 의존성 설치 (file: 경로 해결을 위해)
+RUN cd scheduler && npm install --only=production
 
 # TypeScript 빌드를 위한 dev dependencies 설치
 RUN cd scheduler && npm install typescript ts-node @types/node @types/node-cron @types/pg --save-dev
 
-# @fans/queue를 빌드된 버전으로 링크
+# @fans/queue를 빌드된 버전으로 덮어쓰기
 RUN rm -rf /app/scheduler/node_modules/@fans/queue && \
     mkdir -p /app/scheduler/node_modules/@fans && \
     cp -r /app/queue /app/scheduler/node_modules/@fans/queue
