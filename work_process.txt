@@ -1,0 +1,421 @@
+작업명세
+
+  📦 Person A 팀원에게 전달할 자료
+
+  1. 공통 타입 정의 파일 (먼저 작성 → Git 커밋)
+
+  backend/queue/src/types/job.types.ts 파일을 만들어서 전달:
+
+  /**
+   * BullMQ Job 타입 정의
+   * Person A, B 모두 사용
+   */
+
+  export interface SummaryJob {
+    articleId: number;
+    content: string;
+    retryCount?: number;
+  }
+
+  export interface BiasJob {
+    articleId: number;
+    content: string;
+    categoryId?: number;
+  }
+
+  export interface KeywordJob {
+    articleId: number;
+    content: string;
+    title: string;
+  }
+
+  export interface RecommendationJob {
+    userId: number;
+    limit: number;
+    priority?: 'high' | 'normal' | 'low';
+    trigger?: 'user_request' | 'scheduled';
+  }
+
+  // Job 결과 타입
+  export interface JobResult {
+    success: boolean;
+    data?: any;
+    error?: string;
+    processedAt: Date;
+  }
+
+  2. 큐 이름 상수 (먼저 작성 → Git 커밋)
+
+  backend/queue/src/config/queue-names.ts:
+
+  /**
+   * BullMQ 큐 이름 상수
+   * Person A, B 모두 사용
+   */
+
+  export const QUEUE_NAMES = {
+    AI_SUMMARY: 'ai-summary',
+    AI_BIAS: 'ai-bias',
+    AI_KEYWORD: 'ai-keyword',
+    AI_RECOMMENDATION: 'ai-recommendation'
+  } as const;
+
+  export const QUEUE_OPTIONS = {
+    // 기본 재시도 설정
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 5000  // 5초, 10초, 20초
+      },
+      removeOnComplete: 100,  // 완료된 작업 100개까지 보관
+      removeOnFail: 1000       // 실패한 작업 1000개까지 보관
+    }
+  } as const;
+
+  3. 환경변수 설정 (.env 파일 업데이트)
+
+  environments/local/.env에 추가할 내용:
+
+  # ================================
+  # BullMQ Configuration
+  # ================================
+  REDIS_HOST=redis
+  REDIS_PORT=6379
+
+  # ================================
+  # AI Worker Configuration
+  # ================================
+  WORKER_CONCURRENCY=5           # 동시 처리 작업 수
+  WORKER_RATE_LIMIT_MAX=10       # 초당 최대 작업 수
+  WORKER_RATE_LIMIT_DURATION=1000 # 1초
+
+  # ================================
+  # AI Services URLs
+  # ================================
+  SUMMARIZE_AI_URL=http://summarize-ai:8000
+  BIAS_ANALYSIS_AI_URL=http://bias-analysis-ai:8002
+  RECOMMENDATION_AI_URL=http://recommendation-ai:8003
+
+  4. Person A 작업 명세서 (Markdown 문서)
+
+  docs/person-a-tasks.md 파일 생성:
+
+  # Person A 작업 명세서
+
+  ## 📋 작업 개요
+  - BullMQ Producer 구현 (Crawler, Main API에서 큐 발행)
+  - Main API 추천 로직 제거 및 큐 기반으로 변경
+
+  ## 🎯 작업 목표
+  1. Crawler에서 AI 직접 호출 제거 → 큐 발행으로 변경
+  2. Main API 추천 서비스를 큐 기반으로 변경
+  3. 로컬 환경에서 큐 발행 테스트
+
+  ---
+
+  ## 📁 작업 파일 목록
+
+  ### 1. BullMQ Queue 구현
+  **위치**: `backend/queue/`
+
+  **생성할 파일**:
+  backend/queue/
+  ├── package.json
+  ├── tsconfig.json
+  ├── src/
+  │   ├── config/
+  │   │   └── bullmq.ts          # Redis 연결 설정
+  │   ├── queues/
+  │   │   ├── ai-summary.queue.ts
+  │   │   ├── ai-bias.queue.ts
+  │   │   ├── ai-keyword.queue.ts
+  │   │   └── ai-recommendation.queue.ts
+  │   ├── types/
+  │   │   └── job.types.ts       # (이미 제공됨)
+  │   └── index.ts               # Export all queues
+  └── Dockerfile
+
+  **package.json**:
+  ```json
+  {
+    "name": "@fans/queue",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+      "build": "tsc",
+      "dev": "tsc --watch"
+    },
+    "dependencies": {
+      "bullmq": "^5.0.0",
+      "ioredis": "^5.3.2"
+    },
+    "devDependencies": {
+      "@types/node": "^20.0.0",
+      "typescript": "^5.0.0"
+    }
+  }
+
+  bullmq.ts 예시:
+  import { ConnectionOptions } from 'bullmq';
+
+  export const redisConnection: ConnectionOptions = {
+    host: process.env.REDIS_HOST || 'redis',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    maxRetriesPerRequest: null
+  };
+
+  ai-summary.queue.ts 예시:
+  import { Queue } from 'bullmq';
+  import { redisConnection } from '../config/bullmq';
+  import { QUEUE_NAMES, QUEUE_OPTIONS } from '../config/queue-names';
+  import { SummaryJob } from '../types/job.types';
+
+  export const aiSummaryQueue = new Queue<SummaryJob>(
+    QUEUE_NAMES.AI_SUMMARY,
+    {
+      connection: redisConnection,
+      defaultJobOptions: QUEUE_OPTIONS.defaultJobOptions
+    }
+  );
+
+  export async function addSummaryJob(data: SummaryJob) {
+    return await aiSummaryQueue.add('summarize', data);
+  }
+
+  ---
+  2. Crawler 수정
+
+  파일: backend/crawler/crawler-v2/unifiedCrawlerService.ts
+
+  수정 위치: 342-349줄
+
+  기존 코드 (삭제):
+  // AI 요약 (비동기, 실패해도 계속)
+  summarizeArticle(saved.id, article.content).catch((error: any) => {
+    logger.error(`AI 요약 실패 (기사 ID: ${saved.id}):`, error);
+  });
+
+  // AI 편향 분석 (비동기, 실패해도 계속)
+  analyzeBias(saved.id, article.content).catch((error: any) => {
+    logger.error(`AI 분석 실패 (기사 ID: ${saved.id}):`, error);
+  });
+
+  새 코드 (추가):
+  // BullMQ 큐 발행
+  import { aiSummaryQueue, aiBiasQueue, aiKeywordQueue } from '@fans/queue';
+
+  // AI 처리를 큐에 발행 (비동기, 논블로킹)
+  Promise.all([
+    aiSummaryQueue.add('summarize', {
+      articleId: saved.id,
+      content: article.content
+    }),
+    aiBiasQueue.add('analyze', {
+      articleId: saved.id,
+      content: article.content,
+      categoryId: categoryId
+    }),
+    aiKeywordQueue.add('extract', {
+      articleId: saved.id,
+      content: article.content,
+      title: article.title
+    })
+  ]).catch((error) => {
+    logger.error(`큐 발행 실패 (기사 ID: ${saved.id}):`, error);
+  });
+
+  logger.debug(`✅ 기사 ID ${saved.id} AI 처리 큐 발행 완료`);
+
+  ---
+  3. Main API 추천 로직 수정
+
+  파일: backend/api/src/routes/recommendations.ts
+
+  기존 코드 (수정):
+  // ❌ 기존 방식 (삭제)
+  import { RecommendationService } from '../services/recommendationService';
+  const recommendationService = new RecommendationService();
+
+  router.get('/personalized/:userId', async (req, res) => {
+    const recommendations = await recommendationService.getPersonalizedRecommendations(
+      userId,
+      limit
+    );
+    res.json(recommendations);
+  });
+
+  새 코드:
+  // ✅ 큐 기반 방식
+  import { recommendationQueue } from '@fans/queue';
+  import { getRedisClient } from '../config/redis';
+
+  router.get('/personalized/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const redis = getRedisClient();
+    const cacheKey = `recommendations:user:${userId}`;
+
+    // 1. 캐시 확인
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json({
+        ...JSON.parse(cached),
+        source: 'cache'
+      });
+    }
+
+    // 2. 큐에 작업 추가
+    await recommendationQueue.add('generate', {
+      userId,
+      limit,
+      priority: 'high'
+    });
+
+    // 3. 임시 인기 기사 반환
+    const popularArticles = await getPopularArticles(limit);
+
+    res.json({
+      articles: popularArticles,
+      status: 'generating',
+      message: '맞춤 추천을 생성하고 있습니다. 잠시 후 새로고침해주세요.',
+      source: 'fallback'
+    });
+  });
+
+  // 추천 완성 여부 확인 API (프론트엔드 폴링용)
+  router.get('/personalized/:userId/status', async (req, res) => {
+    const { userId } = req.params;
+    const redis = getRedisClient();
+
+    const cached = await redis.get(`recommendations:user:${userId}`);
+
+    res.json({
+      ready: !!cached,
+      timestamp: cached ? Date.now() : null
+    });
+  });
+
+  ---
+  4. recommendationService.ts 복사
+
+  중요: Person B가 사용할 수 있도록 복사해서 공유
+
+  # 파일 복사 (Person B에게 전달)
+  cp backend/api/src/services/recommendationService.ts \
+     /tmp/recommendationService.ts
+
+  # Git에 올리지 말고, Slack/이메일로 Person B에게 전달
+  # Person B가 이 로직을 Python으로 변환할 예정
+
+  ---
+  5. Scheduler 제거 (나중에)
+
+  파일: backend/scheduler/ (전체 폴더)
+
+  주의:
+  - 일단 그대로 두고, Person B의 AI Worker가 완성된 후 제거
+  - 테스트 완료 후 삭제 예정
+
+  ---
+  ✅ 작업 체크리스트
+
+  Phase 1: 준비 (30분)
+
+  - backend/queue/ 폴더 생성
+  - package.json, tsconfig.json 작성
+  - bullmq, ioredis 설치
+  - job.types.ts, queue-names.ts 확인
+
+  Phase 2: Queue 구현 (2시간)
+
+  - bullmq.ts (Redis 연결)
+  - ai-summary.queue.ts 작성
+  - ai-bias.queue.ts 작성
+  - ai-keyword.queue.ts 작성
+  - ai-recommendation.queue.ts 작성
+  - index.ts (export all)
+
+  Phase 3: Crawler 수정 (1시간)
+
+  - unifiedCrawlerService.ts 342-349줄 수정
+  - AI 직접 호출 제거
+  - 큐 발행 코드 추가
+  - 로그 추가
+
+  Phase 4: Main API 수정 (2시간)
+
+  - recommendations.ts 라우터 수정
+  - 캐시 확인 로직 추가
+  - 큐 발행 로직 추가
+  - 폴백 인기 기사 추가
+  - Status API 추가
+
+  Phase 5: 테스트 (2시간)
+
+  - 로컬 Redis 실행 확인
+  - Crawler 실행 → 큐 발행 확인
+  - Redis CLI로 큐 확인: redis-cli LLEN bull:ai-summary:wait
+  - Main API 추천 요청 → 큐 발행 확인
+
+  ---
+  🧪 테스트 방법
+
+  1. Redis 큐 확인
+
+  # Redis CLI 접속
+  docker exec -it fans_redis redis-cli
+
+  # 큐 길이 확인
+  LLEN bull:ai-summary:wait
+  LLEN bull:ai-bias:wait
+  LLEN bull:ai-keyword:wait
+  LLEN bull:ai-recommendation:wait
+
+  # 큐 내용 확인 (첫 번째 작업)
+  LRANGE bull:ai-summary:wait 0 0
+
+  2. 큐 발행 테스트
+
+  # Crawler 수동 실행
+  docker exec -it fans_unified_crawler npm run crawl
+
+  # Redis에서 큐 확인
+  # 큐에 작업이 쌓였는지 확인
+
+  3. 로그 확인
+
+  # Crawler 로그
+  docker logs fans_unified_crawler --tail 50
+
+  # Main API 로그
+  docker logs fans_main_api --tail 50
+
+  ---
+  📤 Person B에게 전달할 것
+
+  완료 후 다음 파일들을 Person B에게 전달:
+
+  1. ✅ backend/queue/src/types/job.types.ts (Git 커밋)
+  2. ✅ backend/queue/src/config/queue-names.ts (Git 커밋)
+  3. ✅ environments/local/.env (업데이트)
+  4. ✅ backend/api/src/services/recommendationService.ts (복사본)
+
+  ---
+  🚨 주의사항
+
+  1. Git 브랜치: feature/bullmq-producer 브랜치에서 작업
+  2. Scheduler 제거 금지: 아직 제거하지 말 것 (테스트 후)
+  3. Redis 필수: 로컬 Redis가 실행 중이어야 함
+  4. 타입 공유: job.types.ts는 절대 수정 금지 (Person B와 공유)
+
+  ---
+  📞 문제 발생 시
+
+  - Redis 연결 오류: .env의 REDIS_HOST, REDIS_PORT 확인
+  - 큐 발행 실패: bullmq, ioredis 버전 확인
+  - 타입 오류: job.types.ts import 경로 확인
+
+  ---
