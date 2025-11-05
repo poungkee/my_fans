@@ -7,7 +7,7 @@ WORKDIR /app/backend
 # queue 패키지 먼저 복사 및 빌드 (로컬 의존성)
 COPY queue/package*.json queue/tsconfig.json ./queue/
 COPY queue/src ./queue/src
-RUN cd queue && npm ci --only=production && npm run build
+RUN cd queue && npm ci && npm run build
 
 # API 디렉토리로 이동
 WORKDIR /app/backend/api

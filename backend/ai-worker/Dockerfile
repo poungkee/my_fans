@@ -10,11 +10,11 @@ WORKDIR /app
 # queue 복사 및 빌드
 COPY queue/package*.json queue/tsconfig.json ./queue/
 COPY queue/src ./queue/src
-RUN cd queue && npm ci --only=production && npm run build
+RUN cd queue && npm ci && npm run build
 
 # ai-worker package.json 복사 및 npm install
 COPY ai-worker/package*.json ./ai-worker/
-RUN cd ai-worker && npm ci --only=production
+RUN cd ai-worker && npm ci
 
 # ai-worker 소스 파일 복사
 COPY ai-worker/src ./ai-worker/src
