@@ -4,8 +4,8 @@ metadata:
   name: db-backup-to-school
   namespace: fans
 spec:
-  # 매일 새벽 2시에 백업 실행
-  schedule: "0 2 * * *"
+  # 매일 새벽 2시에 백업 실행 (한국 시간 기준, UTC로는 17시 = 전날 오후 5시)
+  schedule: "0 17 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
