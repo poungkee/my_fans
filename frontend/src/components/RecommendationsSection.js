@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import NewsItem from './NewsItem';
 import './RecommendationsSection.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.fans.ai.kr/api';
+
 const RecommendationsSection = ({ onNavigateToDetail }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
         }
 
         // 초기 로드 시에는 캐시 삭제 안 함 (기존 추천 사용)
-        const response = await fetch(`/api/recommendations?limit=20`, {
+        const response = await fetch(`${API_BASE_URL}/recommendations?limit=20`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -63,7 +65,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       if (!token) return;
 
       // 캐시 삭제
-      await fetch(`/api/recommendations/refresh`, {
+      await fetch(`${API_BASE_URL}/recommendations/refresh`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -71,7 +73,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
       });
 
       // 새로운 추천 가져오기
-      const response = await fetch(`/api/recommendations?limit=20`, {
+      const response = await fetch(`${API_BASE_URL}/recommendations?limit=20`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
