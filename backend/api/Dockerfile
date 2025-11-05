@@ -5,18 +5,18 @@ FROM node:20-alpine
 WORKDIR /app/backend
 
 # queue 패키지 먼저 복사 및 빌드 (로컬 의존성)
-COPY queue/package*.json queue/tsconfig.json ./queue/
+COPY queue/package.json queue/tsconfig.json ./queue/
 COPY queue/src ./queue/src
-RUN cd queue && npm ci && npm run build
+RUN cd queue && npm install --prefer-offline --no-audit && npm run build
 
 # API 디렉토리로 이동
 WORKDIR /app/backend/api
 
 # 패키지 파일 복사
-COPY api/package*.json ./
+COPY api/package.json ./
 
 # 의존성 설치
-RUN npm ci
+RUN npm install --prefer-offline --no-audit
 
 # 소스 코드 복사
 COPY api/. .

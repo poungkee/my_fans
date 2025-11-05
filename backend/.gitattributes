@@ -54,5 +54,7 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
 *.parquet filter=lfs diff=lfs merge=lfs -text
 
-# Exception: package-lock.json should NOT be in LFS
+# Exception: NPM files should NOT be in LFS
+package.json !filter !diff !merge -text
 package-lock.json !filter !diff !merge -text
+tsconfig.json !filter !diff !merge -text
