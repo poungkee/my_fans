@@ -8,14 +8,13 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 WORKDIR /app
 
 # queue 복사 및 빌드
-COPY queue/package*.json ./queue/
-RUN cd queue && npm install
-COPY queue ./queue
-RUN cd queue && npm run build
+COPY queue/package*.json queue/tsconfig.json ./queue/
+COPY queue/src ./queue/src
+RUN cd queue && npm ci --only=production && npm run build
 
 # ai-worker package.json 복사 및 npm install
 COPY ai-worker/package*.json ./ai-worker/
-RUN cd ai-worker && npm install
+RUN cd ai-worker && npm ci --only=production
 
 # ai-worker 소스 파일 복사
 COPY ai-worker/src ./ai-worker/src
