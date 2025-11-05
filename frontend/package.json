@@ -2,6 +2,7 @@
   "name": "news-portal",
   "version": "1.0.0",
   "description": "뉴스 포털 React 애플리케이션",
+  "homepage": "/frontend",
   "main": "index.js",
   "scripts": {
     "start": "react-scripts start",
