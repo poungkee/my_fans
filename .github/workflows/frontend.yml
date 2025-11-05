@@ -13,8 +13,8 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  S3_BUCKET: fans-frontend-907123164281
-  CLOUDFRONT_DISTRIBUTION_ID: E3VZKE0FYIK8JH
+  S3_BUCKET: fans-static-assets-907123164281
+  CLOUDFRONT_DISTRIBUTION_ID: EORRN6PGDPNOH
 
 jobs:
   build-and-deploy:
@@ -56,7 +56,7 @@ jobs:
     - name: Deploy to S3
       run: |
         cd frontend/build
-        aws s3 sync . s3://${{ env.S3_BUCKET }}/ --delete
+        aws s3 sync . s3://${{ env.S3_BUCKET }}/frontend/ --delete
 
     - name: Invalidate CloudFront cache
       run: |
