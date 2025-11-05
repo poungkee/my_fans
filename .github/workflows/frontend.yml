@@ -39,8 +39,8 @@ jobs:
 
     - name: Build React app
       env:
-        REACT_APP_API_BASE: https://www.fans.ai.kr
-        REACT_APP_API_URL: https://www.fans.ai.kr/api
+        REACT_APP_API_BASE: https://api.fans.ai.kr
+        REACT_APP_API_URL: https://api.fans.ai.kr/api
         CI: false
       run: |
         cd frontend
