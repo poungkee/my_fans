@@ -173,8 +173,40 @@ biasWorker.on('completed', async (job) => {
   logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
 });
 
-// Keyword worker: just log
-keywordWorker.on('completed', (job) => {
+// Keyword worker: save to keywords and news_keywords
+keywordWorker.on('completed', async (job) => {
+  try {
+    const result = await job.returnvalue;
+    if (result?.success && result?.data?.keywords && Array.isArray(result.data.keywords)) {
+      const keywords = result.data.keywords;
+
+      for (const kw of keywords) {
+        if (!kw.keyword || !kw.relevance) continue;
+
+        // 1. Insert keyword (or get existing)
+        const keywordResult = await dbPool.query(
+          `INSERT INTO keywords (keyword)
+           VALUES ($1)
+           ON CONFLICT (keyword) DO UPDATE SET keyword = EXCLUDED.keyword
+           RETURNING id`,
+          [kw.keyword]
+        );
+        const keywordId = keywordResult.rows[0].id;
+
+        // 2. Link keyword to article
+        await dbPool.query(
+          `INSERT INTO news_keywords (news_id, keyword_id, relevance)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (news_id, keyword_id) DO UPDATE SET relevance = EXCLUDED.relevance`,
+          [job.data.articleId, keywordId, kw.relevance]
+        );
+      }
+
+      logger.info(`✅ ${keywords.length} keywords saved to DB for article ${job.data.articleId}`);
+    }
+  } catch (error: any) {
+    logger.error(`Failed to save keywords: ${error.message}`);
+  }
   logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
 });
 

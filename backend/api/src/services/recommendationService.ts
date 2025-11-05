@@ -652,4 +652,15 @@ export class RecommendationService {
     }
     return [];
   }
+
+  /**
+   * 캐시 무효화
+   */
+  async clearCache(userId: number): Promise<void> {
+    await AppDataSource.query(
+      `DELETE FROM user_recommendations WHERE user_id = $1`,
+      [userId]
+    );
+    logger.info(`🔄 Cache cleared for user ${userId}`);
+  }
 }
