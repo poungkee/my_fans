@@ -52,5 +52,7 @@
 
 # Large data files
 *.csv filter=lfs diff=lfs merge=lfs -text
-*.json filter=lfs diff=lfs merge=lfs -text
 *.parquet filter=lfs diff=lfs merge=lfs -text
+
+# Exception: package-lock.json should NOT be in LFS
+package-lock.json !filter !diff !merge -text
