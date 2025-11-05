@@ -72,32 +72,63 @@ module "eks" {
     }
   }
 
-  # EKS Managed Node Groups (t3.large × 2 for Main API, Crawler, AI Services)
+  # EKS Managed Node Groups - 상시 4개 노드 유지 (HA 구성)
   eks_managed_node_groups = {
-    main_workers = {
-      name = "fans-main-workers"
+    # General Workers: 일반 서비스 (main-api, scheduler, crawler)
+    general_workers = {
+      name = "fans-general-workers"
 
       instance_types = ["t3.large"]
       capacity_type  = "ON_DEMAND"
 
-      # Multi-AZ 배포 (2a, 2b에 각각 1개씩)
+      # 2a/2b 각 1개씩 고정 (총 2개)
       min_size     = 2
-      max_size     = 4
+      max_size     = 2
       desired_size = 2
 
       disk_size = 50
       disk_type = "gp3"
 
       labels = {
-        role        = "main-worker"
-        workload    = "api-crawler-ai"
+        role        = "general-worker"
+        workload    = "general"
         karpenter   = "false"
       }
 
-      taints = []  # Karpenter가 관리하는 AI Worker와 구분
+      taints = []
 
       tags = {
-        NodeGroup   = "fans-main-workers"
+        NodeGroup   = "fans-general-workers"
+        Environment = var.environment
+        Karpenter   = "false"
+      }
+    }
+
+    # AI Workers: AI 서비스 (summarize-ai, bias-analysis-ai, ai-worker)
+    ai_workers = {
+      name = "fans-ai-workers"
+
+      instance_types = ["t3a.xlarge"]
+      capacity_type  = "ON_DEMAND"
+
+      # 2a/2b 각 1개씩 고정 (총 2개)
+      min_size     = 2
+      max_size     = 2
+      desired_size = 2
+
+      disk_size = 50
+      disk_type = "gp3"
+
+      labels = {
+        role        = "ai-worker"
+        workload    = "ai"
+        karpenter   = "false"
+      }
+
+      taints = []
+
+      tags = {
+        NodeGroup   = "fans-ai-workers"
         Environment = var.environment
         Karpenter   = "false"
       }
@@ -168,7 +199,7 @@ module "karpenter" {
   irsa_namespace_service_accounts = ["karpenter:karpenter"]
 
   create_node_iam_role = false
-  node_iam_role_arn    = module.eks.eks_managed_node_groups["main_workers"].iam_role_arn
+  node_iam_role_arn    = module.eks.eks_managed_node_groups["general_workers"].iam_role_arn
 
   # EKS Access Entry 충돌 방지
   create_access_entry = false

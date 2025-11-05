@@ -1,47 +1,60 @@
 # ==================================
 # Karpenter NodePool (AI Worker용 Spot Instance)
 # ==================================
+# 노트: EKS Node Groups로 baseline 노드를 구성하고, Karpenter는 overflow만 처리
 apiVersion: karpenter.sh/v1beta1
 kind: NodePool
 metadata:
-  name: ai-worker-spot
+  name: ai-worker
 spec:
   template:
+    metadata:
+      labels:
+        workload-type: ai-worker
     spec:
+      nodeClassRef:
+        name: ai-worker
       requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]
         - key: kubernetes.io/arch
           operator: In
           values: ["amd64"]
-        - key: kubernetes.io/os
+        - key: topology.kubernetes.io/zone
           operator: In
-          values: ["linux"]
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["spot"]  # Spot Instance (70% 절감)
+          values: ["ap-northeast-2a", "ap-northeast-2b"]
+        # AI Worker는 xlarge 이상만 사용 (최소 4 vCPU, 16GB RAM)
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["t3.medium", "t3.large"]  # AI Worker에 적합한 크기
-
-      nodeClassRef:
-        name: default
-
-      taints:
-        - key: workload
-          value: ai-worker
-          effect: NoSchedule
-
+          values:
+            - t3a.xlarge     # 4 vCPU, 16GB RAM (가장 저렴)
+            - t3.xlarge      # 4 vCPU, 16GB RAM
+            - t3a.2xlarge    # 8 vCPU, 32GB RAM (필요시)
+            - c5a.xlarge     # 4 vCPU, 8GB RAM (CPU 최적화)
+            - c5.xlarge      # 4 vCPU, 8GB RAM
+      kubelet:
+        maxPods: 110
+        evictionHard:
+          memory.available: "5%"
+          nodefs.available: "10%"
+        systemReserved:
+          cpu: "100m"
+          memory: "100Mi"
   limits:
-    cpu: "20"  # 최대 약 10개 Pod (t3.medium * 10)
-
+    cpu: "32"      # 최대 32 vCPU
+    memory: 64Gi   # 최대 64GB RAM
   disruption:
     consolidationPolicy: WhenUnderutilized
-    expireAfter: 720h  # 30일
+    expireAfter: 168h
+    budgets:
+      - nodes: "50%"
 
 ---
 apiVersion: karpenter.k8s.aws/v1beta1
 kind: EC2NodeClass
 metadata:
-  name: default
+  name: ai-worker
 spec:
   amiFamily: AL2  # Amazon Linux 2
   role: "fans-cluster-karpenter-node"  # Terraform에서 생성된 IAM Role
