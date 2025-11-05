@@ -50,9 +50,16 @@ jobs:
       run: |
         cd backend
         echo "📂 Build context: $(pwd)"
-        echo "📋 Listing files..."
-        ls -la ai-worker/ || true
-        ls -la queue/ || true
+        echo "📋 Listing queue files..."
+        ls -lah queue/
+        echo "📋 queue/package.json content:"
+        cat queue/package.json
+        echo ""
+        echo "📋 Listing ai-worker files..."
+        ls -lah ai-worker/
+        echo "📋 ai-worker/package.json content:"
+        cat ai-worker/package.json
+        echo ""
         echo "🔨 Starting Docker build..."
         docker buildx build \
           --file ai-worker/Dockerfile \
