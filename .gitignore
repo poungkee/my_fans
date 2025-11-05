@@ -244,3 +244,5 @@ backend/scheduler/node_modules/
 # Log files
 logs/*.log
 *.log
+.temp_backup/
+**/*.tfplan
