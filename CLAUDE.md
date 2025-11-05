@@ -10,14 +10,14 @@
 - 정말 불가피하게 수정해야될 경우 반드시 직접 수정해야되는데 수정해도 되냐고 물어보고 허가 나오면 수정
 
 ## 포트 설정
-- 3000번: 백엔드 API (fans_main_api)
+- 3000번: 백엔드 API (main-api)
 - 3001번: 프론트엔드 React (로컬 실행)
-- 4003번: API Crawler (fans_api_crawler)
-- 5000번: Classification API (fans_classification_api) - NEW
-- 5432번: PostgreSQL (fans_postgres)
-- 6379번: Redis (fans_redis)
-- 8000번: Summarize AI (fans_summarize_ai)
-- 8002번: Bias Analysis AI (fans_bias_analysis_ai)
+- 4005번: Unified Crawler (unified-crawler)
+- 5432번: PostgreSQL (RDS)
+- 6379번: Redis (ElastiCache)
+- 8000번: Summarize AI (summarize-ai)
+- 8002번: Bias Analysis AI (bias-analysis-ai)
+- 8080번: Scheduler (node-cron)
 
 ## 서비스별 설정상태
 - 프론트엔드: 로컬 (권장) 또는 도커
@@ -34,8 +34,8 @@
 - docker-compose.yml에서 자동으로 오버라이드됨
 
 ## 자동 크롤링
-- 30초마다 자동 실행 중 (API Crawler)
-- 스케줄러가 활성화되어 있음
+- 30분마다 자동 실행 중 (Unified Crawler)
+- 스케줄러가 활성화되어 있음 (AUTO_CRAWL=true)
 - 수동 크롤링 불필요 (자동으로 작동함)
 
 ## 뉴스 처리 스케줄러 (NEW)
