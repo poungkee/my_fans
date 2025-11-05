@@ -1,3 +1,33 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:1f8017f616bdf194c118ebcb95d1d3f7f088e38685fb0d651822c26625ece72d
-size 665
+{
+  "name": "@fans/ai-worker",
+  "version": "1.0.0",
+  "description": "AI Worker for FANS Project",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@fans/queue": "file:../queue",
+    "axios": "^1.6.0",
+    "bullmq": "^5.0.0",
+    "dotenv": "^16.3.1",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "ai",
+    "worker",
+    "bullmq",
+    "queue"
+  ],
+  "author": "FANS Team",
+  "license": "MIT"
+}
