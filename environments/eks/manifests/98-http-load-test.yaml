@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: http-load-test
+  namespace: fans
+spec:
+  parallelism: 50  # 50개 동시 실행
+  completions: 50
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: load-test
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Starting load test from $(hostname)..."
+          END_TIME=$(($(date +%s) + 240))
+          while [ $(date +%s) -lt $END_TIME ]; do
+            for i in $(seq 1 500); do
+              curl -s http://main-api:3000/articles?limit=200 > /dev/null &
+            done
+            sleep 0.02
+          done
+          wait
+          echo "Load test completed from $(hostname)"

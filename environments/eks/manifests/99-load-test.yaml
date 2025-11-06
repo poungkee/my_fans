@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-load-test
+  namespace: fans
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: load-test
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/scheduler:latest
+        command: ["node", "/app/scheduler/dist/batch-backlog.js"]
+        env:
+        - name: BATCH_BACKLOG_SIZE
+          value: "50000"  # 50000개 기사 큐에 추가
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
