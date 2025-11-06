@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import { getDbClient } from '../utils/database';
 import { addBatchBiasJobs } from '@fans/queue';
 
-const BATCH_SIZE = parseInt(process.env.BIAS_BATCH_SIZE || '50');
+const BATCH_SIZE = parseInt(process.env.BIAS_BATCH_SIZE || '20000');
 
 interface Article {
   id: number;
@@ -15,6 +15,7 @@ interface Article {
   content: string;
   category_id: number;
   category_name: string;
+  source_name: string;
 }
 
 /**
@@ -26,9 +27,10 @@ export async function analyzeBias(): Promise<void> {
   try {
     // 1. 편향 분석이 없는 정치 기사 조회 (AI 분류 개선으로 정치 카테고리만 필터링)
     const result = await client.query(`
-      SELECT na.id, na.title, na.content, na.category_id, c.name as category_name
+      SELECT na.id, na.title, na.content, na.category_id, c.name as category_name, s.name as source_name
       FROM news_articles na
       JOIN categories c ON na.category_id = c.id
+      LEFT JOIN sources s ON na.source_id = s.id
       WHERE c.name = '정치'
         AND na.id NOT IN (SELECT DISTINCT article_id FROM bias_analysis)
         AND na.content IS NOT NULL
@@ -51,7 +53,9 @@ export async function analyzeBias(): Promise<void> {
       const jobs = articles.map(article => ({
         articleId: article.id,
         content: article.content,
-        categoryId: article.category_id
+        categoryId: article.category_id,
+        categoryName: article.category_name,
+        sourceName: article.source_name || '기타'
       }));
 
       const jobIds = await addBatchBiasJobs(jobs);

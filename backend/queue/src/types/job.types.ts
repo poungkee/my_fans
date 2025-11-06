@@ -13,6 +13,8 @@ export interface BiasJob {
   articleId: number;
   content: string;
   categoryId?: number;
+  categoryName?: string;
+  sourceName?: string;
 }
 
 export interface KeywordJob {

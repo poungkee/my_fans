@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
 from datetime import datetime
+import os
+import psycopg2.pool
 
 from sentiment_analyzer import SentimentAnalyzer
 from keyword_extractor import KeywordExtractor
@@ -23,6 +25,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# DB connection pool (global)
+db_pool = None
+
 app = FastAPI(title="FANS Bias Analysis AI", version="2.0.0")
 
 app.add_middleware(
@@ -36,7 +41,7 @@ app.add_middleware(
 sentiment_analyzer = SentimentAnalyzer()
 keyword_extractor = KeywordExtractor()
 political_analyzer = PoliticalAnalyzer()
-source_bias_analyzer = SourceBiasAnalyzer()
+source_bias_analyzer = None  # Will be initialized in startup with DB pool
 economic_analyzer = EconomicAnalyzer()
 social_analyzer = SocialAnalyzer()
 
@@ -69,7 +74,42 @@ class FullAnalysisResponse(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
+    global db_pool, source_bias_analyzer
+
     logger.info("FANS Bias Analysis AI v2.0 시작")
+
+    # DB connection pool 생성
+    try:
+        db_pool = psycopg2.pool.SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=int(os.getenv('DB_PORT', '5432')),
+            database=os.getenv('DB_NAME', 'fans_db'),
+            user=os.getenv('DB_USER', 'fans_user'),
+            password=os.getenv('DB_PASSWORD', ''),
+        )
+        logger.info("DB connection pool created successfully")
+
+        # SourceBiasAnalyzer 초기화 (DB pool 전달)
+        source_bias_analyzer = SourceBiasAnalyzer(db_pool=db_pool)
+        logger.info("SourceBiasAnalyzer initialized with DB pool")
+    except Exception as e:
+        logger.error(f"Failed to initialize DB pool: {e}")
+        # DB pool 없이도 작동하도록 fallback
+        source_bias_analyzer = SourceBiasAnalyzer()
+        logger.warning("SourceBiasAnalyzer initialized without DB pool")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global db_pool
+
+    logger.info("FANS Bias Analysis AI v2.0 종료")
+
+    # DB connection pool 종료
+    if db_pool:
+        db_pool.closeall()
+        logger.info("DB connection pool closed")
 
 @app.get("/")
 def read_root():

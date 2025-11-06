@@ -6,7 +6,10 @@ import { BiasJob, JobResult } from '@fans/queue';
 const BIAS_ANALYSIS_AI_URL = process.env.BIAS_ANALYSIS_AI_URL || 'http://localhost:8002';
 
 export async function processBias(job: Job<BiasJob>): Promise<JobResult> {
-  const { articleId, content, categoryId } = job.data;
+  const { articleId, content, categoryName, sourceName } = job.data;
+
+  // Remove "기타-" prefix from source name for AI analysis
+  const cleanSourceName = sourceName?.replace(/^기타-/, '') || '기타';
 
   logger.info(`Processing bias analysis for article ${articleId}`);
 
@@ -17,7 +20,8 @@ export async function processBias(job: Job<BiasJob>): Promise<JobResult> {
       {
         text: content,
         article_id: articleId,
-        category: categoryId, // 카테고리 이름 필요 (categoryId가 아닌 category name)
+        category: categoryName || '정치',
+        source_name: cleanSourceName,
       },
       {
         timeout: 30000,
