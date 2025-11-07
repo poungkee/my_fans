@@ -8,7 +8,7 @@ const RecommendationsSection = ({ onNavigateToDetail }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(true); // 기본값: 펼쳐진 상태로 변경
+  const [isExpanded, setIsExpanded] = useState(false); // 기본값: 접힌 상태
 
   useEffect(() => {
     const fetchRecommendations = async () => {

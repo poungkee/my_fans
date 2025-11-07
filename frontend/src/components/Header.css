@@ -222,26 +222,44 @@
 
 /* 검색 아이콘 버튼 */
 .search-icon-button {
-  width: 45px;
+  min-width: 45px;
   height: 45px;
-  border-radius: 50%;
+  border-radius: 22.5px;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(15px);
   border: 2px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
+  padding: 0 0.8rem;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   color: white;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.search-icon-button.filter-active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .search-icon-button:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1) translateY(-2px);
+  transform: scale(1.05) translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+.search-query-badge {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 활동로그 버튼 - header-left에 위치 */

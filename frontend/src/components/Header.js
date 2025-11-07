@@ -12,6 +12,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   const [expandedSection, setExpandedSection] = useState(null); // 모바일 메뉴에서 펼쳐진 섹션
   const [selectedCategory, setSelectedCategory] = useState('전체'); // 선택된 카테고리
   const [selectedSource, setSelectedSource] = useState(null); // 선택된 언론사
+  const [currentSearchQuery, setCurrentSearchQuery] = useState(''); // 현재 검색어
   const navigate = useNavigate();
   const location = useLocation();
   const searchInputRef = useRef(null); // ✅ 검색창 참조
@@ -224,6 +225,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
 
     if (e.key === 'Enter' || e.type === 'click') {
       setShowSearchBar(false); // 검색 후 검색창 숨기기
+      setCurrentSearchQuery(query); // 검색어 저장
 
       // 디테일 페이지에서 검색하는 경우 메인 페이지로 이동하면서 검색
       if (location.pathname.startsWith('/news/')) {
@@ -272,6 +274,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
       searchInputRef.current.blur();
     }
     setActiveDropdown(null);
+    setCurrentSearchQuery(''); // 검색어 초기화
     if (onSearch) {
       onSearch('');     // 전체 뉴스로
     }
@@ -322,13 +325,14 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
 
         {/* 검색 아이콘 - FANS 로고 오른쪽에 배치 */}
         <div
-          className="search-icon-button"
+          className={`search-icon-button ${currentSearchQuery ? 'filter-active' : ''}`}
           onClick={toggleSearchBar}
           title="검색"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M21 21L16.514 16.506L21 21ZM19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
+          {currentSearchQuery && <span className="search-query-badge">: {currentSearchQuery}</span>}
         </div>
 
         <div className="dropdown desktop-only">

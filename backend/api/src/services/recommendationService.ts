@@ -109,6 +109,20 @@ export class RecommendationService {
       )
     ];
 
+    // Fallback: 추천이 부족하면 추가로 인기 기사 채우기
+    if (finalRecommendations.length < limit) {
+      const additionalPopular = await this.getMostViewedArticles(limit);
+      const existingIds = new Set(finalRecommendations.map(a => a.id));
+
+      for (const article of additionalPopular) {
+        if (!existingIds.has(article.id)) {
+          finalRecommendations.push(article);
+          existingIds.add(article.id);
+        }
+        if (finalRecommendations.length >= limit) break;
+      }
+    }
+
     // 상위 N개 반환
     return finalRecommendations.slice(0, limit);
   }

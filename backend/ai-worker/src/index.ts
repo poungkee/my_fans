@@ -177,11 +177,21 @@ biasWorker.on('completed', async (job) => {
 keywordWorker.on('completed', async (job) => {
   try {
     const result = await job.returnvalue;
+    logger.info(`[DEBUG] Keyword job result: success=${result?.success}, hasData=${!!result?.data}, hasKeywords=${!!result?.data?.keywords}, isArray=${Array.isArray(result?.data?.keywords)}`);
+
     if (result?.success && result?.data?.keywords && Array.isArray(result.data.keywords)) {
       const keywords = result.data.keywords;
+      logger.info(`[DEBUG] Processing ${keywords.length} keywords for article ${job.data.articleId}`);
 
       for (const kw of keywords) {
-        if (!kw.keyword || !kw.relevance) continue;
+        // AI 서비스가 {word, score} 형식으로 반환
+        const keywordText = kw.keyword || kw.word;
+        const relevance = kw.relevance || kw.score;
+
+        if (!keywordText || relevance === undefined) {
+          logger.warn(`[DEBUG] Skipping invalid keyword: ${JSON.stringify(kw)}`);
+          continue;
+        }
 
         // 1. Insert keyword (or get existing)
         const keywordResult = await dbPool.query(
@@ -189,23 +199,28 @@ keywordWorker.on('completed', async (job) => {
            VALUES ($1)
            ON CONFLICT (keyword) DO UPDATE SET keyword = EXCLUDED.keyword
            RETURNING id`,
-          [kw.keyword]
+          [keywordText]
         );
         const keywordId = keywordResult.rows[0].id;
+        logger.info(`[DEBUG] Inserted/found keyword "${keywordText}" with ID ${keywordId}`);
 
         // 2. Link keyword to article
         await dbPool.query(
           `INSERT INTO news_keywords (news_id, keyword_id, relevance)
            VALUES ($1, $2, $3)
            ON CONFLICT (news_id, keyword_id) DO UPDATE SET relevance = EXCLUDED.relevance`,
-          [job.data.articleId, keywordId, kw.relevance]
+          [job.data.articleId, keywordId, relevance]
         );
+        logger.info(`[DEBUG] Linked keyword ${keywordId} to article ${job.data.articleId}`);
       }
 
       logger.info(`✅ ${keywords.length} keywords saved to DB for article ${job.data.articleId}`);
+    } else {
+      logger.warn(`[DEBUG] Keyword save skipped for article ${job.data.articleId}: invalid result structure`);
     }
   } catch (error: any) {
     logger.error(`Failed to save keywords: ${error.message}`);
+    logger.error(`[DEBUG] Error stack: ${error.stack}`);
   }
   logger.info(`✅ Job ${job.id} completed in queue ${job.queueName}`);
 });

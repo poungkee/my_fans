@@ -61,6 +61,35 @@ class KeywordExtractor:
         # 특수문자만 있는 키워드 제외
         if not any(c.isalnum() for c in word):
             return False
+
+        # 조사로 끝나는 키워드 제외 (확장)
+        josa_endings = ['을', '를', '이', '가', '은', '는', '의', '에', '와', '과',
+                       '도', '로', '으로', '께서', '에게', '한테', '이며', '며',
+                       '이고', '고', '이나', '나', '이든', '든', '부터', '까지',
+                       '에서', '에는', '으며', '되며', '하며', '돌며']
+        for ending in josa_endings:
+            if word.endswith(ending) and len(word) > len(ending):
+                return False
+
+        # 중복된 단어가 포함된 키워드 제외 (예: "도박 도박을")
+        words = word.split()
+        if len(words) >= 2:
+            # 연속된 중복 단어 체크
+            for i in range(len(words) - 1):
+                if words[i] == words[i + 1]:
+                    return False
+                # 비슷한 단어 체크 (조사만 다른 경우)
+                if len(words[i]) >= 2 and len(words[i + 1]) >= 2:
+                    if words[i][:2] == words[i + 1][:2]:  # 앞 2글자가 같으면
+                        return False
+
+        # 의미 없는 패턴 필터링 (동사 + 조사 패턴)
+        meaningless_patterns = ['돌며', '하며', '되며', '있으며', '없으며',
+                               '보이며', '나타나며', '말하며', '전하며']
+        for pattern in meaningless_patterns:
+            if pattern in word:
+                return False
+
         return True
 
     def extract(self, text: str, top_n: int = 10) -> list:
