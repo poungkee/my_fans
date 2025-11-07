@@ -360,6 +360,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                     if (onSourceFilter) {
                       onSourceFilter(source.name);
                     }
+                    // URL 업데이트
+                    const params = new URLSearchParams(location.search);
+                    params.set('source', source.name);
+                    navigate(`/?${params.toString()}`, { replace: true });
                     setActiveDropdown(null);
                   }}
                 >
@@ -395,6 +399,15 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                     if (onCategoryFilter) {
                       onCategoryFilter(category);
                     }
+                    // URL 업데이트
+                    const params = new URLSearchParams(location.search);
+                    if (category === '전체') {
+                      params.delete('category');
+                    } else {
+                      params.set('category', category);
+                    }
+                    const newSearch = params.toString();
+                    navigate(newSearch ? `/?${newSearch}` : '/', { replace: true });
                     setActiveDropdown(null);
                   }}
                 >
@@ -614,6 +627,10 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                       if (onSourceFilter) {
                         onSourceFilter(source.name);
                       }
+                      // URL 업데이트
+                      const params = new URLSearchParams(location.search);
+                      params.set('source', source.name);
+                      navigate(`/?${params.toString()}`, { replace: true });
                     })}
                   >
                     {source.name}
@@ -645,6 +662,15 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                       if (onCategoryFilter) {
                         onCategoryFilter(category);
                       }
+                      // URL 업데이트
+                      const params = new URLSearchParams(location.search);
+                      if (category === '전체') {
+                        params.delete('category');
+                      } else {
+                        params.set('category', category);
+                      }
+                      const newSearch = params.toString();
+                      navigate(newSearch ? `/?${newSearch}` : '/', { replace: true });
                     })}
                   >
                     {category}

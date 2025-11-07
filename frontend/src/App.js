@@ -452,11 +452,8 @@ function HomePageWrapper() {
       handleSourceFilter(sourceParam);
     }
 
-    // URL 파라미터가 있었다면 깔끔한 URL로 정리
-    if (searchParam || categoryParam || sourceParam) {
-      navigate('/', { replace: true });
-    }
-  }, [location.search, navigate]);
+    // URL 파라미터 유지 (뒤로가기 시 복원을 위해)
+  }, [location.search]);
 
   /* -------------------- 렌더 -------------------- */
   return (
