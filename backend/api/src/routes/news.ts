@@ -216,6 +216,66 @@ router.get("/trending", async (req: Request, res: Response) => {
  * 특정 언론사의 뉴스 조회 (일주일치)
  * ?page=1&limit=20&days=7
  */
+router.get("/news/by-category/:categoryName", async (req: Request, res: Response) => {
+  try {
+    const newsRepo = AppDataSource.getRepository(NewsArticle);
+    const categoryRepo = AppDataSource.getRepository(Category);
+
+    const categoryName = String(req.params.categoryName || "").trim();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Number(req.query.limit) || 100; // limit 제한 제거
+    const days = Math.min(Number(req.query.days) || 30, 365);
+
+    if (!categoryName) {
+      return res.status(400).json({ error: "CATEGORY_NAME_REQUIRED" });
+    }
+
+    // 해당 카테고리 찾기
+    const category = await categoryRepo.findOne({ where: { name: categoryName } });
+    if (!category) {
+      return res.status(404).json({ error: "CATEGORY_NOT_FOUND" });
+    }
+
+    // N일 전 날짜 계산
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - days);
+
+    const skip = (page - 1) * limit;
+
+    const articles = await newsRepo.createQueryBuilder("article")
+      .leftJoinAndSelect("article.source", "source")
+      .leftJoinAndSelect("article.category", "category")
+      .leftJoinAndSelect("article.stats", "stats")
+      .where("article.categoryId = :categoryId", { categoryId: category.id })
+      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .orderBy("article.pubDate", "DESC")
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    const items = await Promise.all(articles.map(mapArticle));
+
+    // 전체 개수도 함께 반환
+    const total = await newsRepo.createQueryBuilder("article")
+      .where("article.categoryId = :categoryId", { categoryId: category.id })
+      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .getCount();
+
+    res.json({
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + items.length < total
+      }
+    });
+  } catch (e: any) {
+    logger.error("BY_CATEGORY_ERROR:", e);
+    res.status(500).json({ items: [], error: e?.message || "BY_CATEGORY_FAILED" });
+  }
+});
+
 router.get("/news/by-source/:sourceName", async (req: Request, res: Response) => {
   try {
     const newsRepo = AppDataSource.getRepository(NewsArticle);
@@ -223,8 +283,8 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
 
     const sourceName = String(req.params.sourceName || "").trim();
     const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const days = Math.min(Number(req.query.days) || 7, 30);
+    const limit = Number(req.query.limit) || 100; // limit 제한 제거
+    const days = Math.min(Number(req.query.days) || 30, 365);
 
     if (!sourceName) {
       return res.status(400).json({ error: "SOURCE_NAME_REQUIRED" });

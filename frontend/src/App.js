@@ -93,7 +93,7 @@ function HomePageWrapper() {
     const controller = new AbortController();
     // topics는 없어도 동작하도록 파라미터 분리
     const params = new URLSearchParams({
-      limit: '200',
+      limit: '800', // 8개 카테고리 × 100개씩
       sort: 'created_at',
       topics: '정치,경제,사회,세계,IT/과학,생활/문화,스포츠,연예',
       _t: Date.now() // 캐시 무효화용 타임스탬프
@@ -304,6 +304,14 @@ function HomePageWrapper() {
     isLoading: false
   });
 
+  // 카테고리별 로딩 상태 및 페이지 관리
+  const [categoryLoadingState, setCategoryLoadingState] = useState({
+    categoryName: null,
+    page: 1,
+    hasMore: true,
+    isLoading: false
+  });
+
   // 카테고리와 언론사 필터를 AND 조건으로 적용
   const currentList = useMemo(() => {
     let base = isSearching ? searchResults : feedNews;
@@ -337,19 +345,50 @@ function HomePageWrapper() {
   }, [sourceFilteredNews, categoryFilteredNews, feedNews, currentList]);
 
 
-  const handleCategoryFilter = (category) => {
+  const handleCategoryFilter = async (category) => {
     if (!category || category === '전체') {
       setCategoryFilteredNews(null);
+      setCategoryLoadingState({
+        categoryName: null,
+        page: 1,
+        hasMore: true,
+        isLoading: false
+      });
       sessionStorage.removeItem('selectedCategory');
       return;
     }
-    const base = isSearching ? searchResults : feedNews;
-    const filtered = base.filter((n) => n.category === category);
-    setCategoryFilteredNews(filtered);
-    // 카테고리 변경 시 언론사 필터는 유지 (AND 조건)
 
-    // 카테고리 상태를 sessionStorage에 저장 (뒤로가기 시 복원용)
-    sessionStorage.setItem('selectedCategory', category);
+    // 카테고리별 전용 API 호출
+    try {
+      const url = `${API_BASE}/api/news/by-category/${encodeURIComponent(category)}?page=1&limit=100&days=30`;
+      console.log('🔍 카테고리별 API 호출:', url);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      console.log('- 카테고리별 API 응답:', data.items?.length || 0);
+
+      setCategoryFilteredNews(Array.isArray(data.items) ? data.items : []);
+
+      // 로딩 상태 초기화
+      setCategoryLoadingState({
+        categoryName: category,
+        page: 1,
+        hasMore: data.pagination?.hasMore || false,
+        isLoading: false
+      });
+
+      // 카테고리 상태를 sessionStorage에 저장 (뒤로가기 시 복원용)
+      sessionStorage.setItem('selectedCategory', category);
+    } catch (error) {
+      console.error('카테고리별 API 호출 실패:', error);
+      // 실패 시 기존 방식으로 폴백
+      const base = isSearching ? searchResults : feedNews;
+      const filtered = base.filter((n) => n.category === category);
+      setCategoryFilteredNews(filtered);
+      sessionStorage.setItem('selectedCategory', category);
+    }
   };
 
   const handleSourceFilter = async (sourceName) => {
@@ -389,6 +428,49 @@ function HomePageWrapper() {
     }
   };
 
+  // 카테고리별 추가 데이터 로드 함수
+  const loadMoreCategoryNews = async () => {
+    if (!categoryLoadingState.categoryName || categoryLoadingState.isLoading || !categoryLoadingState.hasMore) {
+      return;
+    }
+
+    setCategoryLoadingState(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const nextPage = categoryLoadingState.page + 1;
+      const url = `${API_BASE}/api/news/by-category/${encodeURIComponent(categoryLoadingState.categoryName)}?page=${nextPage}&limit=100&days=30`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      console.log(`- 카테고리 페이지 ${nextPage} 로드:`, data.items?.length || 0);
+
+      if (data.items && data.items.length > 0) {
+        setCategoryFilteredNews(prev => [...(prev || []), ...data.items]);
+        setCategoryLoadingState(prev => ({
+          ...prev,
+          page: nextPage,
+          hasMore: data.pagination?.hasMore || false,
+          isLoading: false
+        }));
+      } else {
+        setCategoryLoadingState(prev => ({
+          ...prev,
+          hasMore: false,
+          isLoading: false
+        }));
+      }
+    } catch (error) {
+      console.error('카테고리 추가 로드 실패:', error);
+      setCategoryLoadingState(prev => ({
+        ...prev,
+        hasMore: false,
+        isLoading: false
+      }));
+    }
+  };
+
   // 언론사별 추가 데이터 로드 함수
   const loadMoreSourceNews = async () => {
     if (!sourceLoadingState.sourceName || sourceLoadingState.isLoading || !sourceLoadingState.hasMore) {
@@ -399,13 +481,13 @@ function HomePageWrapper() {
 
     try {
       const nextPage = sourceLoadingState.page + 1;
-      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceLoadingState.sourceName)}?page=${nextPage}&limit=50&days=7&sort=created_at`;
+      const url = `${API_BASE}/api/news/by-source/${encodeURIComponent(sourceLoadingState.sourceName)}?page=${nextPage}&limit=100&days=30`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      console.log(`- 페이지 ${nextPage} 로드:`, data.items?.length || 0);
+      console.log(`- 언론사 페이지 ${nextPage} 로드:`, data.items?.length || 0);
 
       if (data.items && data.items.length > 0) {
         setSourceFilteredNews(prev => [...(prev || []), ...data.items]);
@@ -423,7 +505,7 @@ function HomePageWrapper() {
         }));
       }
     } catch (error) {
-      console.error('추가 로드 실패:', error);
+      console.error('언론사 추가 로드 실패:', error);
       setSourceLoadingState(prev => ({
         ...prev,
         hasMore: false,
@@ -490,9 +572,23 @@ function HomePageWrapper() {
             <NewsGrid
               newsData={currentList}
               searchQuery={isSearching ? searchQuery : ''}
-              onLoadMore={sourceLoadingState.sourceName ? loadMoreSourceNews : null}
-              isLoadingMore={sourceLoadingState.isLoading}
-              hasMore={sourceLoadingState.hasMore}
+              onLoadMore={
+                categoryLoadingState.categoryName
+                  ? loadMoreCategoryNews
+                  : sourceLoadingState.sourceName
+                    ? loadMoreSourceNews
+                    : null
+              }
+              isLoadingMore={
+                categoryLoadingState.categoryName
+                  ? categoryLoadingState.isLoading
+                  : sourceLoadingState.isLoading
+              }
+              hasMore={
+                categoryLoadingState.categoryName
+                  ? categoryLoadingState.hasMore
+                  : sourceLoadingState.hasMore
+              }
             />
           </div>
           <AdSidebar />
