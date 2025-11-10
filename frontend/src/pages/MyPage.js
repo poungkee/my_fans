@@ -719,15 +719,19 @@ const MyPage = () => {
                       onChange={handleProfileImageUpload}
                       style={{ display: 'none' }}
                       disabled={profileImageLoading}
+                      ref={(input) => { window.profileImageInput = input; }}
                     />
-                    <label
-                      htmlFor="profileImageInput"
+                    <button
+                      type="button"
                       className={`profile-image-btn upload ${profileImageLoading ? 'loading' : ''}`}
+                      onClick={() => document.getElementById('profileImageInput').click()}
+                      disabled={profileImageLoading}
                     >
                       {profileImageLoading ? '업로드 중...' : '이미지 변경'}
-                    </label>
+                    </button>
                     {user.profileImage && (
                       <button
+                        type="button"
                         className={`profile-image-btn delete ${profileImageLoading ? 'loading' : ''}`}
                         onClick={handleProfileImageDelete}
                         disabled={profileImageLoading}
