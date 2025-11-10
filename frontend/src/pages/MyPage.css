@@ -75,18 +75,18 @@
   display: flex;
   gap: 0.8rem;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-top: 0.8rem;
+  align-items: center;
 }
 
 .profile-image-btn {
-  /* Layout - FIXED: display 한 번만 선언 */
-  display: inline-block !important;
-  width: 110px !important;
-  min-width: 110px !important;
-  max-width: 110px !important;
-  height: 34px !important;
-  vertical-align: middle !important;
+  /* 완전 고정 레이아웃 */
+  flex: 0 0 100px !important;
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+  height: 32px !important;
 
   /* Box Model */
   padding: 0 !important;
@@ -95,15 +95,13 @@
   border-radius: 6px;
   box-sizing: border-box !important;
 
-  /* Typography - 텍스트 중앙 정렬 */
+  /* Typography */
   font-weight: 600;
-  font-size: 0.75rem !important;
-  line-height: 34px !important;
+  font-size: 13px !important;
+  line-height: 32px !important;
   text-align: center !important;
-  text-decoration: none;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
 
   /* Visual */
   cursor: pointer;
@@ -285,10 +283,15 @@
 .info-card {
   background: #ffffff;
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 12px 10px;
   text-align: center;
   border: 1px solid #e5e7eb;
-  border-top: 2px solid #3b82f6;
+  border-top: 3px solid #3b82f6;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .info-icon {
