@@ -612,7 +612,7 @@
 }
 
 .agreement-item .checkbox-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   flex: 1;
   margin: 0;
@@ -620,6 +620,8 @@
   font-size: 15px;
   color: #374151;
   line-height: 1.5;
+  white-space: nowrap;
+  flex-wrap: nowrap;
 }
 
 .agreement-item .checkbox-label input[type="checkbox"] {
