@@ -91,8 +91,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  min-width: 120px;
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-image-btn.upload {
