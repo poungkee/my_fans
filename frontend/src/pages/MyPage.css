@@ -91,7 +91,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
+  width: 120px;
+  min-width: 120px;
 }
 
 .profile-image-btn.upload {
