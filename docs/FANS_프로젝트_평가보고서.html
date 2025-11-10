@@ -293,7 +293,7 @@
         </li>
         <li><a href="#section-7" style="color: #0066cc; text-decoration: none;"><strong>향후 개선 방향</strong></a>
             <ul style="list-style-type: circle; margin-left: 20px;">
-                <li>단기: MSK/EMR/MWAA, X-Ray</li>
+                <li>단기: 경량화 아키텍처 EKS 적용 및 안정화, X-Ray</li>
                 <li>중기: Multi-Region, 보안 강화</li>
                 <li>장기: GitOps 완전 자동화</li>
             </ul>
@@ -2834,12 +2834,19 @@ unified-crawler-7b8f9d5c-xyz   1/1   Running   0   ip-10-0-1-120
 
 <h2>7.2 단기 개선 계획 (3~6개월)</h2>
 
-<h3>1. 아키텍처 경량화 완료 ✅</h3>
+<h3>1. 경량화 아키텍처 EKS 적용 및 안정화</h3>
 
-<div class="success">
-<p><strong>배경</strong>: 초기 계획했던 Kafka, Spark, Airflow 아키텍처는 로컬 환경에서 구현했으나, EKS 프로덕션 환경에서 리소스 사용량이 과도하여 경량화를 진행했습니다.</p>
+<div class="highlight">
+<p><strong>배경</strong>: 초기 계획했던 Kafka, Spark, Airflow 아키텍처는 로컬 환경에서 성공적으로 구현했으나, EKS 프로덕션 환경에서 리소스 사용량이 과도하여 경량화 아키텍처를 개발했습니다.</p>
 
-<p><strong>경량화 결과</strong>:</p>
+<p><strong>현재 상태</strong>:</p>
+<ul>
+    <li>✅ <strong>경량화 아키텍처 개발 완료</strong>: Node.js + BullMQ + KEDA 구조</li>
+    <li>✅ <strong>로컬 환경 검증 완료</strong>: 메모리 75% 절감, 성능 98% 향상 확인</li>
+    <li>⏳ <strong>EKS 프로덕션 적용 예정</strong>: 안정성 테스트 후 단계적 배포 계획</li>
+</ul>
+
+<p><strong>경량화 아키텍처 성능 (로컬 검증 결과)</strong>:</p>
 <table>
     <tr>
         <th>구분</th>
@@ -2854,9 +2861,9 @@ unified-crawler-7b8f9d5c-xyz   1/1   Running   0   ip-10-0-1-120
         <td style="color: green;">75% ↓</td>
     </tr>
     <tr>
-        <td><strong>월 비용</strong></td>
+        <td><strong>예상 월 비용</strong></td>
         <td>~$1,336</td>
-        <td>$334</td>
+        <td>~$334</td>
         <td style="color: green;">75% ↓</td>
     </tr>
     <tr>
@@ -2881,7 +2888,43 @@ unified-crawler-7b8f9d5c-xyz   1/1   Running   0   ip-10-0-1-120
     <li><strong>Python AI Workers</strong>: 배치 처리 최적화</li>
 </ul>
 
-<p><strong>실제 성과</strong>: 75% 비용 절감, 98% 성능 향상 달성 (섹션 4.6 참고)</p>
+<p><strong>EKS 적용 계획</strong>:</p>
+<table>
+    <tr>
+        <th>단계</th>
+        <th>작업 내용</th>
+        <th>목표 기간</th>
+    </tr>
+    <tr>
+        <td><strong>1단계</strong></td>
+        <td>
+            • EKS 환경 부하 테스트 (HTTP, AI Queue)<br>
+            • 리소스 요청/제한값 튜닝<br>
+            • KEDA 스케일링 임계값 최적화
+        </td>
+        <td>1개월</td>
+    </tr>
+    <tr>
+        <td><strong>2단계</strong></td>
+        <td>
+            • Canary 배포 (10% 트래픽)<br>
+            • 모니터링 및 안정성 검증<br>
+            • 롤백 절차 수립
+        </td>
+        <td>1개월</td>
+    </tr>
+    <tr>
+        <td><strong>3단계</strong></td>
+        <td>
+            • 전체 트래픽 전환 (100%)<br>
+            • v1.0 인프라 단계적 종료<br>
+            • 비용 절감 효과 검증
+        </td>
+        <td>1개월</td>
+    </tr>
+</table>
+
+<p><strong>기대 효과</strong>: EKS 적용 완료 시 월 비용 $1,000 이상 절감, 처리 성능 2배 향상 예상</p>
 </div>
 
 <h3>2. 분산 추적 시스템 구축</h3>
