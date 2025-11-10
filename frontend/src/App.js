@@ -8,6 +8,7 @@ import RecommendationsSection from './components/RecommendationsSection';
 import NewsGrid from './components/NewsGrid';
 import AdSidebar from './components/AdSidebar';
 import Footer from './components/Footer';
+import { API_BASE_URL } from './config/api';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -47,8 +48,8 @@ function HomePageWrapper() {
   const [stockError, setStockError] = useState(null);
   const [stockLoading, setStockLoading] = useState(true);
 
-  // API 베이스 (프록시 사용 시 빈 문자열)
-  const API_BASE = useMemo(() => process.env.REACT_APP_API_BASE || '', []);
+  // API 베이스 URL (config/api.js에서 가져옴)
+  const API_BASE = API_BASE_URL;
 
   /* -------------------- 새로고침 감지 및 카테고리 복원 -------------------- */
   useEffect(() => {
