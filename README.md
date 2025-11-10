@@ -1,8 +1,8 @@
-# FANS - Financial & Analytics News Service
+# FANS - Filtering & Analysis News System
 
 AI 기반 뉴스 큐레이션 및 편향성 분석 플랫폼
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue)](https://docs.docker.com/compose/)
 [![AWS](https://img.shields.io/badge/AWS-EKS-orange)](https://aws.amazon.com/)
@@ -105,12 +105,13 @@ PORT=3001 npm start
 | 서비스 | 레플리카 | 기술 스택 | 특징 |
 |--------|---------|---------|------|
 | Frontend | - | React 18 + S3 + CloudFront | CDN 캐싱 |
-| Main API | 2 (HA) | Node.js + Express + TypeORM | 다중 AZ 분산 |
-| Unified Crawler | 1 | Node.js + Cheerio | 30초 간격 크롤링 |
-| Scheduler | 2 (HA) | Node.js + node-cron | 10분 간격 AI 작업 발행 |
-| AI Worker | 1~20 (KEDA) | Node.js + BullMQ | 큐 기반 오토스케일링 |
-| Summarize AI | 1 | Python + FastAPI + T5-small | 60M 파라미터 |
-| Bias Analysis AI | 2 (HA) | Python + FastAPI + KoBERT | 감성 분석 |
+| Main API | 2 (HA) | Node.js 20 + Express + TypeORM | 다중 AZ 분산 |
+| Unified Crawler | 1 | Node.js 20 + Cheerio | 30분 간격 크롤링 |
+| Scheduler | 2 (HA) | Node.js 20 + node-cron | 10분 간격 AI 작업 발행 |
+| AI Worker | 1~20 (KEDA) | Node.js 20 + BullMQ | 큐 기반 오토스케일링 |
+| Summarize AI | 2 (HA) | Python 3.10 + FastAPI + T5-small | 60M 파라미터 |
+| Bias Analysis AI | 2 (HA) | Python 3.10 + FastAPI + KoBERT | 감성 분석 |
+| Recommendation AI | 1 | Python 3.10 + FastAPI | 하이브리드 추천 알고리즘 |
 | PostgreSQL RDS | - | PostgreSQL 15 | Multi-AZ |
 | Redis ElastiCache | - | Redis 7 | BullMQ 큐 |
 
@@ -118,8 +119,8 @@ PORT=3001 npm start
 
 ## ⚡ 자동화 시스템
 
-### 1️⃣ 실시간 크롤링 (30초)
-- Unified Crawler가 30초마다 Daum/Naver 뉴스 수집
+### 1️⃣ 실시간 크롤링 (30분)
+- Unified Crawler가 30분마다 Daum/Naver 뉴스 수집
 - 중복 제거 후 `news_articles` 테이블 저장
 
 ### 2️⃣ AI 처리 (10분)
@@ -164,7 +165,7 @@ PORT=3001 npm start
 - **배포**: AWS S3 + CloudFront CDN
 
 ### Backend
-- Node.js 18.x, Express.js, TypeScript 5.x
+- Node.js 20.x, Express.js, TypeScript 5.x
 - TypeORM 0.3.x, JWT, OAuth 2.0
 - **큐**: BullMQ (Redis 기반)
 

@@ -350,26 +350,28 @@ const RegisterPage = () => {
             {/* 약관 동의 섹션 */}
             <div className="agreement-section">
               <div className="agreement-item">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={agreements.terms && agreements.privacy && agreements.marketing}
-                    onChange={handleAllAgreementsChange}
-                    disabled={loading}
-                  />
-                  <span>전체 동의</span>
+                <input
+                  type="checkbox"
+                  id="agree-all"
+                  checked={agreements.terms && agreements.privacy && agreements.marketing}
+                  onChange={handleAllAgreementsChange}
+                  disabled={loading}
+                />
+                <label htmlFor="agree-all" className="checkbox-label">
+                  전체 동의
                 </label>
               </div>
 
               <div className="agreement-item">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={agreements.terms}
-                    onChange={() => handleAgreementChange('terms')}
-                    disabled={loading}
-                  />
-                  <span>이용약관 동의 <span className="required">(필수)</span></span>
+                <input
+                  type="checkbox"
+                  id="agree-terms"
+                  checked={agreements.terms}
+                  onChange={() => handleAgreementChange('terms')}
+                  disabled={loading}
+                />
+                <label htmlFor="agree-terms" className="checkbox-label">
+                  이용약관 동의 <span className="required">(필수)</span>
                 </label>
                 <button
                   type="button"
@@ -382,14 +384,15 @@ const RegisterPage = () => {
               </div>
 
               <div className="agreement-item">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={agreements.privacy}
-                    onChange={() => handleAgreementChange('privacy')}
-                    disabled={loading}
-                  />
-                  <span>개인정보 처리방침 동의 <span className="required">(필수)</span></span>
+                <input
+                  type="checkbox"
+                  id="agree-privacy"
+                  checked={agreements.privacy}
+                  onChange={() => handleAgreementChange('privacy')}
+                  disabled={loading}
+                />
+                <label htmlFor="agree-privacy" className="checkbox-label">
+                  개인정보 처리방침 동의 <span className="required">(필수)</span>
                 </label>
                 <button
                   type="button"
@@ -402,14 +405,15 @@ const RegisterPage = () => {
               </div>
 
               <div className="agreement-item">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={agreements.marketing}
-                    onChange={() => handleAgreementChange('marketing')}
-                    disabled={loading}
-                  />
-                  <span>마케팅 정보 수신 동의 <span className="optional">(선택)</span></span>
+                <input
+                  type="checkbox"
+                  id="agree-marketing"
+                  checked={agreements.marketing}
+                  onChange={() => handleAgreementChange('marketing')}
+                  disabled={loading}
+                />
+                <label htmlFor="agree-marketing" className="checkbox-label">
+                  마케팅 정보 수신 동의 <span className="optional">(선택)</span>
                 </label>
               </div>
 
