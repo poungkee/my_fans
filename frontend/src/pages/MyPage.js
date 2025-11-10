@@ -726,6 +726,7 @@ const MyPage = () => {
                       className={`profile-image-btn upload ${profileImageLoading ? 'loading' : ''}`}
                       onClick={() => document.getElementById('profileImageInput').click()}
                       disabled={profileImageLoading}
+                      style={{ width: '100px', minWidth: '100px', maxWidth: '100px', flex: '0 0 100px' }}
                     >
                       {profileImageLoading ? '업로드 중...' : '이미지 변경'}
                     </button>
@@ -735,6 +736,7 @@ const MyPage = () => {
                         className={`profile-image-btn delete ${profileImageLoading ? 'loading' : ''}`}
                         onClick={handleProfileImageDelete}
                         disabled={profileImageLoading}
+                        style={{ width: '100px', minWidth: '100px', maxWidth: '100px', flex: '0 0 100px' }}
                       >
                         이미지 삭제
                       </button>
