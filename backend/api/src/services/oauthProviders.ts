@@ -19,6 +19,7 @@ export class KakaoOAuthProvider {
       client_id: clientId,
       redirect_uri: redirectUri,
       state,
+      scope: 'account_email,profile_nickname,profile_image', // 이메일, 닉네임, 프로필 이미지 요청
     });
     return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
   }
