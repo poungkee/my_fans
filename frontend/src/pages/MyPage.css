@@ -80,35 +80,30 @@
 }
 
 .profile-image-btn {
-  /* Layout */
+  /* Layout - FIXED: display 한 번만 선언 */
   display: inline-block !important;
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 120px !important;
-  height: 36px !important;
+  width: 110px !important;
+  min-width: 110px !important;
+  max-width: 110px !important;
+  height: 34px !important;
+  vertical-align: middle !important;
 
   /* Box Model */
-  padding: 0.5rem 0.5rem !important;
+  padding: 0 !important;
   margin: 0 !important;
-  border: none;
+  border: none !important;
   border-radius: 6px;
   box-sizing: border-box !important;
 
-  /* Flexbox (for centering text) */
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  /* Typography */
+  /* Typography - 텍스트 중앙 정렬 */
   font-weight: 600;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  text-align: center;
+  font-size: 0.75rem !important;
+  line-height: 34px !important;
+  text-align: center !important;
   text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 
   /* Visual */
   cursor: pointer;
@@ -256,21 +251,23 @@
   font-weight: 500;
 }
 
-/* 2열 그리드 레이아웃 */
+/* 반응형 그리드 레이아웃: 웹 4열, 모바일 2열 */
 .user-info-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   flex: 1;
   align-content: start;
 }
 
+/* 태블릿: 3열 */
 @media (max-width: 1024px) {
   .user-info-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
+/* 모바일: 2열 */
 @media (max-width: 768px) {
   .user-info-grid {
     grid-template-columns: repeat(2, 1fr);
