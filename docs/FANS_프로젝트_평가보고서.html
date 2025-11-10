@@ -2828,54 +2828,60 @@ unified-crawler-7b8f9d5c-xyz   1/1   Running   0   ip-10-0-1-120
 <ul>
     <li><strong>리전</strong>: ap-northeast-2 (서울) 단일 리전</li>
     <li><strong>가용 영역</strong>: 2개 (2a, 2b) Multi-AZ</li>
-    <li><strong>데이터 처리</strong>: Kafka, Spark, Airflow 직접 운영</li>
+    <li><strong>데이터 처리</strong>: Node.js + Python 경량 아키텍처 (BullMQ + KEDA)</li>
 </ul>
 </div>
 
 <h2>7.2 단기 개선 계획 (3~6개월)</h2>
 
-<h3>1. AWS 관리형 서비스 전환</h3>
+<h3>1. 아키텍처 경량화 완료 ✅</h3>
 
-<div class="highlight">
-<p><strong>배경</strong>: 현재 직접 운영 중인 Kafka, Spark, Airflow는 인프라 관리 부담이 크고 확장성에 한계가 있습니다.</p>
+<div class="success">
+<p><strong>배경</strong>: 초기 계획했던 Kafka, Spark, Airflow 아키텍처는 로컬 환경에서 구현했으나, EKS 프로덕션 환경에서 리소스 사용량이 과도하여 경량화를 진행했습니다.</p>
 
-<p><strong>전환 계획</strong>:</p>
+<p><strong>경량화 결과</strong>:</p>
 <table>
     <tr>
-        <th>기존</th>
-        <th>전환 대상</th>
-        <th>기대 효과</th>
+        <th>구분</th>
+        <th>v1.0 (Kafka-Spark-Airflow)</th>
+        <th>v3.0 (Node.js-BullMQ-KEDA)</th>
+        <th>개선율</th>
     </tr>
     <tr>
-        <td>Kafka (자체 운영)</td>
-        <td><strong>Amazon MSK</strong> (Managed Streaming for Kafka)</td>
-        <td>
-            • 완전 관리형 서비스로 운영 부담 80% 감소<br>
-            • 자동 패치 및 버전 업그레이드<br>
-            • Multi-AZ 기본 지원으로 가용성 향상
-        </td>
+        <td><strong>메모리 사용량</strong></td>
+        <td>16GB+</td>
+        <td>4GB</td>
+        <td style="color: green;">75% ↓</td>
     </tr>
     <tr>
-        <td>Spark (자체 운영)</td>
-        <td><strong>Amazon EMR</strong> (Elastic MapReduce)</td>
-        <td>
-            • 필요 시에만 클러스터 생성 (비용 70% 절감)<br>
-            • 자동 스케일링 및 Spot 인스턴스 지원<br>
-            • Hadoop, Hive 등 빅데이터 에코시스템 통합
-        </td>
+        <td><strong>월 비용</strong></td>
+        <td>~$1,336</td>
+        <td>$334</td>
+        <td style="color: green;">75% ↓</td>
     </tr>
     <tr>
-        <td>Airflow (자체 운영)</td>
-        <td><strong>Amazon MWAA</strong> (Managed Workflows for Apache Airflow)</td>
-        <td>
-            • 완전 관리형 워크플로우<br>
-            • 자동 스케일링 및 고가용성<br>
-            • CloudWatch 통합 모니터링
-        </td>
+        <td><strong>처리 성능</strong></td>
+        <td>기준</td>
+        <td>1.98배 향상</td>
+        <td style="color: green;">98% ↑</td>
+    </tr>
+    <tr>
+        <td><strong>배포 시간</strong></td>
+        <td>15분+</td>
+        <td>~3분</td>
+        <td style="color: green;">80% ↓</td>
     </tr>
 </table>
 
-<p><strong>예상 비용 절감</strong>: 월 $200~300 (운영 인력 비용 별도)</p>
+<p><strong>핵심 기술 스택</strong>:</p>
+<ul>
+    <li><strong>BullMQ</strong>: Redis 기반 큐 시스템 (Kafka 대체)</li>
+    <li><strong>Node.js Scheduler</strong>: node-cron 기반 스케줄링 (Airflow 대체)</li>
+    <li><strong>KEDA</strong>: 큐 길이 기반 Auto Scaling (Spark 대체)</li>
+    <li><strong>Python AI Workers</strong>: 배치 처리 최적화</li>
+</ul>
+
+<p><strong>실제 성과</strong>: 75% 비용 절감, 98% 성능 향상 달성 (섹션 4.6 참고)</p>
 </div>
 
 <h3>2. 분산 추적 시스템 구축</h3>
